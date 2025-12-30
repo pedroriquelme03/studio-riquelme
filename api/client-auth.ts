@@ -10,6 +10,11 @@ async function getClient() {
 	if (!databaseUrl) {
 		throw new Error('DATABASE_URL não configurada');
 	}
+	// Permitir desativar verificação de certificado para debug/ambientes com cadeia self-signed
+	if (process.env.DB_SSL_NO_VERIFY === '1') {
+		// eslint-disable-next-line no-process-env
+		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+	}
 	const client = new Client({
 		connectionString: databaseUrl,
 		ssl: { rejectUnauthorized: false },

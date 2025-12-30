@@ -246,10 +246,31 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// Construir link de reset
-			const frontendUrl = process.env.FRONTEND_URL || process.env.VERCEL_URL 
-				? `https://${process.env.VERCEL_URL}` 
-				: 'http://localhost:3000';
+			let frontendUrl = process.env.FRONTEND_URL || '';
+			
+			// Se não tiver https://, adicionar
+			if (frontendUrl && !frontendUrl.startsWith('http://') && !frontendUrl.startsWith('https://')) {
+				frontendUrl = `https://${frontendUrl}`;
+			}
+			
+			// Fallback para VERCEL_URL se FRONTEND_URL não estiver configurado
+			if (!frontendUrl) {
+				if (process.env.VERCEL_URL) {
+					frontendUrl = `https://${process.env.VERCEL_URL}`;
+				} else {
+					frontendUrl = 'http://localhost:3000';
+				}
+			}
+			
 			const resetLink = `${frontendUrl}/admin/reset-password?token=${token}`;
+
+			console.log('[AUTH] Enviando email de reset:', {
+				email: admin.email,
+				from: process.env.EMAIL_FROM,
+				provider: process.env.EMAIL_PROVIDER,
+				hasApiKey: !!process.env.RESEND_API_KEY,
+				resetLink,
+			});
 
 			// Enviar email com o link de reset
 			const emailResult = await sendResetPasswordEmail(
@@ -258,24 +279,19 @@ export default async function handler(req: any, res: any) {
 				admin.name
 			);
 
-			// Em desenvolvimento, ainda mostrar o link no console
-			if (process.env.NODE_ENV === 'development') {
-				console.log(`Reset password link for ${admin.email}: ${resetLink}`);
-			}
+			console.log('[AUTH] Resultado do envio de email:', emailResult);
 
 			// Se houver erro ao enviar email, logar mas não falhar a requisição
 			// (por segurança, sempre retornar sucesso)
 			if (!emailResult.success) {
-				console.error('Erro ao enviar email de reset:', emailResult.error);
-				// Em desenvolvimento, retornar o link na resposta
-				if (process.env.NODE_ENV === 'development') {
-					return res.status(200).json({
-						ok: true,
-						message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-						warning: `Erro ao enviar email: ${emailResult.error}`,
-						dev_link: resetLink,
-					});
-				}
+				console.error('[AUTH] Erro ao enviar email de reset:', emailResult.error);
+				// Em desenvolvimento ou se houver erro, retornar o link na resposta para debug
+				return res.status(200).json({
+					ok: true,
+					message: 'Se o email existir, você receberá um link para redefinir sua senha.',
+					error: emailResult.error, // Incluir erro para debug
+					debug_link: resetLink, // Sempre incluir link para debug
+				});
 			}
 
 			return res.status(200).json({

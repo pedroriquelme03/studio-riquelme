@@ -14,12 +14,18 @@ export async function sendResetPasswordEmail(
 ): Promise<{ success: boolean; error?: string }> {
 	const emailProvider = process.env.EMAIL_PROVIDER || 'resend'; // 'resend' ou 'smtp'
 
+	console.log('[SENDEMAIL] Iniciando envio de email:', {
+		provider: emailProvider,
+		to: email,
+		hasLink: !!resetLink,
+	});
+
 	if (emailProvider === 'resend') {
 		return sendViaResend(email, resetLink, adminName);
 	} else if (emailProvider === 'smtp') {
 		return sendViaSMTP(email, resetLink, adminName);
 	} else {
-		return { success: false, error: 'EMAIL_PROVIDER não configurado corretamente' };
+		return { success: false, error: `EMAIL_PROVIDER não configurado corretamente. Valor: ${emailProvider}. Use 'resend' ou 'smtp'` };
 	}
 }
 
@@ -30,37 +36,83 @@ async function sendViaResend(
 	adminName: string
 ): Promise<{ success: boolean; error?: string }> {
 	const resendApiKey = process.env.RESEND_API_KEY;
-	const fromEmail = process.env.EMAIL_FROM || 'noreply@studioriquelme.com.br';
+	let fromEmail = process.env.EMAIL_FROM || 'noreply@studioriquelme.com.br';
+
+	// Validar e corrigir EMAIL_FROM se necessário
+	if (fromEmail.includes('seudominio') || fromEmail.includes('example')) {
+		fromEmail = 'noreply@studioriquelme.com.br';
+		console.warn('[SENDEMAIL] EMAIL_FROM contém placeholder, usando domínio padrão:', fromEmail);
+	}
+
+	console.log('[SENDEMAIL] Configuração Resend:', {
+		hasApiKey: !!resendApiKey,
+		apiKeyPrefix: resendApiKey ? resendApiKey.substring(0, 10) + '...' : 'não configurada',
+		apiKeyLength: resendApiKey?.length || 0,
+		fromEmail,
+		toEmail: email,
+		emailProvider: process.env.EMAIL_PROVIDER,
+	});
 
 	if (!resendApiKey) {
 		return { success: false, error: 'RESEND_API_KEY não configurada' };
 	}
 
+	if (!resendApiKey.startsWith('re_')) {
+		return { success: false, error: 'RESEND_API_KEY inválida. Deve começar com "re_"' };
+	}
+
 	try {
+		const emailData = {
+			from: fromEmail,
+			to: email,
+			subject: 'Redefinição de Senha - Studio Riquelme',
+			html: getEmailTemplate(resetLink, adminName),
+		};
+
+		console.log('[SENDEMAIL] Enviando email via Resend:', {
+			from: emailData.from,
+			to: emailData.to,
+			subject: emailData.subject,
+		});
+
 		const response = await fetch('https://api.resend.com/emails', {
 			method: 'POST',
 			headers: {
 				'Authorization': `Bearer ${resendApiKey}`,
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({
-				from: fromEmail,
-				to: email,
-				subject: 'Redefinição de Senha - Studio Riquelme',
-				html: getEmailTemplate(resetLink, adminName),
-			}),
+			body: JSON.stringify(emailData),
+		});
+
+		const responseData = await response.json().catch(async () => {
+			// Se não conseguir parsear JSON, tentar ler como texto
+			const text = await response.text().catch(() => '');
+			return { error: text || 'Erro desconhecido' };
+		});
+		
+		console.log('[SENDEMAIL] Resposta do Resend:', {
+			status: response.status,
+			statusText: response.statusText,
+			data: responseData,
 		});
 
 		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
+			const errorMessage = responseData.message 
+				|| responseData.error?.message 
+				|| responseData.error 
+				|| response.statusText 
+				|| 'Erro desconhecido';
+			
 			return {
 				success: false,
-				error: `Resend API: ${errorData.message || response.statusText}`,
+				error: `Resend API (${response.status}): ${errorMessage}`,
 			};
 		}
 
-		return { success: true };
+		console.log('[SENDEMAIL] Email enviado com sucesso! ID:', responseData.id);
+		return { success: true, emailId: responseData.id };
 	} catch (error: any) {
+		console.error('[SENDEMAIL] Erro ao enviar email:', error);
 		return { success: false, error: error?.message || 'Erro ao enviar email via Resend' };
 	}
 }

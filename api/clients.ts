@@ -1,4 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Tipos afrouxados para evitar dependência de @vercel/node em build local
+// import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from 'pg';
 
 async function getClient() {
@@ -14,7 +15,7 @@ async function getClient() {
 	return client;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
 	try {
 		if (req.method === 'GET') {
 			const client = await getClient();

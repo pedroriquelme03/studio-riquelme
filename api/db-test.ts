@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { Client } from 'pg';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
 	try {
 		const databaseUrl = process.env.DATABASE_URL;
 		if (!databaseUrl) {

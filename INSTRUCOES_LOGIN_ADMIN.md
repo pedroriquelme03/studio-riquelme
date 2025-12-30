@@ -77,10 +77,46 @@ Para criar novos admins, você pode:
 2. Inserir manualmente no banco (lembre-se de gerar o hash da senha)
 3. Criar um script similar ao `create-admin.js`
 
+## 6. Funcionalidade "Esqueci a Senha"
+
+O sistema inclui uma funcionalidade completa de recuperação de senha:
+
+### Como funciona:
+
+1. **Solicitar Reset:**
+   - Na página de login, clique em "Esqueci minha senha"
+   - Digite o email cadastrado
+   - Um token de reset será gerado e salvo no banco
+
+2. **Redefinir Senha:**
+   - O usuário recebe um link com token (por email - precisa configurar)
+   - Acessa o link e define uma nova senha
+   - O token expira em 1 hora e só pode ser usado uma vez
+
+### Configurar Envio de Email:
+
+Atualmente, o sistema gera o token mas **não envia email automaticamente**. Para ativar:
+
+1. Configure um serviço de email (SendGrid, Resend, AWS SES, etc.)
+2. No arquivo `api/auth.ts`, na função de `request-reset`, adicione o código de envio de email
+3. O link de reset está disponível em: `${FRONTEND_URL}/admin/reset-password?token=${token}`
+
+**Em desenvolvimento:** O link aparece no console do servidor para facilitar testes.
+
+### Estrutura do Banco:
+
+A tabela `password_reset_tokens` armazena:
+- Token único
+- ID do admin
+- Data de expiração (1 hora)
+- Status de uso (usado/não usado)
+
 ## Segurança
 
 - As senhas são armazenadas como hash (não em texto plano)
 - Use a chave `SUPABASE_SERVICE_ROLE_KEY` na API (não a anon key)
 - Em produção, considere usar bcrypt ao invés de SHA-256
 - Implemente rate limiting para prevenir ataques de força bruta
+- Tokens de reset expiram em 1 hora e são descartados após uso
+- Não revela se o email existe no sistema (segurança)
 

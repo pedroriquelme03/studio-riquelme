@@ -11,6 +11,37 @@ CREATE TABLE IF NOT EXISTS public.admins (
     last_login TIMESTAMP WITH TIME ZONE
 );
 
+-- Tabela para tokens de reset de senha
+CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID NOT NULL REFERENCES public.admins(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices para password_reset_tokens
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON public.password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_admin_id ON public.password_reset_tokens(admin_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON public.password_reset_tokens(expires_at);
+
+-- Habilitar RLS na tabela de tokens
+ALTER TABLE public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Remover política se existir antes de criar
+DROP POLICY IF EXISTS "Service role can manage tokens" ON public.password_reset_tokens;
+
+-- Política para tokens (API usará service role)
+CREATE POLICY "Service role can manage tokens" ON public.password_reset_tokens
+    FOR ALL
+    USING (true);
+
+COMMENT ON TABLE public.password_reset_tokens IS 'Tokens temporários para reset de senha de administradores';
+COMMENT ON COLUMN public.password_reset_tokens.token IS 'Token único para reset de senha';
+COMMENT ON COLUMN public.password_reset_tokens.expires_at IS 'Data e hora de expiração do token (1 hora após criação)';
+COMMENT ON COLUMN public.password_reset_tokens.used IS 'Indica se o token já foi usado';
+
 -- Índice para busca rápida por username
 CREATE INDEX IF NOT EXISTS idx_admins_username ON public.admins(username);
 CREATE INDEX IF NOT EXISTS idx_admins_is_active ON public.admins(is_active);
@@ -24,6 +55,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Remover trigger se existir antes de criar
+DROP TRIGGER IF EXISTS trigger_update_admins_updated_at ON public.admins;
+
 CREATE TRIGGER trigger_update_admins_updated_at
     BEFORE UPDATE ON public.admins
     FOR EACH ROW
@@ -31,6 +65,9 @@ CREATE TRIGGER trigger_update_admins_updated_at
 
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+
+-- Remover política se existir antes de criar
+DROP POLICY IF EXISTS "Admins can read own data" ON public.admins;
 
 -- Política: apenas admins autenticados podem ler (será usado pela API com service role)
 -- Para desenvolvimento, podemos permitir leitura pública temporariamente

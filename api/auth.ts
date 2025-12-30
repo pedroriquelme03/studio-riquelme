@@ -178,7 +178,194 @@ export default async function handler(req: any, res: any) {
 		}
 	}
 
-	res.setHeader('Allow', 'POST, PUT');
+	// Endpoint para solicitar reset de senha
+	if (req.method === 'PATCH' && req.body?.action === 'request-reset') {
+		try {
+			const { email } = (req.body || {}) as { email?: string };
+
+			if (!email) {
+				return res.status(400).json({
+					ok: false,
+					error: 'email é obrigatório',
+				});
+			}
+
+			const supabaseUrl =
+				process.env.SUPABASE_URL ||
+				process.env.VITE_SUPABASE_URL;
+			const supabaseKey =
+				process.env.SUPABASE_SERVICE_ROLE_KEY ||
+				process.env.VITE_SUPABASE_ANON_KEY;
+
+			if (!supabaseUrl || !supabaseKey) {
+				return res.status(500).json({
+					ok: false,
+					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+				});
+			}
+
+			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+			// Buscar admin por email
+			const { data: admin, error: findError } = await supabase
+				.from('admins')
+				.select('id, username, name, email')
+				.eq('email', email)
+				.eq('is_active', true)
+				.single();
+
+			// Sempre retornar sucesso (não revelar se o email existe)
+			if (findError || !admin) {
+				return res.status(200).json({
+					ok: true,
+					message: 'Se o email existir, você receberá um link para redefinir sua senha.',
+				});
+			}
+
+			// Gerar token único
+			const token = crypto.randomBytes(32).toString('hex');
+			const expiresAt = new Date();
+			expiresAt.setHours(expiresAt.getHours() + 1); // Token válido por 1 hora
+
+			// Salvar token no banco
+			const { error: tokenError } = await supabase
+				.from('password_reset_tokens')
+				.insert({
+					admin_id: admin.id,
+					token,
+					expires_at: expiresAt.toISOString(),
+					used: false,
+				});
+
+			if (tokenError) {
+				return res.status(500).json({
+					ok: false,
+					error: 'Erro ao gerar token de reset',
+				});
+			}
+
+			// TODO: Enviar email com o link de reset
+			// Por enquanto, retornamos o token (apenas para desenvolvimento)
+			// Em produção, remova o token da resposta e envie por email
+			const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/reset-password?token=${token}`;
+
+			// Em produção, envie o email aqui
+			// Por exemplo, usando SendGrid, Resend, ou outro serviço de email
+			console.log(`Reset password link for ${admin.email}: ${resetLink}`);
+
+			return res.status(200).json({
+				ok: true,
+				message: 'Se o email existir, você receberá um link para redefinir sua senha.',
+				// Remover em produção:
+				dev_token: process.env.NODE_ENV === 'development' ? token : undefined,
+				dev_link: process.env.NODE_ENV === 'development' ? resetLink : undefined,
+			});
+		} catch (err: any) {
+			return res.status(500).json({
+				ok: false,
+				error: err?.message || 'Erro inesperado',
+			});
+		}
+	}
+
+	// Endpoint para redefinir senha com token
+	if (req.method === 'PATCH' && req.body?.action === 'reset-password') {
+		try {
+			const { token, newPassword } = (req.body || {}) as {
+				token?: string;
+				newPassword?: string;
+			};
+
+			if (!token || !newPassword) {
+				return res.status(400).json({
+					ok: false,
+					error: 'token e newPassword são obrigatórios',
+				});
+			}
+
+			if (newPassword.length < 6) {
+				return res.status(400).json({
+					ok: false,
+					error: 'A senha deve ter pelo menos 6 caracteres',
+				});
+			}
+
+			const supabaseUrl =
+				process.env.SUPABASE_URL ||
+				process.env.VITE_SUPABASE_URL;
+			const supabaseKey =
+				process.env.SUPABASE_SERVICE_ROLE_KEY ||
+				process.env.VITE_SUPABASE_ANON_KEY;
+
+			if (!supabaseUrl || !supabaseKey) {
+				return res.status(500).json({
+					ok: false,
+					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+				});
+			}
+
+			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+			// Buscar token válido
+			const { data: resetToken, error: tokenError } = await supabase
+				.from('password_reset_tokens')
+				.select('id, admin_id, expires_at, used')
+				.eq('token', token)
+				.eq('used', false)
+				.single();
+
+			if (tokenError || !resetToken) {
+				return res.status(400).json({
+					ok: false,
+					error: 'Token inválido ou expirado',
+				});
+			}
+
+			// Verificar se o token expirou
+			const now = new Date();
+			const expiresAt = new Date(resetToken.expires_at);
+			if (now > expiresAt) {
+				return res.status(400).json({
+					ok: false,
+					error: 'Token expirado',
+				});
+			}
+
+			// Criar hash da nova senha
+			const passwordHash = hashPassword(newPassword);
+
+			// Atualizar senha do admin
+			const { error: updateError } = await supabase
+				.from('admins')
+				.update({ password_hash: passwordHash })
+				.eq('id', resetToken.admin_id);
+
+			if (updateError) {
+				return res.status(500).json({
+					ok: false,
+					error: 'Erro ao atualizar senha',
+				});
+			}
+
+			// Marcar token como usado
+			await supabase
+				.from('password_reset_tokens')
+				.update({ used: true })
+				.eq('id', resetToken.id);
+
+			return res.status(200).json({
+				ok: true,
+				message: 'Senha redefinida com sucesso',
+			});
+		} catch (err: any) {
+			return res.status(500).json({
+				ok: false,
+				error: err?.message || 'Erro inesperado',
+			});
+		}
+	}
+
+	res.setHeader('Allow', 'POST, PUT, PATCH');
 	return res.status(405).json({ ok: false, error: 'Método não permitido' });
 }
 

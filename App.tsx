@@ -9,6 +9,7 @@ import UserDetailsForm from './components/UserDetailsForm';
 import ConfirmationPage from './components/ConfirmationPage';
 import Admin from './components/admin/Admin';
 import ProtectedRoute from './components/admin/ProtectedRoute';
+import ForgotPasswordPage from './components/admin/ForgotPasswordPage';
 import ProfilesList from './components/ProfilesList';
 import TestSupabaseConnection from './components/TestSupabaseConnection';
 import Footer from './components/Footer';
@@ -183,6 +184,8 @@ const App: React.FC = () => {
               </ProtectedRoute>
             } 
           />
+          <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/admin/reset-password" element={<ForgotPasswordPage />} />
           <Route path="/profiles" element={<ProfilesList />} />
           <Route path="/supabase-test" element={<TestSupabaseConnection />} />
           <Route

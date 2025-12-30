@@ -1,5 +1,6 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { sendResetPasswordEmail } from './sendEmail';
 
 // Usar crypto do Node.js (disponível no Vercel)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -244,21 +245,42 @@ export default async function handler(req: any, res: any) {
 				});
 			}
 
-			// TODO: Enviar email com o link de reset
-			// Por enquanto, retornamos o token (apenas para desenvolvimento)
-			// Em produção, remova o token da resposta e envie por email
-			const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/reset-password?token=${token}`;
+			// Construir link de reset
+			const frontendUrl = process.env.FRONTEND_URL || process.env.VERCEL_URL 
+				? `https://${process.env.VERCEL_URL}` 
+				: 'http://localhost:3000';
+			const resetLink = `${frontendUrl}/admin/reset-password?token=${token}`;
 
-			// Em produção, envie o email aqui
-			// Por exemplo, usando SendGrid, Resend, ou outro serviço de email
-			console.log(`Reset password link for ${admin.email}: ${resetLink}`);
+			// Enviar email com o link de reset
+			const emailResult = await sendResetPasswordEmail(
+				admin.email!,
+				resetLink,
+				admin.name
+			);
+
+			// Em desenvolvimento, ainda mostrar o link no console
+			if (process.env.NODE_ENV === 'development') {
+				console.log(`Reset password link for ${admin.email}: ${resetLink}`);
+			}
+
+			// Se houver erro ao enviar email, logar mas não falhar a requisição
+			// (por segurança, sempre retornar sucesso)
+			if (!emailResult.success) {
+				console.error('Erro ao enviar email de reset:', emailResult.error);
+				// Em desenvolvimento, retornar o link na resposta
+				if (process.env.NODE_ENV === 'development') {
+					return res.status(200).json({
+						ok: true,
+						message: 'Se o email existir, você receberá um link para redefinir sua senha.',
+						warning: `Erro ao enviar email: ${emailResult.error}`,
+						dev_link: resetLink,
+					});
+				}
+			}
 
 			return res.status(200).json({
 				ok: true,
 				message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-				// Remover em produção:
-				dev_token: process.env.NODE_ENV === 'development' ? token : undefined,
-				dev_link: process.env.NODE_ENV === 'development' ? resetLink : undefined,
 			});
 		} catch (err: any) {
 			return res.status(500).json({

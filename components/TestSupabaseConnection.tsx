@@ -63,17 +63,17 @@ const TestSupabaseConnection: React.FC = () => {
       maxWidth: 800, 
       margin: '0 auto',
       padding: 20,
-      background: '#1f2937',
+      background: '#ffffff',
       borderRadius: 12
     }}>
       <h2 style={{ margin: 0, color: '#f9fafb' }}>Teste de Conexão com Supabase</h2>
       
       {/* Verificação de Variáveis de Ambiente */}
       <div style={{
-        border: '1px solid #374151',
+        border: '1px solid #d1d5db',
         borderRadius: 8,
         padding: 16,
-        background: '#111827'
+        background: '#f9fafb'
       }}>
         <h3 style={{ margin: '0 0 12px 0', color: '#e5e7eb', fontSize: 16 }}>Variáveis de Ambiente</h3>
         <div style={{ display: 'grid', gap: 8 }}>
@@ -126,9 +126,9 @@ const TestSupabaseConnection: React.FC = () => {
             placeholder="professionals"
             style={{
               padding: '8px 12px',
-              background: '#111827',
-              color: '#e5e7eb',
-              border: '1px solid #374151',
+              background: '#ffffff',
+              color: '#111827',
+              border: '1px solid #d1d5db',
               borderRadius: 6,
               fontSize: 14
             }}

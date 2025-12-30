@@ -1,0 +1,51 @@
+[
+  {
+    "name": "Corte de Cabelo",
+    "price": 30.00,
+    "duration_minutes": 30,
+    "description": "Corte de cabelo masculino com tesoura e máquina"
+  },
+  {
+    "name": "Barba",
+    "price": 20.00,
+    "duration_minutes": 20,
+    "description": "Aparar e modelar barba"
+  },
+  {
+    "name": "Corte + Barba",
+    "price": 45.00,
+    "duration_minutes": 50,
+    "description": "Pacote completo: corte de cabelo + barba"
+  },
+  {
+    "name": "Sobrancelha",
+    "price": 15.00,
+    "duration_minutes": 15,
+    "description": "Design e modelagem de sobrancelha"
+  },
+  {
+    "name": "Relaxamento",
+    "price": 50.00,
+    "duration_minutes": 60,
+    "description": "Relaxamento capilar"
+  },
+  {
+    "name": "Hidratação",
+    "price": 40.00,
+    "duration_minutes": 45,
+    "description": "Hidratação profunda dos fios"
+  },
+  {
+    "name": "Pigmentação",
+    "price": 80.00,
+    "duration_minutes": 90,
+    "description": "Pigmentação de cabelo e barba"
+  },
+  {
+    "name": "Corte Infantil",
+    "price": 25.00,
+    "duration_minutes": 25,
+    "description": "Corte de cabelo para crianças"
+  }
+]
+

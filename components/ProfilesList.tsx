@@ -50,11 +50,11 @@ const ProfilesList: React.FC = () => {
             <li
               key={String((row as any).id ?? idx)}
               style={{
-                border: '1px solid #374151',
+                border: '1px solid #d1d5db',
                 borderRadius: 8,
                 padding: 12,
-                background: '#111827',
-                color: '#e5e7eb',
+                background: '#ffffff',
+                color: '#111827',
               }}
             >
               <pre

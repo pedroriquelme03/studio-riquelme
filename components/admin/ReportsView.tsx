@@ -123,14 +123,14 @@ const ReportsView: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <h2 className="text-2xl font-bold text-white">Relatórios</h2>
-        <div className="inline-flex rounded overflow-hidden border border-gray-700">
-          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-amber-500 text-gray-900':'bg-gray-800 text-gray-200'}`}>Mês</button>
-          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-amber-500 text-gray-900':'bg-gray-800 text-gray-200'}`}>Semana</button>
-          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-amber-500 text-gray-900':'bg-gray-800 text-gray-200'}`}>Dia</button>
+        <h2 className="text-2xl font-bold text-gray-900">Relatórios</h2>
+        <div className="inline-flex rounded overflow-hidden border border-gray-300">
+          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-amber-500 text-white':'bg-white text-gray-700'}`}>Mês</button>
+          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-amber-500 text-white':'bg-white text-gray-700'}`}>Semana</button>
+          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-amber-500 text-white':'bg-white text-gray-700'}`}>Dia</button>
         </div>
         <div className="inline-flex items-center gap-2">
-          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-gray-700 text-white rounded">Hoje</button>
+          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-gray-200 text-gray-900 rounded">Hoje</button>
           <button
             onClick={() => {
               const d = new Date(currentDate);
@@ -139,9 +139,9 @@ const ReportsView: React.FC = () => {
               else d.setMonth(d.getMonth() - 1);
               setCurrentDate(d);
             }}
-            className="px-3 py-2 bg-gray-800 text-white rounded border border-gray-700"
+            className="px-3 py-2 bg-white text-gray-900 rounded border border-gray-300"
           >◀</button>
-          <div className="text-gray-200 font-semibold min-w-[140px] text-center">
+          <div className="text-gray-700 font-semibold min-w-[140px] text-center">
             {view === 'day' && currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             {view === 'week' && `${startOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${endOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
             {view === 'month' && currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
@@ -154,19 +154,19 @@ const ReportsView: React.FC = () => {
               else d.setMonth(d.getMonth() + 1);
               setCurrentDate(d);
             }}
-            className="px-3 py-2 bg-gray-800 text-white rounded border border-gray-700"
+            className="px-3 py-2 bg-white text-gray-900 rounded border border-gray-300"
           >▶</button>
         </div>
       </div>
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
-      {loading && <div className="text-gray-300">Carregando...</div>}
+      {loading && <div className="text-gray-700">Carregando...</div>}
 
       {!loading && (
         <div className="grid gap-6">
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-3">Agendamentos por dia</h3>
+            <div className="bg-white border border-gray-300 rounded-lg p-4">
+              <h3 className="text-gray-900 font-semibold mb-3">Agendamentos por dia</h3>
               <Bar
                 data={{
                   labels: byDay.labels,
@@ -175,8 +175,8 @@ const ReportsView: React.FC = () => {
                 options={{ responsive: true, plugins: { legend: { display: false } } }}
               />
             </div>
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-3">Receita por dia (R$)</h3>
+            <div className="bg-white border border-gray-300 rounded-lg p-4">
+              <h3 className="text-gray-900 font-semibold mb-3">Receita por dia (R$)</h3>
               <Line
                 data={{
                   labels: byDay.labels,
@@ -186,8 +186,8 @@ const ReportsView: React.FC = () => {
               />
             </div>
           </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-            <h3 className="text-white font-semibold mb-3">Serviços mais agendados</h3>
+          <div className="bg-white border border-gray-300 rounded-lg p-4">
+            <h3 className="text-gray-900 font-semibold mb-3">Serviços mais agendados</h3>
             <Doughnut
               data={{
                 labels: byService.labels,
@@ -197,12 +197,12 @@ const ReportsView: React.FC = () => {
             />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-gray-400 text-sm">Agendamentos</div>
-              <div className="text-2xl font-bold text-white">{totals.count}</div>
+            <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">
+              <div className="text-gray-600 text-sm">Agendamentos</div>
+              <div className="text-2xl font-bold text-gray-900">{totals.count}</div>
             </div>
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-gray-400 text-sm">Receita (R$)</div>
+            <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">
+              <div className="text-gray-600 text-sm">Receita (R$)</div>
               <div className="text-2xl font-bold text-amber-400">{totals.revenue.toFixed(2)}</div>
             </div>
           </div>

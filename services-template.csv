@@ -1,0 +1,10 @@
+name,price,duration_minutes,description
+Corte de Cabelo,30.00,30,Corte de cabelo masculino com tesoura e máquina
+Barba,20.00,20,Aparar e modelar barba
+Corte + Barba,45.00,50,Pacote completo: corte de cabelo + barba
+Sobrancelha,15.00,15,Design e modelagem de sobrancelha
+Relaxamento,50.00,60,Relaxamento capilar
+Hidratação,40.00,45,Hidratação profunda dos fios
+Pigmentação,80.00,90,Pigmentação de cabelo e barba
+Corte Infantil,25.00,25,Corte de cabelo para crianças
+

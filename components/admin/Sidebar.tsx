@@ -16,7 +16,7 @@ const NavItem: React.FC<{
   <button
     onClick={onClick}
     className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors duration-200 ${
-      isActive ? 'bg-amber-500 text-gray-900 font-bold' : 'text-gray-300 hover:bg-gray-700'
+      isActive ? 'bg-amber-500 text-white font-bold' : 'text-gray-700 hover:bg-gray-100'
     }`}
   >
     {icon}
@@ -26,7 +26,7 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
   return (
-    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+    <div className="bg-white p-4 rounded-xl border border-gray-300 shadow-sm">
       <nav className="flex md:flex-col justify-around md:justify-start md:space-y-2">
         <NavItem
           label="Agendamentos"

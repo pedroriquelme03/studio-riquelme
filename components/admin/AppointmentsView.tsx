@@ -134,62 +134,62 @@ const AppointmentsView: React.FC = () => {
         <h2 className="text-2xl font-bold text-white">Agendamentos</h2>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Profissional</label>
+            <label className="block text-sm text-gray-600 mb-1">Profissional</label>
             <select
               value={professionalId}
               onChange={e => setProfessionalId(e.target.value)}
-              className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2"
+              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
             >
               <option value="">Todos</option>
               {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Serviço</label>
+            <label className="block text-sm text-gray-600 mb-1">Serviço</label>
             <select
               value={serviceId}
               onChange={e => setServiceId(e.target.value)}
-              className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2"
+              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
             >
               <option value="">Todos</option>
               {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Cliente</label>
+            <label className="block text-sm text-gray-600 mb-1">Cliente</label>
             <input
               value={clientQuery}
               onChange={e => setClientQuery(e.target.value)}
               placeholder="Nome, e-mail ou telefone"
-              className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2"
+              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Horário exato</label>
+            <label className="block text-sm text-gray-600 mb-1">Horário exato</label>
             <input
               type="time"
               value={time}
               onChange={e => { setTime(e.target.value); }}
-              className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2"
+              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">De</label>
+              <label className="block text-sm text-gray-600 mb-1">De</label>
               <input
                 type="time"
                 value={timeFrom}
                 onChange={e => { setTimeFrom(e.target.value); if (time) setTime(''); }}
-                className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2"
+                className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Até</label>
+              <label className="block text-sm text-gray-600 mb-1">Até</label>
               <input
                 type="time"
                 value={timeTo}
                 onChange={e => { setTimeTo(e.target.value); if (time) setTime(''); }}
-                className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2"
+                className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
               />
             </div>
           </div>
@@ -203,7 +203,7 @@ const AppointmentsView: React.FC = () => {
                 setTimeFrom('');
                 setTimeTo('');
               }}
-              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded transition-colors"
+              className="bg-gray-200 hover:bg-gray-300 text-white font-semibold px-4 py-2 rounded transition-colors"
             >
               Limpar filtros
             </button>
@@ -213,41 +213,41 @@ const AppointmentsView: React.FC = () => {
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
 
-      {loading && <div className="text-gray-300">Carregando...</div>}
+      {loading && <div className="text-gray-700">Carregando...</div>}
 
       {!loading && grouped.length === 0 && (
-        <div className="text-gray-400">Nenhum agendamento encontrado com os filtros selecionados.</div>
+        <div className="text-gray-600">Nenhum agendamento encontrado com os filtros selecionados.</div>
       )}
 
       <div className="space-y-6">
         {grouped.map(([date, rows]) => (
           <div key={date}>
-            <h3 className="text-amber-400 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-700">
+            <h3 className="text-amber-400 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
               {new Date(date).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
-                <div key={b.booking_id} className="bg-gray-800 p-5 rounded-lg border border-gray-700 hover:border-amber-500 transition-colors duration-300">
+                <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300 hover:border-amber-500 transition-colors duration-300">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-lg font-bold text-white">{b.client_name}</h4>
-                      <p className="text-sm text-gray-400">{b.client_phone}</p>
+                      <p className="text-sm text-gray-600">{b.client_phone}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-400 text-lg">R${Number(b.total_price).toFixed(2)}</p>
-                      <p className="text-sm text-gray-300">{b.time.slice(0,5)}</p>
+                      <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
                     </div>
                   </div>
-                  <div className="border-t border-gray-600 my-3"></div>
+                  <div className="border-t border-gray-300 my-3"></div>
                   <div>
                     <h5 className="font-semibold mb-2 text-gray-200">Serviços:</h5>
-                    <ul className="list-disc list-inside text-gray-300 space-y-1">
+                    <ul className="list-disc list-inside text-gray-700 space-y-1">
                       {(b.services || []).map(s => (
                         <li key={s.id}>{s.name}</li>
                       ))}
                     </ul>
                   </div>
-                  <div className="border-t border-gray-600 my-3 pt-3">
+                  <div className="border-t border-gray-300 my-3 pt-3">
                     <button
                       onClick={() => markAsCompleted(b.booking_id)}
                       disabled={completingId === b.booking_id}

@@ -71,27 +71,27 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
         onClick={onClose}
     >
       <div 
-        className="bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-2xl w-full max-w-lg m-4"
+        className="bg-white p-8 rounded-xl border border-gray-300 shadow-2xl w-full max-w-lg m-4"
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold mb-6">{service ? 'Editar Serviço' : 'Novo Serviço'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Nome do Serviço</label>
-            <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500" required/>
+            <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500" required/>
           </div>
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">Descrição</label>
-            <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={3} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500"></textarea>
+            <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={3} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500"></textarea>
           </div>
           <div className="grid grid-cols-2 gap-4">
              <div>
                 <label htmlFor="duration" className="block text-sm font-medium text-gray-300 mb-1">Duração (minutos)</label>
-                <input type="number" id="duration" name="duration" value={formData.duration} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500" required min="1" />
+                <input type="number" id="duration" name="duration" value={formData.duration} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500" required min="1" />
             </div>
             <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-1">Preço (R$)</label>
-                <input type="number" id="price" name="price" value={formData.price} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500" required min="0.01" step="0.01" />
+                <input type="number" id="price" name="price" value={formData.price} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500" required min="0.01" step="0.01" />
             </div>
           </div>
           <div>
@@ -103,7 +103,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
                 const name = professionals.find(p => p.id === id)?.name ?? null;
                 setFormData(prev => ({ ...prev, responsibleProfessionalId: id, responsibleProfessionalName: name }));
               }}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500"
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-amber-500 focus:border-amber-500"
             >
               <option value="">Sem responsável</option>
               {professionals.map(p => (
@@ -113,7 +113,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
           </div>
           <div className="flex justify-end space-x-4 pt-6">
             <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg transition-colors">Cancelar</button>
-            <button type="submit" className="bg-amber-500 hover:bg-amber-400 text-gray-900 font-bold py-2 px-5 rounded-lg transition-colors">Salvar</button>
+            <button type="submit" className="bg-amber-500 hover:bg-amber-400 text-white font-bold py-2 px-5 rounded-lg transition-colors">Salvar</button>
           </div>
         </form>
       </div>

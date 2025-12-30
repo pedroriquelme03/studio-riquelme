@@ -99,10 +99,10 @@ const ServicesView: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Gerenciar Serviços</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Gerenciar Serviços</h2>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-400 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors"
+          className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-400 text-white font-bold py-2 px-4 rounded-lg transition-colors"
         >
           <PlusCircleIcon className="w-5 h-5" />
           <span>Novo Serviço</span>
@@ -111,9 +111,9 @@ const ServicesView: React.FC = () => {
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
       {/* Tabela desktop */}
-      <div className="hidden md:block bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+      <div className="hidden md:block bg-white border border-gray-300 rounded-lg overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-gray-700/50">
+          <thead className="bg-gray-100/50">
             <tr>
               <th className="p-4 font-semibold">Serviço</th>
               <th className="p-4 font-semibold">Profissional</th>
@@ -124,10 +124,10 @@ const ServicesView: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-gray-700">
             {services.map(service => (
-              <tr key={service.id} className="hover:bg-gray-700/40">
+              <tr key={service.id} className="hover:bg-gray-100/40">
                 <td className="p-4">
                     <p className="font-bold">{service.name}</p>
-                    <p className="text-sm text-gray-400 max-w-md">{service.description}</p>
+                    <p className="text-sm text-gray-600 max-w-md">{service.description}</p>
                 </td>
                 <td className="p-4">
                   <span className="text-gray-200">{service.responsibleProfessionalName || '—'}</span>
@@ -140,8 +140,8 @@ const ServicesView: React.FC = () => {
                 </td>
                 <td className="p-4 text-right">
                     <div className="inline-flex space-x-3">
-                        <button onClick={() => handleOpenModal(service)} className="text-gray-300 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
-                        <button onClick={() => handleDeleteService(service.id)} className="text-gray-300 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleOpenModal(service)} className="text-gray-700 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleDeleteService(service.id)} className="text-gray-700 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
                     </div>
                 </td>
               </tr>
@@ -153,21 +153,21 @@ const ServicesView: React.FC = () => {
       {/* Cards mobile */}
       <div className="md:hidden grid gap-3">
         {services.map(service => (
-          <div key={service.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <div key={service.id} className="bg-white border border-gray-300 rounded-lg p-4">
             <div className="flex justify-between items-start gap-3">
               <div className="min-w-0">
-                <p className="font-bold text-white truncate">{service.name}</p>
-                <p className="text-sm text-gray-400">{service.description}</p>
-                <p className="text-gray-300 text-sm mt-1">
+                <p className="font-bold text-gray-900 truncate">{service.name}</p>
+                <p className="text-sm text-gray-600">{service.description}</p>
+                <p className="text-gray-700 text-sm mt-1">
                   {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
                 </p>
               </div>
               <div className="inline-flex space-x-3">
-                <button onClick={() => handleOpenModal(service)} className="text-gray-300 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
-                <button onClick={() => handleDeleteService(service.id)} className="text-gray-300 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
+                <button onClick={() => handleOpenModal(service)} className="text-gray-700 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
+                <button onClick={() => handleDeleteService(service.id)} className="text-gray-700 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
               </div>
             </div>
-            <div className="flex justify-between text-sm text-gray-300 mt-3">
+            <div className="flex justify-between text-sm text-gray-700 mt-3">
               <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-amber-400"/> {service.duration} min</span>
               <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-amber-400"/> R${service.price.toFixed(2)}</span>
             </div>

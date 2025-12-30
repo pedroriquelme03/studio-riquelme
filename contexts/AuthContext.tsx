@@ -53,7 +53,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('[AuthContext] Response status:', res.status);
 
-      const data = await res.json();
+      // Tentar parsear como JSON; se vier HTML/texto (erro 500 da plataforma), evitar quebra
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = null;
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch {
+          console.error('[AuthContext] Failed to parse JSON response');
+          return false;
+        }
+      } else {
+        const text = await res.text().catch(() => '');
+        console.error('[AuthContext] Non-JSON response from /api/auth:', {
+          status: res.status,
+          preview: text?.slice(0, 300),
+        });
+        return false;
+      }
       console.log('[AuthContext] Response data:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
 
       if (data.ok && data.admin) {

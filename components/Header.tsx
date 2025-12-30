@@ -18,7 +18,8 @@ const Header: React.FC = () => {
           }}
         />
         <h1 className="text-xl md:text-2xl font-bold tracking-wider text-gray-900 text-center">
-          Agendamento Online Studio Riquelme
+          Agendamento Online <br />
+          Studio Riquelme
         </h1>
       </div>
     </header>

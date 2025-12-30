@@ -13,6 +13,10 @@ const ClientBookingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const phone = (typeof window !== 'undefined' && localStorage.getItem('client_phone')) || '';
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+  const [newDate, setNewDate] = useState<string>('');
+  const [newTime, setNewTime] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -66,9 +70,107 @@ const ClientBookingsPage: React.FC = () => {
             <div className="text-gray-700 mt-2">
               {(r.services || []).map(s => s.name).join(', ')}
             </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
+                onClick={() => {
+                  setRescheduleId(r.booking_id);
+                  setNewDate(r.date);
+                  setNewTime((r.time || '').slice(0,5));
+                }}
+              >
+                Trocar horário
+              </button>
+              <button
+                className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
+                onClick={async () => {
+                  if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
+                  try {
+                    setActionLoading(r.booking_id);
+                    const res = await fetch('/api/bookings', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled' }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
+                    setRows(prev => prev.filter(row => row.booking_id !== r.booking_id));
+                  } catch (e: any) {
+                    alert(e?.message || 'Erro ao cancelar');
+                  } finally {
+                    setActionLoading(null);
+                  }
+                }}
+                disabled={actionLoading === r.booking_id}
+              >
+                {actionLoading === r.booking_id ? 'Cancelando...' : 'Cancelar'}
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      {rescheduleId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-bold text-gray-900">Trocar horário</h4>
+              <button
+                onClick={() => setRescheduleId(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nova data</label>
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Novo horário</label>
+                <input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border border-gray-300"
+                  onClick={() => setRescheduleId(null)}
+                >
+                  Fechar
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/bookings', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'reschedule', booking_id: rescheduleId, date: newDate, time: newTime }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao reagendar');
+                      setRows(prev => prev.map(row => row.booking_id === rescheduleId ? { ...row, date: newDate, time: `${newTime}:00` } : row));
+                      setRescheduleId(null);
+                    } catch (e: any) {
+                      alert(e?.message || 'Erro ao reagendar');
+                    }
+                  }}
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

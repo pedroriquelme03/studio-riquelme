@@ -386,6 +386,10 @@ export default async function handler(req: any, res: any) {
 			if (status === 'completed') {
 				updateData.completed_at = new Date().toISOString();
 			}
+			// Se o status for 'cancelled', adicionar timestamp de cancelamento (se a coluna existir)
+			if (status === 'cancelled') {
+				updateData.cancelled_at = new Date().toISOString();
+			}
 
 			const { error: updateErr } = await supabase
 				.from('bookings')
@@ -463,6 +467,61 @@ export default async function handler(req: any, res: any) {
 				ok: false,
 				error: err?.message || 'Erro inesperado',
 			});
+		}
+	}
+
+	if (req.method === 'PATCH') {
+		// Reagendar (trocar data/hora) de um agendamento existente
+		try {
+			const raw = req.body ?? {};
+			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
+			const body = (parsed || {}) as {
+				action?: string;
+				booking_id?: string;
+				date?: string; // yyyy-mm-dd
+				time?: string; // HH:MM or HH:MM:SS
+			};
+
+			if ((body.action || '').toLowerCase() !== 'reschedule') {
+				return res.status(400).json({ ok: false, error: 'Ação inválida. Use action=reschedule' });
+			}
+
+			const bookingId = body.booking_id;
+			const date = body.date;
+			const timeRaw = body.time;
+
+			if (!bookingId) {
+				return res.status(400).json({ ok: false, error: 'booking_id é obrigatório' });
+			}
+			if (!date || !timeRaw) {
+				return res.status(400).json({ ok: false, error: 'date e time são obrigatórios' });
+			}
+
+			const supabaseUrl =
+				process.env.SUPABASE_URL ||
+				process.env.VITE_SUPABASE_URL;
+			const supabaseKey =
+				process.env.SUPABASE_SERVICE_ROLE_KEY ||
+				process.env.VITE_SUPABASE_ANON_KEY;
+			if (!supabaseUrl || !supabaseKey) {
+				return res.status(500).json({ ok: false, error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados' });
+			}
+			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+			const time = timeRaw.length === 5 ? `${timeRaw}:00` : timeRaw;
+
+			const { error: updateErr } = await supabase
+				.from('bookings')
+				.update({ date, time, updated_at: new Date().toISOString() })
+				.eq('id', bookingId);
+
+			if (updateErr) {
+				return res.status(500).json({ ok: false, error: updateErr.message });
+			}
+
+			return res.status(200).json({ ok: true, message: 'Agendamento reagendado com sucesso' });
+		} catch (err: any) {
+			return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 		}
 	}
 

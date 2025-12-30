@@ -16,7 +16,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [email, setEmail] = useState(client.email || '');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState(client.phone || '');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -25,31 +25,25 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
     setFeedback(null);
     setIsSubmitting(true);
     try {
-      if (!email || !email.includes('@')) {
-        setFeedback('Informe um email válido.');
+      const digits = (phone || '').replace(/\D/g, '');
+      if (!digits) {
+        setFeedback('Informe um WhatsApp válido.');
         return;
       }
-      if (password.length < 6) {
-        setFeedback('A senha deve ter pelo menos 6 caracteres.');
-        return;
-      }
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name: client.name || '' },
-        },
+
+      // Registrar conta pelo backend (sem confirmação)
+      const res = await fetch('/api/client-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register', name: client.name, phone: digits, email: email || null }),
       });
-      if (error) {
-        setFeedback(error.message);
-        return;
-      }
-      if (data?.user) {
-        setFeedback('Conta criada! Verifique seu email para confirmar o cadastro.');
-      } else {
-        setFeedback('Enviamos um email de confirmação. Confira sua caixa de entrada.');
-      }
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao registrar conta');
+
+      // Salvar sessão simples do cliente pelo telefone
+      localStorage.setItem('client_phone', digits);
+
+      setFeedback('Conta criada! Você já pode acessar seu histórico com seu WhatsApp.');
     } catch (err: any) {
       setFeedback(err?.message || 'Não foi possível criar a conta.');
     } finally {
@@ -118,13 +112,13 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       <div className="mt-6 bg-white p-6 rounded-2xl border border-gray-300 shadow-xl text-left">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Quer acompanhar seu histórico de atendimentos?</h3>
         <p className="text-gray-700 mb-4">
-          Crie uma conta e tenha acesso aos seus agendamentos, valores e serviços realizados.
+          Crie sua conta com seu WhatsApp e tenha acesso aos seus agendamentos.
         </p>
         <button
           onClick={() => setIsCreateOpen(true)}
           className="bg-gray-900 hover:bg-black text-white font-semibold py-2 px-4 rounded-lg transition-colors"
         >
-          Criar conta gratuita
+          Criar conta com WhatsApp
         </button>
       </div>
 
@@ -135,12 +129,12 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         Agendar outro horário
       </button>
 
-      {/* Modal de criação de conta */}
+      {/* Modal de criação de conta via WhatsApp */}
       {isCreateOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xl font-bold text-gray-900">Criar conta</h4>
+              <h4 className="text-xl font-bold text-gray-900">Criar conta com WhatsApp</h4>
               <button
                 onClick={() => { setIsCreateOpen(false); setFeedback(null); }}
                 className="text-gray-500 hover:text-gray-700"
@@ -161,30 +155,24 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  placeholder="(99) 99999-9999"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email (opcional)</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
                   placeholder="seuemail@exemplo.com"
-                  required
-                />
-                {client.email?.startsWith('whatsapp_') && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Observação: atualize para seu email real para receber o link de confirmação.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-                  placeholder="Crie uma senha"
-                  required
                 />
               </div>
 

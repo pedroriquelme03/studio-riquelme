@@ -12,15 +12,15 @@ const ClientBookingsPage: React.FC = () => {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const email = (typeof window !== 'undefined' && localStorage.getItem('client_email')) || '';
+  const phone = (typeof window !== 'undefined' && localStorage.getItem('client_phone')) || '';
 
   useEffect(() => {
     (async () => {
-      if (!email) return;
+      if (!phone) return;
       setLoading(true);
       setError(null);
       try {
-        const qs = new URLSearchParams({ client: email });
+        const qs = new URLSearchParams({ client: phone });
         const res = await fetch(`/api/bookings?${qs.toString()}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
@@ -31,9 +31,9 @@ const ClientBookingsPage: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [email]);
+  }, [phone]);
 
-  if (!email) {
+  if (!phone) {
     return (
       <div className="max-w-lg mx-auto text-center bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
         <p className="text-gray-700 mb-4">Você precisa entrar para ver seus agendamentos.</p>
@@ -45,7 +45,7 @@ const ClientBookingsPage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
       <h2 className="text-2xl font-bold text-gray-900 mb-4">Meus agendamentos</h2>
-      <p className="text-gray-600 mb-6">Conectado como <span className="font-semibold">{email}</span></p>
+      <p className="text-gray-600 mb-6">Conectado pelo WhatsApp <span className="font-semibold">{phone}</span></p>
 
       {loading && <div className="text-gray-700">Carregando...</div>}
       {error && <div className="text-red-600">{error}</div>}

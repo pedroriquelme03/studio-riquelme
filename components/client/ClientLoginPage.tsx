@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSupabaseClient } from '@/src/lib/supabaseClient';
+
+function normalizePhone(phone: string) {
+  return (phone || '').replace(/\D/g, '');
+}
 
 const ClientLoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -14,18 +16,16 @@ const ClientLoginPage: React.FC = () => {
     setError(null);
     setIsLoading(true);
     try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      if (data?.user?.email) {
-        localStorage.setItem('client_email', data.user.email);
-        navigate('/meus-agendamentos');
-      } else {
-        setError('Falha ao autenticar. Tente novamente.');
-      }
+      const digits = normalizePhone(phone);
+      const res = await fetch('/api/client-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', phone: digits }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
+      localStorage.setItem('client_phone', digits);
+      navigate('/meus-agendamentos');
     } catch (err: any) {
       setError(err?.message || 'Erro inesperado');
     } finally {
@@ -36,28 +36,17 @@ const ClientLoginPage: React.FC = () => {
   return (
     <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
       <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Entrar</h2>
-      <p className="text-gray-600 text-center mb-6">Acesse seu histórico de agendamentos</p>
+      <p className="text-gray-600 text-center mb-6">Acesse seu histórico com seu WhatsApp</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-            placeholder="voce@exemplo.com"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-            placeholder="Sua senha"
+            placeholder="(99) 99999-9999"
             required
           />
         </div>

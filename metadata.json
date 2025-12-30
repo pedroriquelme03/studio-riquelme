@@ -1,0 +1,5 @@
+{
+  "name": "BarberShop Booking System",
+  "description": "An online booking system for a barbershop, allowing clients to select services, choose a date and time, and confirm their appointment in a seamless, user-friendly flow.",
+  "requestFramePermissions": []
+}

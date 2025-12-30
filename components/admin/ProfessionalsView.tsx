@@ -122,7 +122,7 @@ const ProfessionalsView: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Profissionais</h2>
+      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Profissionais</h2>
 
       <form onSubmit={onSubmit} className="bg-white p-4 rounded-lg border border-gray-300 mb-6 grid md:grid-cols-4 gap-3">
         <input

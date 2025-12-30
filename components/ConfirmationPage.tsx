@@ -66,7 +66,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         </div>
 
         <p className="text-sm text-center text-gray-600 pt-4">
-          Enviamos um e-mail de confirmação para <span className="font-semibold text-pink-700">{client.email}</span> com todos os detalhes.
+          Enviaremos uma confirmação via WhatsApp para <span className="font-semibold text-pink-700">{client.phone}</span> com todos os detalhes.
         </p>
       </div>
 

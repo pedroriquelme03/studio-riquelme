@@ -131,15 +131,15 @@ const AppointmentsView: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-white">Agendamentos</h2>
+      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Agendamentos</h2>
+      <div className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div>
             <label className="block text-sm text-gray-600 mb-1">Profissional</label>
             <select
               value={professionalId}
               onChange={e => setProfessionalId(e.target.value)}
-              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
             >
               <option value="">Todos</option>
               {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -150,7 +150,7 @@ const AppointmentsView: React.FC = () => {
             <select
               value={serviceId}
               onChange={e => setServiceId(e.target.value)}
-              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
             >
               <option value="">Todos</option>
               {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -162,7 +162,7 @@ const AppointmentsView: React.FC = () => {
               value={clientQuery}
               onChange={e => setClientQuery(e.target.value)}
               placeholder="Nome, e-mail ou telefone"
-              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
             />
           </div>
           <div>
@@ -171,7 +171,7 @@ const AppointmentsView: React.FC = () => {
               type="time"
               value={time}
               onChange={e => { setTime(e.target.value); }}
-              className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -181,7 +181,7 @@ const AppointmentsView: React.FC = () => {
                 type="time"
                 value={timeFrom}
                 onChange={e => { setTimeFrom(e.target.value); if (time) setTime(''); }}
-                className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
+                className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
               />
             </div>
             <div>
@@ -190,7 +190,7 @@ const AppointmentsView: React.FC = () => {
                 type="time"
                 value={timeTo}
                 onChange={e => { setTimeTo(e.target.value); if (time) setTime(''); }}
-                className="w-full bg-white text-white border border-gray-300 rounded px-3 py-2"
+                className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
               />
             </div>
           </div>
@@ -204,7 +204,7 @@ const AppointmentsView: React.FC = () => {
                 setTimeFrom('');
                 setTimeTo('');
               }}
-              className="bg-gray-200 hover:bg-gray-300 text-white font-semibold px-4 py-2 rounded transition-colors"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded transition-colors"
             >
               Limpar filtros
             </button>
@@ -231,7 +231,7 @@ const AppointmentsView: React.FC = () => {
                 <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-300">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-lg font-bold text-white">{b.client_name}</h4>
+                      <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
                       <p className="text-sm text-gray-600">{b.client_phone}</p>
                     </div>
                     <div className="text-right">

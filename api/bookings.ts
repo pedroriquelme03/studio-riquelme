@@ -148,9 +148,11 @@ export default async function handler(req: any, res: any) {
 			if (!date || !timeRaw) {
 				return res.status(400).json({ ok: false, error: 'date e time são obrigatórios' });
 			}
-			if (!clientPayload.name || !clientPayload.email || !clientPayload.phone) {
-				return res.status(400).json({ ok: false, error: 'client.name, client.email e client.phone são obrigatórios' });
+			if (!clientPayload.name || !clientPayload.phone) {
+				return res.status(400).json({ ok: false, error: 'client.name e client.phone são obrigatórios' });
 			}
+			// Se não houver email, usar telefone como fallback para compatibilidade
+			const clientEmail = clientPayload.email || `whatsapp_${clientPayload.phone.replace(/\D/g, '')}@temp.local`;
 			if (!services.length) {
 				return res.status(400).json({ ok: false, error: 'services não pode ser vazio' });
 			}
@@ -231,12 +233,12 @@ export default async function handler(req: any, res: any) {
 				}
 			}
 
-			// obter ou criar cliente por email
+			// obter ou criar cliente por telefone (agora é o identificador principal)
 			let clientId: string | null = null;
 			const { data: existingClient, error: findClientErr } = await supabase
 				.from('clients')
 				.select('id')
-				.eq('email', clientPayload.email!)
+				.eq('phone', clientPayload.phone)
 				.limit(1)
 				.single();
 			if (existingClient?.id) {
@@ -247,6 +249,7 @@ export default async function handler(req: any, res: any) {
 					.update({
 						name: clientPayload.name,
 						phone: clientPayload.phone,
+						email: clientEmail,
 						notes: clientPayload.notes ?? null,
 						updated_at: new Date().toISOString(),
 					})
@@ -257,7 +260,7 @@ export default async function handler(req: any, res: any) {
 					.insert({
 						name: clientPayload.name,
 						phone: clientPayload.phone,
-						email: clientPayload.email,
+						email: clientEmail,
 						notes: clientPayload.notes ?? null,
 					})
 					.select('id')

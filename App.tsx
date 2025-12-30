@@ -60,18 +60,26 @@ const App: React.FC = () => {
   };
 
   const handleUserDetailsSubmit = async (client: Client) => {
+    console.log('handleUserDetailsSubmit chamado', { client, booking });
+    
     // Persistir agendamento antes de confirmar
     const current = { ...booking, client };
     try {
       const dateObj = current.date as Date | undefined;
       const timeStr = (current.time as string | undefined) || '';
       const services = current.services || [];
+      
+      console.log('Dados do agendamento:', { dateObj, timeStr, services });
+      
       if (!dateObj || !timeStr || services.length === 0) {
         alert('Selecione serviços, data e hora antes de confirmar.');
         return;
       }
+      
       const date = dateObj.toISOString().slice(0, 10); // yyyy-mm-dd
+      // Garantir formato HH:MM para a API
       const time = timeStr.length === 5 ? timeStr : timeStr.slice(0, 5); // HH:MM
+      
       const body = {
         date,
         time,
@@ -79,15 +87,22 @@ const App: React.FC = () => {
         client,
         services: services.map(s => ({ id: s.id, quantity: 1 })),
       };
+      
+      console.log('Enviando requisição para /api/bookings:', body);
+      
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      
+      console.log('Resposta recebida:', res.status, res.statusText);
+      
       if (!res.ok) {
         let message = 'Falha ao criar agendamento';
         try {
           const text = await res.text();
+          console.error('Erro da API:', text);
           try {
             const j = JSON.parse(text);
             message = j?.error || message;
@@ -97,10 +112,15 @@ const App: React.FC = () => {
         } catch {}
         throw new Error(message);
       }
+      
+      const responseData = await res.json();
+      console.log('Agendamento criado com sucesso:', responseData);
+      
       setBooking(prev => ({ ...prev, client }));
       setStep('confirmation');
     } catch (e: any) {
-      alert(e?.message || 'Erro ao confirmar agendamento');
+      console.error('Erro ao confirmar agendamento:', e);
+      alert(e?.message || 'Erro ao confirmar agendamento. Verifique o console para mais detalhes.');
     }
   };
 

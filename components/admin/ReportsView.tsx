@@ -122,8 +122,8 @@ const ReportsView: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Relatórios</h2>
+      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Relatórios</h2>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-3 mb-6">
         <div className="inline-flex rounded overflow-hidden border border-gray-300">
           <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Mês</button>
           <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Semana</button>

@@ -13,6 +13,8 @@ import ForgotPasswordPage from './components/admin/ForgotPasswordPage';
 import ProfilesList from './components/ProfilesList';
 import TestSupabaseConnection from './components/TestSupabaseConnection';
 import Footer from './components/Footer';
+import ClientLoginPage from './components/client/ClientLoginPage';
+import ClientBookingsPage from './components/client/ClientBookingsPage';
 
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
@@ -186,6 +188,8 @@ const App: React.FC = () => {
           />
           <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/admin/reset-password" element={<ForgotPasswordPage />} />
+          <Route path="/login-cliente" element={<ClientLoginPage />} />
+          <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />
           <Route path="/profiles" element={<ProfilesList />} />
           <Route path="/supabase-test" element={<TestSupabaseConnection />} />
           <Route

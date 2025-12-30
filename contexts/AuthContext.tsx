@@ -43,24 +43,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
+      console.log('[AuthContext] Attempting login for:', username);
+      
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
 
+      console.log('[AuthContext] Response status:', res.status);
+
       const data = await res.json();
+      console.log('[AuthContext] Response data:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
 
       if (data.ok && data.admin) {
         setIsAuthenticated(true);
         setAdmin(data.admin);
         localStorage.setItem('admin_authenticated', 'true');
         localStorage.setItem('admin_data', JSON.stringify(data.admin));
+        console.log('[AuthContext] Login successful');
         return true;
       }
+      
+      console.log('[AuthContext] Login failed:', data.error || 'Unknown error');
       return false;
     } catch (error) {
-      console.error('Erro ao fazer login:', error);
+      console.error('[AuthContext] Error during login:', error);
       return false;
     }
   };

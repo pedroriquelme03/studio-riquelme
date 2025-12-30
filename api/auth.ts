@@ -20,12 +20,18 @@ function verifyPassword(password: string, hash: string): boolean {
 export default async function handler(req: any, res: any) {
 	if (req.method === 'POST') {
 		try {
-			const { username, password } = (req.body || {}) as {
+			// Parse robusto do body (pode vir como string ou objeto)
+			const raw = req.body ?? {};
+			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
+			const { username, password } = (parsed || {}) as {
 				username?: string;
 				password?: string;
 			};
 
+			console.log('[AUTH] Login attempt:', { username: username || 'N/A', hasPassword: !!password });
+
 			if (!username || !password) {
+				console.log('[AUTH] Missing credentials:', { hasUsername: !!username, hasPassword: !!password });
 				return res.status(400).json({
 					ok: false,
 					error: 'username e password são obrigatórios',
@@ -41,6 +47,11 @@ export default async function handler(req: any, res: any) {
 				process.env.VITE_SUPABASE_ANON_KEY;
 
 			if (!supabaseUrl || !supabaseKey) {
+				console.error('[AUTH] Supabase credentials missing:', {
+					hasUrl: !!supabaseUrl,
+					hasKey: !!supabaseKey,
+					keyPrefix: supabaseKey ? supabaseKey.substring(0, 10) + '...' : 'N/A'
+				});
 				return res.status(500).json({
 					ok: false,
 					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
@@ -57,16 +68,36 @@ export default async function handler(req: any, res: any) {
 				.eq('is_active', true)
 				.single();
 
-			if (findError || !admin) {
-				// Não revelar se o usuário existe ou não (segurança)
+			if (findError) {
+				console.log('[AUTH] Error finding admin:', findError.message);
 				return res.status(401).json({
 					ok: false,
 					error: 'Credenciais inválidas',
 				});
 			}
 
+			if (!admin) {
+				console.log('[AUTH] Admin not found or inactive:', username);
+				return res.status(401).json({
+					ok: false,
+					error: 'Credenciais inválidas',
+				});
+			}
+
+			console.log('[AUTH] Admin found:', { id: admin.id, username: admin.username, name: admin.name });
+
 			// Verificar senha
-			if (!verifyPassword(password, admin.password_hash)) {
+			const passwordHash = hashPassword(password);
+			const isPasswordValid = passwordHash === admin.password_hash;
+			
+			console.log('[AUTH] Password verification:', {
+				passwordHash: passwordHash.substring(0, 20) + '...',
+				storedHash: admin.password_hash.substring(0, 20) + '...',
+				isValid: isPasswordValid
+			});
+
+			if (!isPasswordValid) {
+				console.log('[AUTH] Invalid password for user:', username);
 				return res.status(401).json({
 					ok: false,
 					error: 'Credenciais inválidas',
@@ -79,6 +110,8 @@ export default async function handler(req: any, res: any) {
 				.update({ last_login: new Date().toISOString() })
 				.eq('id', admin.id);
 
+			console.log('[AUTH] Login successful for user:', username);
+
 			// Retornar dados do admin (sem a senha)
 			return res.status(200).json({
 				ok: true,
@@ -90,6 +123,7 @@ export default async function handler(req: any, res: any) {
 				},
 			});
 		} catch (err: any) {
+			console.error('[AUTH] Unexpected error:', err);
 			return res.status(500).json({
 				ok: false,
 				error: err?.message || 'Erro inesperado',

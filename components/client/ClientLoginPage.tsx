@@ -5,6 +5,20 @@ function normalizePhone(phone: string) {
   return (phone || '').replace(/\D/g, '');
 }
 
+// Mesma máscara usada em "Seus dados"
+function applyPhoneMask(value: string): string {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 2) {
+    return numbers.length > 0 ? `(${numbers}` : numbers;
+  } else if (numbers.length <= 7) {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  } else if (numbers.length <= 11) {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+  } else {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  }
+}
+
 const ClientLoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +58,21 @@ const ClientLoginPage: React.FC = () => {
           <input
             type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(applyPhoneMask(e.target.value))}
+            onKeyDown={(e) => {
+              const code = (e as any).keyCode as number;
+              if ([8,9,27,13,46,35,36,37,38,39,40].includes(code) ||
+                  (code === 65 && (e as any).ctrlKey) ||
+                  (code === 67 && (e as any).ctrlKey) ||
+                  (code === 86 && (e as any).ctrlKey) ||
+                  (code === 88 && (e as any).ctrlKey)) {
+                return;
+              }
+              if (((e as any).shiftKey || code < 48 || code > 57) && (code < 96 || code > 105)) {
+                e.preventDefault();
+              }
+            }}
+            maxLength={15}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
             placeholder="(99) 99999-9999"
             required

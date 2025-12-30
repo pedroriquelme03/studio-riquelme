@@ -107,14 +107,22 @@ export default async function handler(req: any, res: any) {
 				};
 			});
 
-			const filtered = rows.filter((r: any) => {
+      const filtered = rows.filter((r: any) => {
 				if (serviceId && !(r.services || []).some((s: any) => String(s.id) === String(serviceId))) {
 					return false;
 				}
 				if (clientQuery) {
-					const q = clientQuery.toLowerCase();
-					const hay = `${r.client_name || ''} ${r.client_email || ''} ${r.client_phone || ''}`.toLowerCase();
-					if (!hay.includes(q)) return false;
+          const q = clientQuery.toLowerCase();
+          const hay = `${r.client_name || ''} ${r.client_email || ''} ${r.client_phone || ''}`.toLowerCase();
+          // Busca textual
+          let match = hay.includes(q);
+          // Busca por telefone normalizado (apenas dígitos)
+          const qDigits = q.replace(/\D/g, '');
+          if (!match && qDigits) {
+            const hayDigits = String(r.client_phone || '').replace(/\D/g, '');
+            match = hayDigits.includes(qDigits);
+          }
+          if (!match) return false;
 				}
 				return true;
 			});

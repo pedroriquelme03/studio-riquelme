@@ -162,7 +162,6 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             value={formData.phone} 
             onChange={handleChange}
             onKeyDown={handlePhoneKeyDown}
-            placeholder="(XX) XXXXX-XXXX"
             maxLength={15}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" 
           />
@@ -172,19 +171,11 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>
           <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"></textarea>
         </div>
-        <div className="flex justify-between mt-8 border-t border-gray-300 pt-6">
-          <button 
-            type="button" 
-            onClick={onBack} 
-            disabled={isSubmitting}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Voltar
-          </button>
+        <div className="flex flex-col gap-3 mt-8 border-t border-gray-300 pt-6">
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>
@@ -197,6 +188,14 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             ) : (
               'Confirmar Agendamento'
             )}
+          </button>
+          <button 
+            type="button" 
+            onClick={onBack} 
+            disabled={isSubmitting}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Voltar
           </button>
         </div>
       </form>

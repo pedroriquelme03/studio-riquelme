@@ -221,10 +221,15 @@ const AppointmentsView: React.FC = () => {
       )}
 
       <div className="space-y-6">
-        {grouped.map(([date, rows]) => (
+        {grouped.map(([date, rows]) => {
+          // Parse da data no formato yyyy-mm-dd evitando problemas de fuso horário
+          const [year, month, day] = date.split('-').map(Number);
+          const dateObj = new Date(year, month - 1, day);
+          
+          return (
           <div key={date}>
             <h3 className="text-pink-600 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
-              {new Date(date).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+              {dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
@@ -271,7 +276,8 @@ const AppointmentsView: React.FC = () => {
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

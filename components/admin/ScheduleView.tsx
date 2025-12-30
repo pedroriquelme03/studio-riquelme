@@ -291,7 +291,7 @@ const ScheduleView: React.FC = () => {
                   </div>
                   <div className="mt-auto">
                     <span className={`text-xs font-semibold ${rows.length ? 'text-pink-600' : 'text-gray-500'}`}>
-                      {rows.length ? `${rows.length} agend.` : '—'}
+                      {rows.length ? rows.length : '—'}
                     </span>
                   </div>
                 </div>

@@ -11,6 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   admin: Admin | null;
   login: (username: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -90,6 +91,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loginWithGoogle = async (): Promise<boolean> => {
+    try {
+      console.log('[AuthContext] Attempting Google login');
+      const { signInWithGoogleAndGetIdToken } = await import('../src/lib/firebaseClient');
+      const { idToken } = await signInWithGoogleAndGetIdToken();
+
+      const res = await fetch('/api/auth-firebase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text().catch(() => '');
+        console.error('[AuthContext] Non-JSON response from /api/auth-firebase:', { status: res.status, preview: text?.slice(0, 300) });
+        return false;
+      }
+
+      const data = await res.json();
+      if (data.ok && data.admin) {
+        setIsAuthenticated(true);
+        setAdmin(data.admin);
+        localStorage.setItem('admin_authenticated', 'true');
+        localStorage.setItem('admin_data', JSON.stringify(data.admin));
+        console.log('[AuthContext] Google login successful');
+        return true;
+      }
+
+      console.log('[AuthContext] Google login failed:', data.error || 'Unknown error');
+      return false;
+    } catch (error) {
+      console.error('[AuthContext] Error during Google login:', error);
+      return false;
+    }
+  };
+
   const logout = () => {
     setIsAuthenticated(false);
     setAdmin(null);
@@ -98,7 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, admin, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, admin, login, loginWithGoogle, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -7,7 +7,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,6 +92,30 @@ const LoginPage: React.FC = () => {
             )}
           </button>
         </form>
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={async () => {
+              setError('');
+              setIsLoading(true);
+              try {
+                const ok = await loginWithGoogle();
+                if (ok) {
+                  navigate('/admin');
+                } else {
+                  setError('Não foi possível entrar com Google. Verifique se o email é autorizado.');
+                }
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+            className="w-full border border-gray-300 hover:bg-gray-50 text-gray-900 font-medium py-3 px-6 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="h-5 w-5" />
+            Entrar com Google
+          </button>
+        </div>
 
         <div className="mt-6 text-center">
           <button

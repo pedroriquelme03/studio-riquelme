@@ -10,6 +10,7 @@ import ConfirmationPage from './components/ConfirmationPage';
 import Admin from './components/admin/Admin';
 import ProfilesList from './components/ProfilesList';
 import TestSupabaseConnection from './components/TestSupabaseConnection';
+import Footer from './components/Footer';
 
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
@@ -149,9 +150,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans">
+    <div className="min-h-screen bg-white text-gray-900 font-sans flex flex-col">
       <Header />
-      <main className="container mx-auto p-4 md:p-8">
+      <main className="container mx-auto p-4 md:p-8 flex-grow">
         <Routes>
           <Route path="/admin" element={<Admin />} />
           <Route path="/profiles" element={<ProfilesList />} />
@@ -169,6 +170,7 @@ const App: React.FC = () => {
           />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 };

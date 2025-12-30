@@ -23,8 +23,8 @@ interface ServiceSelectorProps {
 const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: () => void; }> = ({ service, isSelected, onToggle }) => (
     <div
       onClick={onToggle}
-      className={`bg-white p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-amber-400 shadow-sm ${
-        isSelected ? 'border-amber-500 shadow-lg shadow-amber-500/20' : 'border-gray-300'
+      className={`bg-white p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-pink-600 shadow-sm ${
+        isSelected ? 'border-pink-600 shadow-lg shadow-pink-600/20' : 'border-gray-300'
       }`}
     >
       <div className="flex justify-between items-start">
@@ -35,12 +35,12 @@ const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: (
             {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
           </p>
           <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
-            <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-amber-500" /> {service.duration} min</span>
-            <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-amber-500" /> R${service.price.toFixed(2)}</span>
+            <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-pink-600" /> {service.duration} min</span>
+            <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-pink-600" /> R${service.price.toFixed(2)}</span>
           </div>
         </div>
         {isSelected ? (
-          <CheckCircleIcon className="w-7 h-7 text-amber-500 flex-shrink-0 ml-4" />
+          <CheckCircleIcon className="w-7 h-7 text-pink-600 flex-shrink-0 ml-4" />
         ) : (
           <PlusCircleIcon className="w-7 h-7 text-gray-400 flex-shrink-0 ml-4" />
         )}
@@ -74,7 +74,7 @@ const BookingSummary: React.FC<{
             <span>Tempo total:</span>
             <span>{totalDuration} min</span>
           </div>
-          <div className="flex justify-between font-bold text-lg text-amber-500">
+          <div className="flex justify-between font-bold text-lg text-pink-600">
             <span>Valor total:</span>
             <span>R${totalPrice.toFixed(2)}</span>
           </div>
@@ -82,7 +82,7 @@ const BookingSummary: React.FC<{
         <button
           onClick={onNext}
           disabled={selectedServices.length === 0}
-          className="w-full bg-amber-500 text-white font-bold py-3 px-4 rounded-lg mt-6 transition-all duration-300 hover:bg-amber-400 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
+          className="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg mt-6 transition-all duration-300 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
         >
           Próximo
         </button>
@@ -114,13 +114,13 @@ const FixedFooter: React.FC<{
                   : `${selectedServices.length} serviços selecionados`}
               </span>
             </div>
-            <div className="text-lg font-bold text-amber-500">
+            <div className="text-lg font-bold text-pink-600">
               R$ {totalPrice.toFixed(2)}
             </div>
           </div>
           <button
             onClick={onNext}
-            className="bg-amber-500 hover:bg-amber-400 text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-300 shadow-md whitespace-nowrap"
+            className="bg-pink-600 hover:bg-pink-600 text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-300 shadow-md whitespace-nowrap"
           >
             Próximo
           </button>
@@ -232,14 +232,14 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
       {/* Seletor de Profissional */}
       <div className="bg-white p-4 rounded-lg border border-gray-300 shadow-sm">
         <label htmlFor="professional-select" className="block text-sm font-medium text-gray-700 mb-2">
-          <UserIcon className="w-5 h-5 inline mr-2 text-amber-500" />
+          <UserIcon className="w-5 h-5 inline mr-2 text-pink-600" />
           Selecionar Profissional
         </label>
         <select
           id="professional-select"
           value={selectedProfessionalId || ''}
           onChange={(e) => handleProfessionalChange(e.target.value)}
-          className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-amber-500 focus:border-amber-500"
+          className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
           disabled={loadingProfessionals}
         >
           <option value="">Todos os profissionais</option>
@@ -251,7 +251,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
         </select>
         {selectedProfessional && (
           <p className="mt-2 text-sm text-gray-600">
-            Mostrando serviços de: <span className="font-semibold text-amber-600">{selectedProfessional.name}</span>
+            Mostrando serviços de: <span className="font-semibold text-pink-700">{selectedProfessional.name}</span>
           </p>
         )}
       </div>

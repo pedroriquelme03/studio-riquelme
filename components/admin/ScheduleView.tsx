@@ -127,10 +127,10 @@ const ScheduleView: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Agenda por Profissional</h2>
-        <div className="flex items-center gap-3">
-          <CalendarIcon className="w-6 h-6 text-amber-400" />
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-4">Agenda por Profissional</h2>
+        <div className="flex items-center justify-center gap-3">
+          <CalendarIcon className="w-6 h-6 text-pink-600" />
           <select
             value={selected}
             onChange={e => setSelected(e.target.value)}
@@ -146,9 +146,9 @@ const ScheduleView: React.FC = () => {
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div className="inline-flex rounded overflow-hidden border border-gray-300">
-          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-amber-500 text-white':'bg-white text-gray-700'}`}>Mês</button>
-          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-amber-500 text-white':'bg-white text-gray-700'}`}>Semana</button>
-          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-amber-500 text-white':'bg-white text-gray-700'}`}>Dia</button>
+          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Mês</button>
+          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Semana</button>
+          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Dia</button>
         </div>
         <div className="inline-flex items-center gap-2">
           <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-gray-200 text-gray-900 rounded">Hoje</button>
@@ -196,7 +196,7 @@ const ScheduleView: React.FC = () => {
       {/* Dia */}
       {selected && !loading && view === 'day' && (
         <div className="mb-6">
-          <h3 className="text-amber-400 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
+          <h3 className="text-pink-600 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
             {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -210,7 +210,7 @@ const ScheduleView: React.FC = () => {
                     <p className="text-sm text-gray-600">{b.client_phone}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-amber-400 text-lg">R${Number(b.total_price).toFixed(2)}</p>
+                    <p className="font-bold text-pink-600 text-lg">R${Number(b.total_price).toFixed(2)}</p>
                     <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
                   </div>
                 </div>
@@ -238,7 +238,7 @@ const ScheduleView: React.FC = () => {
             return (
               <div key={key} className="bg-white rounded border border-gray-300 p-3">
                 <div
-                  className="font-semibold text-gray-700 mb-2 cursor-pointer hover:text-amber-400"
+                  className="font-semibold text-gray-700 mb-2 cursor-pointer hover:text-pink-600"
                   onClick={() => { setCurrentDate(day); setView('day'); }}
                   title="Ver dia"
                 >
@@ -281,7 +281,7 @@ const ScheduleView: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  className={`p-2 rounded border cursor-pointer ${inMonth ? 'border-gray-300 bg-white hover:border-amber-500' : 'border-gray-200 bg-gray-50/40'}`}
+                  className={`p-2 rounded border cursor-pointer ${inMonth ? 'border-gray-300 bg-white hover:border-pink-600' : 'border-gray-200 bg-gray-50/40'}`}
                   style={{ aspectRatio: '1 / 1' }}
                   onClick={() => { setMonthSelectedDate(day); }}
                   title="Listar agendamentos do dia abaixo"
@@ -290,7 +290,7 @@ const ScheduleView: React.FC = () => {
                     {day.getDate().toString().padStart(2,'0')}
                   </div>
                   <div className="mt-auto">
-                    <span className={`text-xs font-semibold ${rows.length ? 'text-amber-400' : 'text-gray-500'}`}>
+                    <span className={`text-xs font-semibold ${rows.length ? 'text-pink-600' : 'text-gray-500'}`}>
                       {rows.length ? `${rows.length} agend.` : '—'}
                     </span>
                   </div>
@@ -303,7 +303,7 @@ const ScheduleView: React.FC = () => {
 
       {selected && !loading && view === 'month' && monthSelectedDate && (
         <div className="mt-6 mb-6">
-          <h3 className="text-amber-400 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
+          <h3 className="text-pink-600 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
             {monthSelectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -317,7 +317,7 @@ const ScheduleView: React.FC = () => {
                     <p className="text-sm text-gray-600">{b.client_phone}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-amber-400 text-lg">R${Number(b.total_price).toFixed(2)}</p>
+                    <p className="font-bold text-pink-600 text-lg">R${Number(b.total_price).toFixed(2)}</p>
                     <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
                   </div>
                 </div>

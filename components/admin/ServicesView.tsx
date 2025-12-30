@@ -102,7 +102,7 @@ const ServicesView: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900">Gerenciar Serviços</h2>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-400 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          className="flex items-center space-x-2 bg-pink-600 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
         >
           <PlusCircleIcon className="w-5 h-5" />
           <span>Novo Serviço</span>
@@ -133,10 +133,10 @@ const ServicesView: React.FC = () => {
                   <span className="text-gray-200">{service.responsibleProfessionalName || '—'}</span>
                 </td>
                 <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><ClockIcon className="w-4 h-4 mr-1.5 text-amber-400"/> {service.duration} min</span>
+                    <span className="flex items-center justify-center"><ClockIcon className="w-4 h-4 mr-1.5 text-pink-600"/> {service.duration} min</span>
                 </td>
                 <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-amber-400"/> R${service.price.toFixed(2)}</span>
+                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-pink-600"/> R${service.price.toFixed(2)}</span>
                 </td>
                 <td className="p-4 text-right">
                     <div className="inline-flex space-x-3">
@@ -168,8 +168,8 @@ const ServicesView: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-between text-sm text-gray-700 mt-3">
-              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-amber-400"/> {service.duration} min</span>
-              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-amber-400"/> R${service.price.toFixed(2)}</span>
+              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-pink-600"/> {service.duration} min</span>
+              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-pink-600"/> R${service.price.toFixed(2)}</span>
             </div>
           </div>
         ))}

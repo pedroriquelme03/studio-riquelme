@@ -129,25 +129,25 @@ const ProfessionalsView: React.FC = () => {
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Nome"
-          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-amber-500"
+          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-pink-600"
         />
         <input
           value={email}
           onChange={e => setEmail(e.target.value)}
           type="email"
           placeholder="E-mail"
-          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-amber-500"
+          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-pink-600"
         />
         <input
           value={phone}
           onChange={e => setPhone(e.target.value)}
           placeholder="Telefone"
-          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-amber-500"
+          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-pink-600"
         />
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-70"
+          className="flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-70"
         >
           <PlusCircleIcon className="w-5 h-5" />
           Adicionar

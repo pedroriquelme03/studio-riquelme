@@ -23,7 +23,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         <h3 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3">Resumo do Agendamento</h3>
         
         <div>
-          <h4 className="font-semibold text-amber-500 mb-2">Serviços</h4>
+          <h4 className="font-semibold text-pink-600 mb-2">Serviços</h4>
           <ul className="space-y-1">
             {services.map(s => (
               <li key={s.id} className="flex justify-between text-gray-700">
@@ -36,28 +36,28 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         
         <div className="grid sm:grid-cols-2 gap-4 border-t border-gray-300 pt-4">
             <div className="flex items-center">
-                <CalendarIcon className="w-5 h-5 mr-3 text-amber-500"/>
+                <CalendarIcon className="w-5 h-5 mr-3 text-pink-600"/>
                 <div>
                     <span className="text-sm text-gray-600">Data</span>
                     <p className="font-semibold text-gray-900">{date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                 </div>
             </div>
             <div className="flex items-center">
-                <ClockIcon className="w-5 h-5 mr-3 text-amber-500"/>
+                <ClockIcon className="w-5 h-5 mr-3 text-pink-600"/>
                 <div>
                     <span className="text-sm text-gray-600">Hora</span>
                     <p className="font-semibold text-gray-900">{time}</p>
                 </div>
             </div>
              <div className="flex items-center">
-                <UserIcon className="w-5 h-5 mr-3 text-amber-500"/>
+                <UserIcon className="w-5 h-5 mr-3 text-pink-600"/>
                 <div>
                     <span className="text-sm text-gray-600">Cliente</span>
                     <p className="font-semibold text-gray-900">{client.name}</p>
                 </div>
             </div>
              <div className="flex items-center">
-                <DollarSignIcon className="w-5 h-5 mr-3 text-amber-500"/>
+                <DollarSignIcon className="w-5 h-5 mr-3 text-pink-600"/>
                 <div>
                     <span className="text-sm text-gray-600">Total</span>
                     <p className="font-semibold text-gray-900">R${totalPrice.toFixed(2)}</p>
@@ -66,13 +66,13 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         </div>
 
         <p className="text-sm text-center text-gray-600 pt-4">
-          Enviamos um e-mail de confirmação para <span className="font-semibold text-amber-600">{client.email}</span> com todos os detalhes.
+          Enviamos um e-mail de confirmação para <span className="font-semibold text-pink-700">{client.email}</span> com todos os detalhes.
         </p>
       </div>
 
       <button
         onClick={onNewBooking}
-        className="mt-8 bg-amber-500 hover:bg-amber-400 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 shadow-md"
+        className="mt-8 bg-pink-600 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 shadow-md"
       >
         Agendar outro horário
       </button>

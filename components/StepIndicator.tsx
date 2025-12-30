@@ -24,18 +24,18 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
               <div className="flex flex-col items-center text-center">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isActive ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'
+                    isActive ? 'bg-pink-600 text-white' : 'bg-gray-200 text-gray-500'
                   }`}
                 >
                   {index + 1}
                 </div>
-                <p className={`mt-2 text-xs md:text-sm font-semibold ${isActive ? 'text-amber-500' : 'text-gray-500'}`}>
+                <p className={`mt-2 text-xs md:text-sm font-semibold ${isActive ? 'text-pink-600' : 'text-gray-500'}`}>
                   {step.title.split('. ')[1]}
                 </p>
               </div>
               {index < steps.length - 1 && (
                 <div className={`flex-1 h-1 mx-2 transition-all duration-300 ${
-                  isActive && index < currentStepIndex ? 'bg-amber-500' : 'bg-gray-300'
+                  isActive && index < currentStepIndex ? 'bg-pink-600' : 'bg-gray-300'
                 }`}></div>
               )}
             </React.Fragment>

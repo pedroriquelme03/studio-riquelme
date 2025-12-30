@@ -48,26 +48,26 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-amber-500 focus:border-amber-500" />
+          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" />
           {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
         </div>
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone (WhatsApp)</label>
-          <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-amber-500 focus:border-amber-500" />
+          <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" />
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </div>
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-          <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-amber-500 focus:border-amber-500" />
+          <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" />
           {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
         </div>
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>
-          <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-amber-500 focus:border-amber-500"></textarea>
+          <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"></textarea>
         </div>
         <div className="flex justify-between mt-8 border-t border-gray-300 pt-6">
           <button type="button" onClick={onBack} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors">Voltar</button>
-          <button type="submit" className="bg-amber-500 hover:bg-amber-400 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md">Confirmar Agendamento</button>
+          <button type="submit" className="bg-pink-600 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md">Confirmar Agendamento</button>
         </div>
       </form>
     </div>

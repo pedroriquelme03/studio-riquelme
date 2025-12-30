@@ -51,10 +51,10 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
             onClick={() => !isPast(d) && onDateSelect(d)}
             disabled={isPast(d)}
             className={`w-10 h-10 rounded-full transition-colors duration-200
-              ${isPast(d) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-amber-500 hover:text-white'}
+              ${isPast(d) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-pink-600 hover:text-white'}
               ${d.getMonth() !== currentMonth.getMonth() ? 'text-gray-400' : 'text-gray-900'}
-              ${isToday(d) && !isSelected(d) ? 'border-2 border-amber-500' : ''}
-              ${isSelected(d) ? 'bg-amber-500 text-white font-bold' : ''}
+              ${isToday(d) && !isSelected(d) ? 'border-2 border-pink-600' : ''}
+              ${isSelected(d) ? 'bg-pink-600 text-white font-bold' : ''}
             `}
           >
             {d.getDate()}
@@ -66,10 +66,44 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
 };
 
 const generateTimeSlots = (serviceDuration: number): { morning: string[], afternoon: string[], evening: string[] } => {
-    // Mock availability
-    const morning = ['09:00', '09:30', '10:00', '10:45', '11:30'];
-    const afternoon = ['13:00', '13:30', '14:15', '15:00', '15:45', '16:30', '17:15'];
-    const evening = ['18:00', '18:45', '19:30'];
+    // Horários de funcionamento
+    const startHour = 9; // 9h
+    const endHour = 20; // 20h (8h da noite)
+    
+    // Intervalo entre horários: duração do serviço + margem de 15 minutos
+    const interval = serviceDuration + 15;
+    
+    const slots: string[] = [];
+    let currentTime = startHour * 60; // Começar às 9h (em minutos)
+    const endTime = endHour * 60; // Terminar às 20h (em minutos)
+    
+    // Gerar horários considerando a duração do serviço
+    while (currentTime + serviceDuration <= endTime) {
+        const hour = Math.floor(currentTime / 60);
+        const minute = currentTime % 60;
+        const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        slots.push(timeString);
+        
+        // Avançar para o próximo horário disponível
+        currentTime += interval;
+    }
+    
+    // Separar por períodos
+    const morning = slots.filter(time => {
+        const hour = parseInt(time.split(':')[0]);
+        return hour >= 9 && hour < 12;
+    });
+    
+    const afternoon = slots.filter(time => {
+        const hour = parseInt(time.split(':')[0]);
+        return hour >= 12 && hour < 18;
+    });
+    
+    const evening = slots.filter(time => {
+        const hour = parseInt(time.split(':')[0]);
+        return hour >= 18 && hour < 20;
+    });
+    
     return { morning, afternoon, evening };
 };
 
@@ -96,7 +130,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
             <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
             {Object.entries(availableSlots).map(([period, slots]) => (
                 <div key={period} className="mb-4">
-                    <h4 className="font-semibold text-amber-500 mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
+                    <h4 className="font-semibold text-pink-600 mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                         {/* Fix: Use Array.isArray as a type guard to ensure 'slots' is treated as an array, resolving the 'unknown' type issue. */}
                         {Array.isArray(slots) && slots.map(time => (
@@ -104,7 +138,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
                                 key={time} 
                                 onClick={() => setSelectedTime(time)}
                                 className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
-                                    ${selectedTime === time ? 'bg-amber-500 text-white border-amber-500 font-bold' : 'bg-gray-50 border-gray-300 hover:border-amber-400'}
+                                    ${selectedTime === time ? 'bg-pink-600 text-white border-pink-600 font-bold' : 'bg-gray-50 border-gray-300 hover:border-pink-600'}
                                 `}
                             >
                                 {time}
@@ -120,7 +154,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         <button 
             onClick={handleNext}
             disabled={!selectedTime}
-            className="bg-amber-500 hover:bg-amber-400 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
+            className="bg-pink-600 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
         >
             Próximo
         </button>

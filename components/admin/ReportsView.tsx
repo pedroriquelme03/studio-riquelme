@@ -185,16 +185,18 @@ const ReportsView: React.FC = () => {
                 options={{ responsive: true, plugins: { legend: { display: false } } }}
               />
             </div>
-          </div>
-          <div className="bg-white border border-gray-300 rounded-lg p-4">
-            <h3 className="text-gray-900 font-semibold mb-3">Serviços mais agendados</h3>
-            <Doughnut
-              data={{
-                labels: byService.labels,
-                datasets: [{ data: byService.data, backgroundColor: ['#f59e0b','#84cc16','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ef4444'] }]
-              }}
-              options={{ responsive: true }}
-            />
+            <div className="bg-white border border-gray-300 rounded-lg p-4">
+              <h3 className="text-gray-900 font-semibold mb-3">Serviços mais agendados</h3>
+              <div className="h-64">
+                <Doughnut
+                  data={{
+                    labels: byService.labels,
+                    datasets: [{ data: byService.data, backgroundColor: ['#f59e0b','#84cc16','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ef4444'] }]
+                  }}
+                  options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
+                />
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">

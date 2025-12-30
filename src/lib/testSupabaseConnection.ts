@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
 export type SupabaseTestStage = 'env' | 'query';
 
@@ -26,6 +26,9 @@ export async function testSupabaseConnection(tableName: string = 'professionals'
   }
 
   try {
+    // Criar cliente diretamente para o teste
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
     const { error, status } = await supabase
       .from(tableName)
       .select('*')

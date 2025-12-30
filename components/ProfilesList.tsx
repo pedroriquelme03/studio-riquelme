@@ -12,6 +12,9 @@ const ProfilesList: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      if (!supabase) {
+        throw new Error('Cliente Supabase não está configurado. Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+      }
       const { data, error: supaError } = await supabase
         .from('profiles')
         .select('*');

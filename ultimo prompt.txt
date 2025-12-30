@@ -1,0 +1,32 @@
+Adicionei logs de debug. Resumo do que foi feito:
+Alterações realizadas
+Logs de debug em api/auth.ts:
+Log da tentativa de login
+Log de credenciais do Supabase
+Log de busca do admin
+Log da verificação de senha (primeiros 20 caracteres do hash)
+Log de erros
+Logs de debug em contexts/AuthContext.tsx:
+Log da tentativa de login
+Log do status da resposta
+Log dos dados retornados
+Log de sucesso/falha
+Parsing do body:
+Melhorado para lidar com body como string ou objeto
+Próximos passos para diagnosticar
+Verificar os logs no console do navegador (F12 → Console):
+Procure por logs que começam com [AuthContext]
+Eles mostrarão o que está acontecendo no frontend
+Verificar os logs no Vercel (se estiver em produção):
+Deployments → último deploy → Functions → /api/auth → View Function Logs
+Procure por logs que começam com [AUTH]
+Verificar se os usuários foram criados no banco:
+Execute este SQL no Supabase para verificar:
+   SELECT username, name, email, is_active, created_at    FROM public.admins    ORDER BY created_at DESC;
+Testar com o usuário admin (senha: studio2024):
+Este usuário já deveria existir no banco
+Possíveis problemas
+Usuários não foram criados no banco — execute o SQL create-users.sql novamente
+Variáveis de ambiente do Supabase — verifique se SUPABASE_SERVICE_ROLE_KEY está configurada no Vercel
+Problema de CORS ou roteamento — os logs ajudarão a identificar
+Teste o login e verifique os logs no console do navegador. Isso ajudará a identificar onde está falhando.

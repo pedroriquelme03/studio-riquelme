@@ -6,21 +6,42 @@
 import { Client } from 'pg';
 
 async function getClient() {
-	const databaseUrl = process.env.DATABASE_URL;
+	const databaseUrl =
+		process.env.SUPABASE_DB_URL ||
+		process.env.DATABASE_URL ||
+		process.env.POSTGRES_URL ||
+		'';
+
 	if (!databaseUrl) {
-		throw new Error('DATABASE_URL não configurada');
+		throw new Error('DATABASE_URL/SUPABASE_DB_URL não configurada');
 	}
-	// Permitir desativar verificação de certificado para debug/ambientes com cadeia self-signed
-	if (process.env.DB_SSL_NO_VERIFY === '1') {
-		// eslint-disable-next-line no-process-env
-		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+	// Log seguro do host para facilitar debug no deploy (sem credenciais)
+	try {
+		const u = new URL(databaseUrl);
+		console.log('[client-auth] Conectando ao banco em host:', u.hostname);
+	} catch {
+		console.warn('[client-auth] DATABASE_URL inválida (não é uma URL). Verifique o valor configurado.');
 	}
+
+	// Usar SSL compatível com provedores gerenciados (Supabase/Neon/etc)
+	// Evitar mexer no NODE_TLS_REJECT_UNAUTHORIZED global
 	const client = new Client({
 		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false },
+		ssl: { rejectUnauthorized: false, require: true } as any,
 	});
-	await client.connect();
-	return client;
+
+	try {
+		await client.connect();
+		return client;
+	} catch (e: any) {
+		const msg = e?.message || String(e);
+		// Normalizar mensagens comuns de configuração incorreta
+		if (/tenant|user not found/i.test(msg)) {
+			throw new Error('Falha ao conectar no banco: verifique a DATABASE_URL (tenant/usuário não encontrado). Use a string de conexão do seu banco (ex.: Supabase)');
+		}
+		throw new Error(`Falha ao conectar no banco: ${msg}`);
+	}
 }
 
 function normalizePhone(phone?: string): string {

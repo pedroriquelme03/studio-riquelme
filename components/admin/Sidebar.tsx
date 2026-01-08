@@ -56,6 +56,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
           onClick={() => setActiveView('professionals')}
         />
         <NavItem
+          label="Usuários"
+          icon={<UserIcon className="w-6 h-6" />}
+          isActive={activeView === 'users'}
+          onClick={() => setActiveView('users')}
+        />
+        <NavItem
           label="Agenda"
           icon={<CalendarIcon className="w-6 h-6" />}
           isActive={activeView === 'schedule'}

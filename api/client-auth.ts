@@ -6,29 +6,37 @@
 import { Client } from 'pg';
 
 async function getClient() {
-	const databaseUrl =
+	const rawUrl =
 		process.env.SUPABASE_DB_URL ||
 		process.env.DATABASE_URL ||
 		process.env.POSTGRES_URL ||
 		'';
 
-	if (!databaseUrl) {
+	if (!rawUrl) {
 		throw new Error('DATABASE_URL/SUPABASE_DB_URL não configurada');
 	}
 
 	// Log seguro do host para facilitar debug no deploy (sem credenciais)
 	try {
-		const u = new URL(databaseUrl);
+		const u = new URL(rawUrl);
 		console.log('[client-auth] Conectando ao banco em host:', u.hostname);
 	} catch {
 		console.warn('[client-auth] DATABASE_URL inválida (não é uma URL). Verifique o valor configurado.');
+	}
+
+	// Forçar sslmode=no-verify para evitar erro de cadeia self-signed em provedores gerenciados
+	let databaseUrl = rawUrl;
+	if (databaseUrl.includes('sslmode=')) {
+		databaseUrl = databaseUrl.replace(/([?&])sslmode=[^&]*/i, '$1sslmode=no-verify');
+	} else {
+		databaseUrl += (databaseUrl.includes('?') ? '&' : '?') + 'sslmode=no-verify';
 	}
 
 	// Usar SSL compatível com provedores gerenciados (Supabase/Neon/etc)
 	// Evitar mexer no NODE_TLS_REJECT_UNAUTHORIZED global
 	const client = new Client({
 		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false, require: true } as any,
+		ssl: { rejectUnauthorized: false } as any,
 	});
 
 	try {

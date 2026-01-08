@@ -1,13 +1,10 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-// Usar crypto do Node.js (disponível no Vercel)
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const crypto = require('crypto');
+import { createHash, randomBytes } from 'node:crypto';
 
 // Função para criar hash SHA-256 da senha
 function hashPassword(password: string): string {
-	return crypto.createHash('sha256').update(password).digest('hex');
+	return createHash('sha256').update(password).digest('hex');
 }
 
 // Função para verificar senha
@@ -257,7 +254,7 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// Gerar token único
-			const token = crypto.randomBytes(32).toString('hex');
+			const token = randomBytes(32).toString('hex');
 			const expiresAt = new Date();
 			expiresAt.setHours(expiresAt.getHours() + 1); // Token válido por 1 hora
 

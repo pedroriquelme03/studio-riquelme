@@ -103,13 +103,11 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
             </div>
         </div>
 
-        <p className="text-sm text-center text-gray-600 pt-4">
-          Enviaremos uma confirmação via WhatsApp para <span className="font-semibold text-pink-700">{client.phone}</span> com todos os detalhes.
-        </p>
+        {/* Mensagem de WhatsApp temporariamente removida */}
       </div>
 
       {/* CTA: Criar conta para histórico */}
-      <div className="mt-6 bg-white p-6 rounded-2xl border border-gray-300 shadow-xl text-left">
+      <div className="mt-6 bg-white p-6 rounded-2xl border border-gray-300 shadow-xl text-left hidden">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Quer acompanhar seu histórico de atendimentos?</h3>
         <p className="text-gray-700 mb-4">
           Crie sua conta com seu WhatsApp e tenha acesso aos seus agendamentos.

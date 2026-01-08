@@ -1,6 +1,5 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { sendResetPasswordEmail } from './sendEmail';
 
 // Usar crypto do Node.js (disponível no Vercel)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -306,12 +305,24 @@ export default async function handler(req: any, res: any) {
 				resetLink,
 			});
 
-			// Enviar email com o link de reset
-			const emailResult = await sendResetPasswordEmail(
-				admin.email!,
-				resetLink,
-				admin.name
-			);
+			// Enviar email com o link de reset (import dinâmico para evitar erro de resolução em runtime do Vercel)
+			let emailResult: { success: boolean; error?: string } = { success: false, error: 'Email sender not executed' };
+			try {
+				const mod = await import('./sendEmail').catch(async () => {
+					// Tentativa com extensão .js (ambientes estritos ESM)
+					return await import('./sendEmail.js');
+				});
+				const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (email: string, link: string, name: string) => Promise<{ success: boolean; error?: string }>;
+				emailResult = await sendResetPasswordEmail(
+					admin.email!,
+					resetLink,
+					admin.name
+				);
+			} catch (e: any) {
+				console.error('[AUTH] Falha ao carregar módulo sendEmail:', e?.message || e);
+				// Não falhar o fluxo: retornaremos sucesso genérico e incluir o link para debug
+				emailResult = { success: false, error: e?.message || 'Falha ao carregar módulo de email' };
+			}
 
 			console.log('[AUTH] Resultado do envio de email:', emailResult);
 

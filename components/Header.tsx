@@ -19,13 +19,13 @@ const Header: React.FC = () => {
               target.style.display = 'none';
             }}
           />
-          <h1 className="text-xl md:text-2xl font-bold tracking-wider text-gray-900">
+          <h1 className="text-lg md:text-xl font-bold tracking-wider text-gray-900">
             Agendamento Online <br className="hidden md:block" />
             Studio Riquelme
           </h1>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center hidden">
           <Link
             to="/login-cliente"
             className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-600 transition-colors"

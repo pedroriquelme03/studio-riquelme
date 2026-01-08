@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSupabaseClient, supabase as supabaseMaybe } from '../../src/lib/supabaseClient';
 
 function normalizePhone(phone: string) {
   return (phone || '').replace(/\D/g, '');
@@ -29,94 +28,29 @@ function toE164(digits: string): string {
   return digits.startsWith('+') ? digits : `+${digits}`;
 }
 
-type Step = 'request' | 'verify';
-
 const ClientLoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<Step>('request');
-  const [otp, setOtp] = useState('');
   const navigate = useNavigate();
 
-  // Fallback simples para o endpoint atual caso Supabase não esteja configurado
-  const fallbackLogin = async (digits: string) => {
-    const res = await fetch('/api/client-auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'login', phone: digits }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
-    localStorage.setItem('client_phone', digits);
-    navigate('/meus-agendamentos');
-  };
-
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
     try {
       const digits = normalizePhone(phone);
-      // Tenta usar Supabase, senão cai no fallback
-      let supabase = supabaseMaybe || null;
-      if (!supabase) {
-        supabase = getSupabaseClient();
-      }
-      const phoneE164 = toE164(digits);
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        phone: phoneE164,
-        options: { shouldCreateUser: true },
+      const res = await fetch('/api/client-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', phone: digits }),
       });
-      if (otpError) {
-        // Se falhar por configuração/ambiente, tenta fallback
-        if (otpError.message?.toLowerCase().includes('key') || otpError.message?.toLowerCase().includes('url')) {
-          await fallbackLogin(digits);
-          return;
-        }
-        throw otpError;
-      }
-      setStep('verify');
-    } catch (err: any) {
-      // Se getSupabaseClient lançar erro de env, usa fallback
-      if (err?.message?.includes('VITE_SUPABASE_')) {
-        try {
-          await fallbackLogin(normalizePhone(phone));
-          return;
-        } catch (fallbackErr: any) {
-          setError(fallbackErr?.message || 'Falha no login');
-          return;
-        }
-      }
-      setError(err?.message || 'Falha ao enviar código por SMS');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-    try {
-      const digits = normalizePhone(phone);
-      let supabase = supabaseMaybe || null;
-      if (!supabase) {
-        supabase = getSupabaseClient();
-      }
-      const phoneE164 = toE164(digits);
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        phone: phoneE164,
-        token: otp.trim(),
-        type: 'sms',
-      });
-      if (verifyError) throw verifyError;
-      if (!data?.session) throw new Error('Sessão não criada');
-      // Persistir número (compatível com a tela de agendamentos atual)
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
       localStorage.setItem('client_phone', digits);
       navigate('/meus-agendamentos');
     } catch (err: any) {
-      setError(err?.message || 'Código inválido');
+      setError(err?.message || 'Erro inesperado');
     } finally {
       setIsLoading(false);
     }
@@ -127,8 +61,7 @@ const ClientLoginPage: React.FC = () => {
       <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Entrar</h2>
       <p className="text-gray-600 text-center mb-6">Acesse seu histórico com seu WhatsApp</p>
 
-      {step === 'request' && (
-        <form onSubmit={handleRequestOtp} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
             <input
@@ -166,52 +99,9 @@ const ClientLoginPage: React.FC = () => {
             disabled={isLoading}
             className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Enviando SMS...' : 'Enviar código por SMS'}
+            {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
-        </form>
-      )}
-
-      {step === 'verify' && (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Código SMS</label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 tracking-widest text-center"
-              placeholder="••••••"
-              maxLength={6}
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => { setStep('request'); setOtp(''); }}
-              className="w-1/3 bg-white border border-gray-300 text-gray-900 font-semibold py-3 px-6 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Voltar
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading || otp.length < 4}
-              className="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Verificando...' : 'Confirmar'}
-            </button>
-          </div>
-        </form>
-      )}
+      </form>
     </div>
   );
 };

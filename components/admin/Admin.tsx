@@ -6,8 +6,9 @@ import ProfessionalsView from './ProfessionalsView';
 import ScheduleView from './ScheduleView';
 import ReportsView from './ReportsView';
 import UsersView from './UsersView';
+import HoursSettingsView from './HoursSettingsView';
 
-export type AdminView = 'appointments' | 'services' | 'professionals' | 'schedule' | 'reports' | 'users';
+export type AdminView = 'appointments' | 'services' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours';
 
 const Admin: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('appointments');
@@ -26,6 +27,8 @@ const Admin: React.FC = () => {
         return <ReportsView />;
       case 'users':
         return <UsersView />;
+      case 'hours':
+        return <HoursSettingsView />;
       default:
         return <AppointmentsView />;
     }

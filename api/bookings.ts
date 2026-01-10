@@ -53,7 +53,8 @@ export default async function handler(req: any, res: any) {
           booking_services (
             quantity,
             services:service_id ( id, name, price, duration_minutes )
-          )
+          ),
+          booking_cancellations ( id )
         `)
 				.order('date', { ascending: true })
 				.order('time', { ascending: true });
@@ -104,10 +105,13 @@ export default async function handler(req: any, res: any) {
 					total_price: total_price.toFixed(2),
 					total_duration_minutes,
 					services,
+					is_cancelled: Array.isArray(b.booking_cancellations) && b.booking_cancellations.length > 0,
 				};
 			});
 
       const filtered = rows.filter((r: any) => {
+        // Ocultar agendamentos cancelados do painel
+        if (r.is_cancelled) return false;
 				if (serviceId && !(r.services || []).some((s: any) => String(s.id) === String(serviceId))) {
 					return false;
 				}

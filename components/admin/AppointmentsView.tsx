@@ -56,6 +56,15 @@ const AppointmentsView: React.FC = () => {
     client_phone?: string;
   }>>([]);
 
+  // Paginação de cancelamentos
+  const CANC_LIMIT = 20;
+  const [clientCancCursor, setClientCancCursor] = useState<string | null>(null);
+  const [clientCancHasMore, setClientCancHasMore] = useState<boolean>(true);
+  const [clientCancLoadingMore, setClientCancLoadingMore] = useState<boolean>(false);
+  const [adminCancCursor, setAdminCancCursor] = useState<string | null>(null);
+  const [adminCancHasMore, setAdminCancHasMore] = useState<boolean>(true);
+  const [adminCancLoadingMore, setAdminCancLoadingMore] = useState<boolean>(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -114,12 +123,12 @@ const AppointmentsView: React.FC = () => {
         setRequestsMap({});
       }
 
-      // Carregar cancelamentos de clientes (últimos 50, opcionalmente filtrados por profissional)
+      // Carregar cancelamentos de clientes (paginado)
       try {
         const qs2 = new URLSearchParams();
         if (professionalId) qs2.set('professional_id', professionalId);
         qs2.set('cancelled_by', 'client');
-        qs2.set('limit', '50');
+        qs2.set('limit', String(CANC_LIMIT));
         const cRes = await fetch(`/api/cancellations?${qs2.toString()}`);
         const cData = await cRes.json();
         if (cRes.ok && Array.isArray(cData?.cancellations)) {
@@ -132,17 +141,21 @@ const AppointmentsView: React.FC = () => {
             client_phone: r.bookings?.clients?.phone,
           }));
           setCancellations(rows);
+          setClientCancCursor(rows.length ? rows[rows.length - 1].at : null);
+          setClientCancHasMore(rows.length === CANC_LIMIT);
         } else {
           setCancellations([]);
+          setClientCancCursor(null);
+          setClientCancHasMore(false);
         }
       } catch { setCancellations([]); }
 
-      // Carregar cancelamentos feitos pelo admin (últimos 50, opcionalmente filtrados por profissional)
+      // Carregar cancelamentos feitos pelo admin (paginado)
       try {
         const qs3 = new URLSearchParams();
         if (professionalId) qs3.set('professional_id', professionalId);
         qs3.set('cancelled_by', 'admin');
-        qs3.set('limit', '50');
+        qs3.set('limit', String(CANC_LIMIT));
         const aRes = await fetch(`/api/cancellations?${qs3.toString()}`);
         const aData = await aRes.json();
         if (aRes.ok && Array.isArray(aData?.cancellations)) {
@@ -155,8 +168,12 @@ const AppointmentsView: React.FC = () => {
             client_phone: r.bookings?.clients?.phone,
           }));
           setAdminCancellations(rows);
+          setAdminCancCursor(rows.length ? rows[rows.length - 1].at : null);
+          setAdminCancHasMore(rows.length === CANC_LIMIT);
         } else {
           setAdminCancellations([]);
+          setAdminCancCursor(null);
+          setAdminCancHasMore(false);
         }
       } catch { setAdminCancellations([]); }
     } catch (e: any) {
@@ -379,6 +396,46 @@ const AppointmentsView: React.FC = () => {
             ))}
           </ul>
         )}
+        {clientCancHasMore && (
+          <div className="mt-3">
+            <button
+              disabled={clientCancLoadingMore}
+              onClick={async () => {
+                if (!clientCancHasMore) return;
+                try {
+                  setClientCancLoadingMore(true);
+                  const qs = new URLSearchParams();
+                  if (professionalId) qs.set('professional_id', professionalId);
+                  qs.set('cancelled_by', 'client');
+                  qs.set('limit', String(CANC_LIMIT));
+                  if (clientCancCursor) qs.set('to', clientCancCursor);
+                  const res = await fetch(`/api/cancellations?${qs.toString()}`);
+                  const j = await res.json();
+                  if (res.ok && Array.isArray(j?.cancellations)) {
+                    const rows = (j.cancellations as any[]).map((r) => ({
+                      id: r.id,
+                      at: r.created_at,
+                      booking_date: r.bookings?.date,
+                      booking_time: r.bookings?.time,
+                      client_name: r.bookings?.clients?.name,
+                      client_phone: r.bookings?.clients?.phone,
+                    }));
+                    setCancellations(prev => [...prev, ...rows]);
+                    setClientCancCursor(rows.length ? rows[rows.length - 1].at : clientCancCursor);
+                    setClientCancHasMore(rows.length === CANC_LIMIT);
+                  } else {
+                    setClientCancHasMore(false);
+                  }
+                } finally {
+                  setClientCancLoadingMore(false);
+                }
+              }}
+              className="mt-2 text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900 disabled:opacity-50"
+            >
+              {clientCancLoadingMore ? 'Carregando...' : 'Ver mais'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cancelamentos feitos pelo admin */}
@@ -406,6 +463,46 @@ const AppointmentsView: React.FC = () => {
               </li>
             ))}
           </ul>
+        )}
+        {adminCancHasMore && (
+          <div className="mt-3">
+            <button
+              disabled={adminCancLoadingMore}
+              onClick={async () => {
+                if (!adminCancHasMore) return;
+                try {
+                  setAdminCancLoadingMore(true);
+                  const qs = new URLSearchParams();
+                  if (professionalId) qs.set('professional_id', professionalId);
+                  qs.set('cancelled_by', 'admin');
+                  qs.set('limit', String(CANC_LIMIT));
+                  if (adminCancCursor) qs.set('to', adminCancCursor);
+                  const res = await fetch(`/api/cancellations?${qs.toString()}`);
+                  const j = await res.json();
+                  if (res.ok && Array.isArray(j?.cancellations)) {
+                    const rows = (j.cancellations as any[]).map((r) => ({
+                      id: r.id,
+                      at: r.created_at,
+                      booking_date: r.bookings?.date,
+                      booking_time: r.bookings?.time,
+                      client_name: r.bookings?.clients?.name,
+                      client_phone: r.bookings?.clients?.phone,
+                    }));
+                    setAdminCancellations(prev => [...prev, ...rows]);
+                    setAdminCancCursor(rows.length ? rows[rows.length - 1].at : adminCancCursor);
+                    setAdminCancHasMore(rows.length === CANC_LIMIT);
+                  } else {
+                    setAdminCancHasMore(false);
+                  }
+                } finally {
+                  setAdminCancLoadingMore(false);
+                }
+              }}
+              className="mt-2 text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900 disabled:opacity-50"
+            >
+              {adminCancLoadingMore ? 'Carregando...' : 'Ver mais'}
+            </button>
+          </div>
         )}
       </div>
 

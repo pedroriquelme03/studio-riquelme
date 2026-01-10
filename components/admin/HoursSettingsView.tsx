@@ -203,31 +203,33 @@ const HoursSettingsView: React.FC = () => {
 
       <div className="mb-6 bg-white border border-gray-300 rounded-lg p-3">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Limite de mês para agendamentos</h3>
-        <div className="flex items-end gap-3">
-          <label className="block">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-3">
+          <label className="block w-full sm:w-auto">
             <span className="block text-sm text-gray-700 mb-1">Mês limite</span>
             <input
               type="month"
               value={limitMonth}
               onChange={(e) => setLimitMonth(e.target.value)}
-              className="bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+              className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
             />
           </label>
-          <button
-            onClick={saveHours}
-            className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded"
-            disabled={saving}
-          >
-            {saving ? 'Salvando...' : 'Aplicar'}
-          </button>
-          {limitMonth && (
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
-              onClick={() => setLimitMonth('')}
-              className="px-4 py-2 bg-gray-200 text-gray-900 rounded"
+              onClick={saveHours}
+              className="w-full sm:w-auto px-4 py-2 bg-gray-900 hover:bg-black text-white rounded"
+              disabled={saving}
             >
-              Limpar
+              {saving ? 'Salvando...' : 'Aplicar'}
             </button>
-          )}
+            {limitMonth && (
+              <button
+                onClick={() => setLimitMonth('')}
+                className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-900 rounded"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-xs text-gray-600 mt-2">O calendário do cliente não permitirá agendamentos após o mês selecionado.</p>
       </div>

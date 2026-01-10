@@ -66,6 +66,19 @@ const ClientBookingsPage: React.FC = () => {
                   cmap[bId] = { at: c.created_at, by: c.cancelled_by || 'client' };
                 }
               }
+              // Buscar também cancelamentos pelo admin e mesclar
+              try {
+                const aRes = await fetch(`/api/cancellations?booking_ids=${encodeURIComponent(ids)}&cancelled_by=admin&limit=200`);
+                const aData = await aRes.json();
+                if (aRes.ok && Array.isArray(aData?.cancellations)) {
+                  for (const c of aData.cancellations) {
+                    const bId = c?.bookings?.id || c?.booking_id;
+                    if (bId) {
+                      cmap[bId] = { at: c.created_at, by: c.cancelled_by || 'admin' };
+                    }
+                  }
+                }
+              } catch {}
               setCancellations(cmap);
             } else {
               setCancellations({});
@@ -131,6 +144,13 @@ const ClientBookingsPage: React.FC = () => {
             <div className="text-gray-700 mt-2">
               {(r.services || []).map(s => s.name).join(', ')}
             </div>
+          {cancellations[r.booking_id] && (
+            <div className="mt-2 text-sm text-gray-700">
+              {cancellations[r.booking_id].by === 'admin'
+                ? `Cancelado pelo profissional em ${new Date(cancellations[r.booking_id].at).toLocaleString('pt-BR')}`
+                : `Cancelado por você em ${new Date(cancellations[r.booking_id].at).toLocaleString('pt-BR')}`}
+            </div>
+          )}
             <div className="mt-3 flex gap-2">
               {!cancellations[r.booking_id] && (
                 <>

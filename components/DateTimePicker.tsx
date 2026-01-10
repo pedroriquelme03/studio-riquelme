@@ -80,71 +80,133 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
   );
 };
 
-const generateTimeSlots = (serviceDuration: number): { morning: string[], afternoon: string[], evening: string[] } => {
-    // Horários de funcionamento
-    const startHour = 9; // 9h
-    const endHour = 20; // 20h (8h da noite)
-    
-    // Intervalo entre horários: duração do serviço + margem de 15 minutos
-    const interval = serviceDuration + 15;
-    
-    const slots: string[] = [];
-    let currentTime = startHour * 60; // Começar às 9h (em minutos)
-    const endTime = endHour * 60; // Terminar às 20h (em minutos)
-    
-    // Gerar horários considerando a duração do serviço
-    while (currentTime + serviceDuration <= endTime) {
-        const hour = Math.floor(currentTime / 60);
-        const minute = currentTime % 60;
-        const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        slots.push(timeString);
-        
-        // Avançar para o próximo horário disponível
-        currentTime += interval;
-    }
-    
-    // Separar por períodos
-    const morning = slots.filter(time => {
-        const hour = parseInt(time.split(':')[0]);
-        return hour >= 9 && hour < 12;
-    });
-    
-    const afternoon = slots.filter(time => {
-        const hour = parseInt(time.split(':')[0]);
-        return hour >= 12 && hour < 18;
-    });
-    
-    const evening = slots.filter(time => {
-        const hour = parseInt(time.split(':')[0]);
-        return hour >= 18 && hour < 20;
-    });
-    
-    return { morning, afternoon, evening };
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map((v) => Number(v));
+  return h * 60 + (m || 0);
+}
+
+function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {
+  return startA < endB && endA > startB;
+}
+
+type DayWindow = { open: string; close: string; enabled: boolean };
+
+const buildAvailableTimeSlots = (serviceDuration: number, window: DayWindow, bookings: Array<{ time: string; duration: number }>, selectedDate: Date) => {
+  const defaultWindow: DayWindow = { open: '09:00', close: '20:00', enabled: true };
+  const w = window?.enabled ? window : defaultWindow;
+  const openMin = toMinutes(w.open.slice(0,5));
+  const closeMin = toMinutes(w.close.slice(0,5));
+
+  // Passo base de 30 minutos para ofertar slots padronizados
+  const step = 30;
+
+  // Bloqueios existentes (bookings) convertidos em minutos
+  const blocks = (bookings || []).map(b => {
+    const start = toMinutes((b.time || '00:00').slice(0,5));
+    const end = start + Number(b.duration || 0);
+    return { start, end };
+  });
+
+  const slots: string[] = [];
+  const now = new Date();
+  const isToday = selectedDate.toDateString() === now.toDateString();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  for (let t = openMin; t + serviceDuration <= closeMin; t += step) {
+    // Se é hoje, não permitir horários passados
+    if (isToday && t <= nowMin) continue;
+
+    const slotStart = t;
+    const slotEnd = t + serviceDuration;
+
+    // Checar sobreposição com qualquer reserva
+    const clashes = blocks.some(b => overlaps(slotStart, slotEnd, b.start, b.end));
+    if (clashes) continue;
+
+    const hh = String(Math.floor(t / 60)).padStart(2, '0');
+    const mm = String(t % 60).padStart(2, '0');
+    slots.push(`${hh}:${mm}`);
+  }
+
+  // Separar por períodos (respeitando janelas reais)
+  const morning = slots.filter(time => {
+    const hour = parseInt(time.split(':')[0]);
+    return hour >= Math.max(9, parseInt(w.open)) && hour < 12;
+  });
+  const afternoon = slots.filter(time => {
+    const hour = parseInt(time.split(':')[0]);
+    return hour >= 12 && hour < 18;
+  });
+  const evening = slots.filter(time => {
+    const hour = parseInt(time.split(':')[0]);
+    return hour >= 18 && hour < Math.min(20, parseInt(w.close));
+  });
+
+  return { morning, afternoon, evening };
 };
 
 const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [maxDate, setMaxDate] = useState<Date | null>(null);
+  const [dayWindow, setDayWindow] = useState<DayWindow>({ open: '09:00', close: '20:00', enabled: true });
+  const [bookedBlocks, setBookedBlocks] = useState<Array<{ time: string; duration: number }>>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/schedule-settings');
         const data = await res.json();
-        if (res.ok && data?.booking_limit_month) {
-          const [y, m] = String(data.booking_limit_month).split('-').map((v: string) => Number(v));
-          if (y && m) {
-            // last day of that month
-            const d = new Date(y, m, 0);
-            setMaxDate(d);
+        if (res.ok) {
+          if (data?.booking_limit_month) {
+            const [y, m] = String(data.booking_limit_month).split('-').map((v: string) => Number(v));
+            if (y && m) {
+              const d = new Date(y, m, 0);
+              setMaxDate(d);
+            }
+          }
+          // Definir janela por dia da semana, se existir
+          const weekday = selectedDate.getDay(); // 0..6
+          const h = (data?.business_hours || []).find((x: any) => Number(x.weekday) === Number(weekday));
+          if (h) {
+            setDayWindow({
+              enabled: !!h.enabled,
+              open: String(h.open_time || '09:00').slice(0,5),
+              close: String(h.close_time || '20:00').slice(0,5),
+            });
+          } else {
+            setDayWindow({ open: '09:00', close: '20:00', enabled: true });
           }
         }
       } catch {}
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate.toDateString()]);
 
-  const availableSlots = useMemo(() => generateTimeSlots(serviceDuration), [serviceDuration]);
+  // Carregar agendamentos do dia para bloquear sobreposições
+  useEffect(() => {
+    (async () => {
+      try {
+        const y = selectedDate.getFullYear();
+        const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const d = String(selectedDate.getDate()).padStart(2, '0');
+        const yyyyMMdd = `${y}-${m}-${d}`;
+        const qs = new URLSearchParams({ from: yyyyMMdd, to: yyyyMMdd });
+        const res = await fetch(`/api/bookings?${qs.toString()}`);
+        const data = await res.json();
+        if (res.ok) {
+          const rows = Array.isArray(data?.bookings) ? data.bookings : [];
+          setBookedBlocks(rows.map((b: any) => ({ time: String(b.time || '00:00:00'), duration: Number(b.total_duration_minutes || 0) })));
+        } else {
+          setBookedBlocks([]);
+        }
+      } catch {
+        setBookedBlocks([]);
+      }
+    })();
+  }, [selectedDate]);
+
+  const availableSlots = useMemo(() => buildAvailableTimeSlots(serviceDuration, dayWindow, bookedBlocks, selectedDate), [serviceDuration, dayWindow, bookedBlocks, selectedDate]);
   
   const handleNext = () => {
     if (selectedDate && selectedTime) {

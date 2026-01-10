@@ -383,6 +383,7 @@ const AppointmentsView: React.FC = () => {
         {cancellations.length === 0 ? (
           <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
         ) : (
+          <>
           <div className="relative">
             <ul className="mt-2 divide-y divide-gray-200">
               {cancellations.slice(0, Math.min(visibleClientCount, cancellations.length)).map(c => (
@@ -449,6 +450,18 @@ const AppointmentsView: React.FC = () => {
               </div>
             )}
           </div>
+          {/* Botão Fechar quando toda a lista estiver visível (cliente) */}
+          {cancellations.length > 3 && visibleClientCount >= cancellations.length && !clientCancHasMore && (
+            <div className="mt-2 flex justify-center">
+              <button
+                onClick={() => setVisibleClientCount(3)}
+                className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm"
+              >
+                Fechar
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 
@@ -463,6 +476,7 @@ const AppointmentsView: React.FC = () => {
         {adminCancellations.length === 0 ? (
           <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
         ) : (
+          <>
           <div className="relative">
             <ul className="mt-2 divide-y divide-gray-200">
               {adminCancellations.slice(0, Math.min(visibleAdminCount, adminCancellations.length)).map(c => (
@@ -527,6 +541,18 @@ const AppointmentsView: React.FC = () => {
               </div>
             )}
           </div>
+          {/* Botão Fechar quando toda a lista estiver visível (admin) */}
+          {adminCancellations.length > 3 && visibleAdminCount >= adminCancellations.length && !adminCancHasMore && (
+            <div className="mt-2 flex justify-center">
+              <button
+                onClick={() => setVisibleAdminCount(3)}
+                className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm"
+              >
+                Fechar
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 

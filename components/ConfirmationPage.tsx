@@ -18,6 +18,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
   const [email, setEmail] = useState(client.email || '');
   const [phone, setPhone] = useState(client.phone || '');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -30,6 +31,10 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         setFeedback('Informe um WhatsApp válido.');
         return;
       }
+      if (!password || password.length < 6) {
+        setFeedback('A senha deve ter no mínimo 6 caracteres.');
+        return;
+      }
 
       // Registrar conta pelo backend (sem confirmação)
       const res = await fetch('/api/client-auth', {
@@ -40,10 +45,19 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao registrar conta');
 
+      // Definir senha do cliente
+      const resPass = await fetch('/api/client-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_password', phone: digits, email: email || null, password }),
+      });
+      const dataPass = await resPass.json();
+      if (!resPass.ok || !dataPass.ok) throw new Error(dataPass?.error || 'Falha ao definir a senha');
+
       // Salvar sessão simples do cliente pelo telefone
       localStorage.setItem('client_phone', digits);
 
-      setFeedback('Conta criada! Você já pode acessar seu histórico com seu WhatsApp.');
+      setFeedback('Conta criada! Você já pode acessar seu histórico com seu WhatsApp e senha.');
     } catch (err: any) {
       setFeedback(err?.message || 'Não foi possível criar a conta.');
     } finally {
@@ -171,6 +185,18 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
                   placeholder="seuemail@exemplo.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  placeholder="Crie uma senha (mín. 6 caracteres)"
+                  minLength={6}
+                  required
                 />
               </div>
 

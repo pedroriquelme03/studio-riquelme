@@ -17,7 +17,7 @@ const ClientBookingsPage: React.FC = () => {
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; status: string; requested_date: string; requested_time: string; created_at?: string; responded_at?: string }>>>({});
+  const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; status: string; requested_date: string; requested_time: string; created_at?: string; responded_at?: string; response_note?: string }>>>({});
 
   useEffect(() => {
     (async () => {
@@ -144,7 +144,13 @@ const ClientBookingsPage: React.FC = () => {
                   )}
                   {current.status === 'approved' && (
                     <div className="text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
-                      Solicitação aprovada! Novo horário confirmado para {new Date(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)}.
+                      {(current.response_note || '').toLowerCase().includes('ajustado pelo profissional')
+                        ? (
+                          <>O profissional alterou seu horário para {new Date(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)}.</>
+                        ) : (
+                          <>Solicitação aprovada! Novo horário confirmado para {new Date(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)}.</>
+                        )
+                      }
                     </div>
                   )}
                   {current.status === 'denied' && (
@@ -161,6 +167,7 @@ const ClientBookingsPage: React.FC = () => {
                           {' — '}
                           {new Date(q.requested_date).toLocaleDateString('pt-BR')} {q.requested_time?.slice(0,5)}
                           {q.responded_at ? ` (respondido em ${new Date(q.responded_at).toLocaleString('pt-BR')})` : ''}
+                          {q.response_note ? ` — ${q.response_note}` : ''}
                         </li>
                       ))}
                     </ul>

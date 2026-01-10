@@ -461,6 +461,20 @@ export default async function handler(req: any, res: any) {
 				return res.status(500).json({ ok: false, error: updateErr.message });
 			}
 
+			// Registrar histórico de reagendamento quando feito diretamente pelo admin
+			try {
+				await supabase
+					.from('reschedule_requests')
+					.insert({
+						booking_id: bookingId,
+						requested_date: date,
+						requested_time: time,
+						status: 'approved',
+						response_note: 'Ajustado pelo profissional',
+						responded_at: new Date().toISOString(),
+					});
+			} catch {}
+
 			return res.status(200).json({ ok: true, message: 'Agendamento reagendado com sucesso' });
 		} catch (err: any) {
 			return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });

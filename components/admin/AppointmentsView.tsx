@@ -369,20 +369,20 @@ const AppointmentsView: React.FC = () => {
             </h3>
             <div className="space-y-2">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
-                <div key={b.booking_id} className="bg-white px-4 py-3 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-200">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="text-pink-600 font-bold text-lg tabular-nums">{b.time.slice(0,5)}</div>
+                <div key={b.booking_id} className="bg-white px-4 py-4 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full">
+                      <div className="text-pink-600 font-bold text-lg tabular-nums flex-shrink-0">{b.time.slice(0,5)}</div>
                       <div className="min-w-0">
-                        <div className="text-gray-900 font-semibold truncate">{b.client_name}</div>
-                        <div className="text-gray-600 text-sm truncate">{(b.services || []).map(s => s.name).join(', ')}</div>
+                        <div className="text-gray-900 font-semibold break-words">{b.client_name}</div>
+                        <div className="text-gray-600 text-sm break-words">{(b.services || []).map(s => s.name).join(', ')}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="w-full sm:w-auto mt-1 sm:mt-0 flex items-center gap-2 justify-end">
                       <div className="text-pink-600 font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>
                       <button
                         onClick={() => openEdit(b)}
-                        className="px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"
+                        className="px-3 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"
                         title="Alterar horário"
                       >
                         Alterar
@@ -390,7 +390,7 @@ const AppointmentsView: React.FC = () => {
                       <button
                         onClick={() => cancelBooking(b.booking_id)}
                         disabled={actionLoadingId === b.booking_id}
-                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
+                        className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
                         title="Cancelar"
                       >
                         {actionLoadingId === b.booking_id ? '...' : 'Cancelar'}

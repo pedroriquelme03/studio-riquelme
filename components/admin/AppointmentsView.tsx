@@ -64,6 +64,8 @@ const AppointmentsView: React.FC = () => {
   const [adminCancCursor, setAdminCancCursor] = useState<string | null>(null);
   const [adminCancHasMore, setAdminCancHasMore] = useState<boolean>(true);
   const [adminCancLoadingMore, setAdminCancLoadingMore] = useState<boolean>(false);
+  const [visibleClientCount, setVisibleClientCount] = useState<number>(3);
+  const [visibleAdminCount, setVisibleAdminCount] = useState<number>(3);
 
   useEffect(() => {
     (async () => {
@@ -381,59 +383,71 @@ const AppointmentsView: React.FC = () => {
         {cancellations.length === 0 ? (
           <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
         ) : (
-          <ul className="mt-2 divide-y divide-gray-200">
-            {cancellations.map(c => (
-              <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{c.client_name || 'Cliente'}</div>
-                  <div className="text-gray-600">{c.client_phone || '-'}</div>
+          <div className="relative">
+            <ul className="mt-2 divide-y divide-gray-200">
+              {cancellations.slice(0, Math.min(visibleClientCount, cancellations.length)).map(c => (
+                <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{c.client_name || 'Cliente'}</div>
+                    <div className="text-gray-600">{c.client_phone || '-'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
+                    <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {(cancellations.length > visibleClientCount || clientCancHasMore) && (
+              <div className="absolute inset-x-0 bottom-0 pb-2 pt-8 pointer-events-none">
+                <div className="absolute inset-x-0 bottom-10 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                <div className="relative flex justify-center pointer-events-auto">
+                  <button
+                    disabled={clientCancLoadingMore}
+                    onClick={async () => {
+                      // primeiro revela mais 3 itens já carregados
+                      if (visibleClientCount < cancellations.length) {
+                        setVisibleClientCount(Math.min(visibleClientCount + 3, cancellations.length));
+                        return;
+                      }
+                      // se já mostramos todos os carregados, e ainda há mais no servidor, buscar mais
+                      if (!clientCancHasMore) return;
+                      try {
+                        setClientCancLoadingMore(true);
+                        const qs = new URLSearchParams();
+                        if (professionalId) qs.set('professional_id', professionalId);
+                        qs.set('cancelled_by', 'client');
+                        qs.set('limit', String(CANC_LIMIT));
+                        if (clientCancCursor) qs.set('to', clientCancCursor);
+                        const res = await fetch(`/api/cancellations?${qs.toString()}`);
+                        const j = await res.json();
+                        if (res.ok && Array.isArray(j?.cancellations)) {
+                          const rows = (j.cancellations as any[]).map((r) => ({
+                            id: r.id,
+                            at: r.created_at,
+                            booking_date: r.bookings?.date,
+                            booking_time: r.bookings?.time,
+                            client_name: r.bookings?.clients?.name,
+                            client_phone: r.bookings?.clients?.phone,
+                          }));
+                          setCancellations(prev => [...prev, ...rows]);
+                          setClientCancCursor(rows.length ? rows[rows.length - 1].at : clientCancCursor);
+                          setClientCancHasMore(rows.length === CANC_LIMIT);
+                          setVisibleClientCount(prev => prev + 3);
+                        } else {
+                          setClientCancHasMore(false);
+                        }
+                      } finally {
+                        setClientCancLoadingMore(false);
+                      }
+                    }}
+                    className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm disabled:opacity-50"
+                  >
+                    {clientCancLoadingMore ? 'Carregando...' : 'Ver mais'}
+                  </button>
                 </div>
-                <div className="text-right">
-                  <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
-                  <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        {clientCancHasMore && (
-          <div className="mt-3">
-            <button
-              disabled={clientCancLoadingMore}
-              onClick={async () => {
-                if (!clientCancHasMore) return;
-                try {
-                  setClientCancLoadingMore(true);
-                  const qs = new URLSearchParams();
-                  if (professionalId) qs.set('professional_id', professionalId);
-                  qs.set('cancelled_by', 'client');
-                  qs.set('limit', String(CANC_LIMIT));
-                  if (clientCancCursor) qs.set('to', clientCancCursor);
-                  const res = await fetch(`/api/cancellations?${qs.toString()}`);
-                  const j = await res.json();
-                  if (res.ok && Array.isArray(j?.cancellations)) {
-                    const rows = (j.cancellations as any[]).map((r) => ({
-                      id: r.id,
-                      at: r.created_at,
-                      booking_date: r.bookings?.date,
-                      booking_time: r.bookings?.time,
-                      client_name: r.bookings?.clients?.name,
-                      client_phone: r.bookings?.clients?.phone,
-                    }));
-                    setCancellations(prev => [...prev, ...rows]);
-                    setClientCancCursor(rows.length ? rows[rows.length - 1].at : clientCancCursor);
-                    setClientCancHasMore(rows.length === CANC_LIMIT);
-                  } else {
-                    setClientCancHasMore(false);
-                  }
-                } finally {
-                  setClientCancLoadingMore(false);
-                }
-              }}
-              className="mt-2 text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900 disabled:opacity-50"
-            >
-              {clientCancLoadingMore ? 'Carregando...' : 'Ver mais'}
-            </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -449,59 +463,69 @@ const AppointmentsView: React.FC = () => {
         {adminCancellations.length === 0 ? (
           <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
         ) : (
-          <ul className="mt-2 divide-y divide-gray-200">
-            {adminCancellations.map(c => (
-              <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{c.client_name || 'Cliente'}</div>
-                  <div className="text-gray-600">{c.client_phone || '-'}</div>
+          <div className="relative">
+            <ul className="mt-2 divide-y divide-gray-200">
+              {adminCancellations.slice(0, Math.min(visibleAdminCount, adminCancellations.length)).map(c => (
+                <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{c.client_name || 'Cliente'}</div>
+                    <div className="text-gray-600">{c.client_phone || '-'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
+                    <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {(adminCancellations.length > visibleAdminCount || adminCancHasMore) && (
+              <div className="absolute inset-x-0 bottom-0 pb-2 pt-8 pointer-events-none">
+                <div className="absolute inset-x-0 bottom-10 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                <div className="relative flex justify-center pointer-events-auto">
+                  <button
+                    disabled={adminCancLoadingMore}
+                    onClick={async () => {
+                      if (visibleAdminCount < adminCancellations.length) {
+                        setVisibleAdminCount(Math.min(visibleAdminCount + 3, adminCancellations.length));
+                        return;
+                      }
+                      if (!adminCancHasMore) return;
+                      try {
+                        setAdminCancLoadingMore(true);
+                        const qs = new URLSearchParams();
+                        if (professionalId) qs.set('professional_id', professionalId);
+                        qs.set('cancelled_by', 'admin');
+                        qs.set('limit', String(CANC_LIMIT));
+                        if (adminCancCursor) qs.set('to', adminCancCursor);
+                        const res = await fetch(`/api/cancellations?${qs.toString()}`);
+                        const j = await res.json();
+                        if (res.ok && Array.isArray(j?.cancellations)) {
+                          const rows = (j.cancellations as any[]).map((r) => ({
+                            id: r.id,
+                            at: r.created_at,
+                            booking_date: r.bookings?.date,
+                            booking_time: r.bookings?.time,
+                            client_name: r.bookings?.clients?.name,
+                            client_phone: r.bookings?.clients?.phone,
+                          }));
+                          setAdminCancellations(prev => [...prev, ...rows]);
+                          setAdminCancCursor(rows.length ? rows[rows.length - 1].at : adminCancCursor);
+                          setAdminCancHasMore(rows.length === CANC_LIMIT);
+                          setVisibleAdminCount(prev => prev + 3);
+                        } else {
+                          setAdminCancHasMore(false);
+                        }
+                      } finally {
+                        setAdminCancLoadingMore(false);
+                      }
+                    }}
+                    className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm disabled:opacity-50"
+                  >
+                    {adminCancLoadingMore ? 'Carregando...' : 'Ver mais'}
+                  </button>
                 </div>
-                <div className="text-right">
-                  <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
-                  <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        {adminCancHasMore && (
-          <div className="mt-3">
-            <button
-              disabled={adminCancLoadingMore}
-              onClick={async () => {
-                if (!adminCancHasMore) return;
-                try {
-                  setAdminCancLoadingMore(true);
-                  const qs = new URLSearchParams();
-                  if (professionalId) qs.set('professional_id', professionalId);
-                  qs.set('cancelled_by', 'admin');
-                  qs.set('limit', String(CANC_LIMIT));
-                  if (adminCancCursor) qs.set('to', adminCancCursor);
-                  const res = await fetch(`/api/cancellations?${qs.toString()}`);
-                  const j = await res.json();
-                  if (res.ok && Array.isArray(j?.cancellations)) {
-                    const rows = (j.cancellations as any[]).map((r) => ({
-                      id: r.id,
-                      at: r.created_at,
-                      booking_date: r.bookings?.date,
-                      booking_time: r.bookings?.time,
-                      client_name: r.bookings?.clients?.name,
-                      client_phone: r.bookings?.clients?.phone,
-                    }));
-                    setAdminCancellations(prev => [...prev, ...rows]);
-                    setAdminCancCursor(rows.length ? rows[rows.length - 1].at : adminCancCursor);
-                    setAdminCancHasMore(rows.length === CANC_LIMIT);
-                  } else {
-                    setAdminCancHasMore(false);
-                  }
-                } finally {
-                  setAdminCancLoadingMore(false);
-                }
-              }}
-              className="mt-2 text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900 disabled:opacity-50"
-            >
-              {adminCancLoadingMore ? 'Carregando...' : 'Ver mais'}
-            </button>
+              </div>
+            )}
           </div>
         )}
       </div>

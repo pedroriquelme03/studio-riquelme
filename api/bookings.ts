@@ -401,65 +401,7 @@ export default async function handler(req: any, res: any) {
 				console.warn('Erro ao atualizar status (coluna pode não existir):', updateErr.message);
 			}
 
-			// Se o status for 'completed', enviar mensagens via WhatsApp
-			if (status === 'completed') {
-				try {
-					const { sendWhatsAppMessage, formatCompletionMessage, formatProfessionalMessage } = await import('./whatsapp');
-
-					const client = bookingData.clients as any;
-					const professional = bookingData.professionals as any;
-					const services = ((bookingData.booking_services || []) as any[]).map((bs: any) => ({
-						name: bs?.services?.name || '',
-						price: Number(bs?.services?.price || 0) * Number(bs?.quantity || 1),
-					}));
-
-					const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
-
-					// Enviar mensagem para o cliente
-					if (client?.phone) {
-						const clientMessage = formatCompletionMessage(
-							client.name || 'Cliente',
-							professional?.name || 'Profissional',
-							bookingData.date,
-							bookingData.time?.slice(0, 5) || '',
-							services,
-							totalPrice
-						);
-
-						const clientResult = await sendWhatsAppMessage({
-							to: client.phone,
-							message: clientMessage,
-						});
-
-						if (!clientResult.success) {
-							console.error('Erro ao enviar WhatsApp para cliente:', clientResult.error);
-						}
-					}
-
-					// Enviar mensagem para o profissional
-					if (professional?.phone) {
-						const professionalMessage = formatProfessionalMessage(
-							client?.name || 'Cliente',
-							bookingData.date,
-							bookingData.time?.slice(0, 5) || '',
-							services,
-							totalPrice
-						);
-
-						const profResult = await sendWhatsAppMessage({
-							to: professional.phone,
-							message: professionalMessage,
-						});
-
-						if (!profResult.success) {
-							console.error('Erro ao enviar WhatsApp para profissional:', profResult.error);
-						}
-					}
-				} catch (whatsappErr: any) {
-					// Não falhar a requisição se o WhatsApp falhar, apenas logar
-					console.error('Erro ao enviar mensagens WhatsApp:', whatsappErr?.message);
-				}
-			}
+			// Removido: envio de mensagens WhatsApp ao marcar como concluído
 
 			return res.status(200).json({ ok: true, message: 'Status atualizado com sucesso' });
 		} catch (err: any) {

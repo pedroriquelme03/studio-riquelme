@@ -17,6 +17,7 @@ const ClientBookingsPage: React.FC = () => {
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [requests, setRequests] = useState<Record<string, { status: string; requested_date: string; requested_time: string }>>({});
 
   useEffect(() => {
     (async () => {
@@ -28,7 +29,23 @@ const ClientBookingsPage: React.FC = () => {
         const res = await fetch(`/api/bookings?${qs.toString()}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
-        setRows((data.bookings || []) as Row[]);
+        const list = (data.bookings || []) as Row[];
+        setRows(list);
+        // Buscar status de solicitações de troca para estes agendamentos
+        const ids = list.map(r => r.booking_id).join(',');
+        if (ids) {
+          try {
+            const rRes = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`);
+            const rData = await rRes.json();
+            if (rRes.ok && Array.isArray(rData?.requests)) {
+              const map: Record<string, any> = {};
+              for (const req of rData.requests) {
+                map[req.booking_id] = { status: req.status, requested_date: req.requested_date, requested_time: req.requested_time };
+              }
+              setRequests(map);
+            }
+          } catch {}
+        }
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar agendamentos');
       } finally {
@@ -79,7 +96,7 @@ const ClientBookingsPage: React.FC = () => {
                   setNewTime((r.time || '').slice(0,5));
                 }}
               >
-                Trocar horário
+                Solicitar troca
               </button>
               <button
                 className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
@@ -150,21 +167,21 @@ const ClientBookingsPage: React.FC = () => {
                   className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700"
                   onClick={async () => {
                     try {
-                      const res = await fetch('/api/bookings', {
-                        method: 'PATCH',
+                      const res = await fetch('/api/reschedule-requests', {
+                        method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'reschedule', booking_id: rescheduleId, date: newDate, time: newTime }),
+                        body: JSON.stringify({ booking_id: rescheduleId, date: newDate, time: newTime }),
                       });
                       const data = await res.json();
-                      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao reagendar');
-                      setRows(prev => prev.map(row => row.booking_id === rescheduleId ? { ...row, date: newDate, time: `${newTime}:00` } : row));
+                      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao solicitar troca');
+                      setRequests(prev => ({ ...prev, [rescheduleId!]: { status: 'pending', requested_date: newDate, requested_time: `${newTime}:00` } }));
                       setRescheduleId(null);
                     } catch (e: any) {
-                      alert(e?.message || 'Erro ao reagendar');
+                      alert(e?.message || 'Erro ao solicitar troca');
                     }
                   }}
                 >
-                  Salvar
+                  Enviar solicitação
                 </button>
               </div>
             </div>

@@ -38,7 +38,7 @@ const AppointmentsView: React.FC = () => {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [requests, setRequests] = useState<Record<string, { id: string; requested_date: string; requested_time: string }>>({});
 
   useEffect(() => {
     (async () => {
@@ -74,7 +74,27 @@ const AppointmentsView: React.FC = () => {
       const res = await fetch(url);
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
-      setBookings(data.bookings || []);
+      const list = (data.bookings || []) as BookingRow[];
+      setBookings(list);
+      // Carregar solicitações pendentes para estes bookings
+      const ids = list.map(r => r.booking_id).join(',');
+      if (ids) {
+        try {
+          const rres = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}&state=pending`);
+          const rdata = await rres.json();
+          if (rres.ok && Array.isArray(rdata?.requests)) {
+            const map: Record<string, any> = {};
+            for (const req of rdata.requests) {
+              map[req.booking_id] = { id: req.id, requested_date: req.requested_date, requested_time: req.requested_time };
+            }
+            setRequests(map);
+          } else {
+            setRequests({});
+          }
+        } catch { setRequests({}); }
+      } else {
+        setRequests({});
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -88,33 +108,37 @@ const AppointmentsView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
 
-  const markAsCompleted = async (bookingId: string) => {
-    if (!confirm('Deseja marcar este atendimento como concluído? Isso enviará mensagens de confirmação via WhatsApp para o cliente e o profissional.')) {
-      return;
-    }
-
-    setCompletingId(bookingId);
+  const approve = async (bookingId: string) => {
+    const req = requests[bookingId];
+    if (!req) return;
     try {
-      const res = await fetch('/api/bookings', {
+      const res = await fetch('/api/reschedule-requests', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          booking_id: bookingId,
-          status: 'completed',
-        }),
+        body: JSON.stringify({ id: req.id, action: 'approve' }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Erro ao marcar como concluído');
-      }
-
-      alert('Atendimento marcado como concluído! As mensagens foram enviadas via WhatsApp.');
-      load(); // Recarregar lista
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao aprovar solicitação');
+      await load();
     } catch (e: any) {
-      alert(e?.message || 'Erro ao marcar atendimento como concluído');
-    } finally {
-      setCompletingId(null);
+      alert(e?.message || 'Erro ao aprovar solicitação');
+    }
+  };
+
+  const deny = async (bookingId: string) => {
+    const req = requests[bookingId];
+    if (!req) return;
+    try {
+      const res = await fetch('/api/reschedule-requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: req.id, action: 'deny' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao negar solicitação');
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao negar solicitação');
     }
   };
 
@@ -254,23 +278,23 @@ const AppointmentsView: React.FC = () => {
                     </ul>
                   </div>
                   <div className="border-t border-gray-300 my-3 pt-3">
-                    <button
-                      onClick={() => markAsCompleted(b.booking_id)}
-                      disabled={completingId === b.booking_id}
-                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded transition-colors flex items-center justify-center gap-2"
-                    >
-                      {completingId === b.booking_id ? (
-                        <>
-                          <span className="animate-spin">⏳</span>
-                          <span>Processando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>✅</span>
-                          <span>Marcar como Concluído</span>
-                        </>
-                      )}
-                    </button>
+                    {requests[b.booking_id] ? (
+                      <div className="space-y-2">
+                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                          Solicitação de troca: {new Date(requests[b.booking_id].requested_date).toLocaleDateString('pt-BR')} às {requests[b.booking_id].requested_time.slice(0,5)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button onClick={() => approve(b.booking_id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded">
+                            Aprovar
+                          </button>
+                          <button onClick={() => deny(b.booking_id)} className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-2 rounded">
+                            Negar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">Sem solicitações pendentes</div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -12,17 +12,19 @@ const Header: React.FC = () => {
     <header className="bg-white/90 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-300 shadow-sm">
       <div className="container mx-auto flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
-          <img 
-            src={iconPath} 
-            alt="Studio Riquelme" 
-            className="h-8 w-8 md:h-10 md:w-10 object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-            }}
-          />
-          <h1 className="text-lg md:text-xl font-bold tracking-wider text-gray-900">
-            Agendamento Online <br className="hidden md:block" />
+          <Link to="/" title="Início" className="inline-block">
+            <img 
+              src={iconPath} 
+              alt="Studio Riquelme" 
+              className="h-8 w-8 md:h-10 md:w-10 object-contain cursor-pointer"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </Link>
+          <h1 className="text-base md:text-lg font-bold tracking-wider text-gray-900 leading-tight">
+            Agendamento Online <br />
             Studio Riquelme
           </h1>
         </div>

@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { Client } from 'pg';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -13,9 +14,73 @@ function getSupabaseServer() {
 	return createSupabaseClient(supabaseUrl, supabaseKey);
 }
 
+async function getPgClient() {
+	const rawUrl =
+		process.env.SUPABASE_DB_URL ||
+		process.env.DATABASE_URL ||
+		process.env.POSTGRES_URL ||
+		'';
+	if (!rawUrl) return null; // sem conexão direta, seguimos só com supabase-js
+
+	// Forçar sslmode=no-verify para evitar problemas de cadeia
+	let databaseUrl = rawUrl;
+	if (databaseUrl.includes('sslmode=')) {
+		databaseUrl = databaseUrl.replace(/([?&])sslmode=[^&]*/i, '$1sslmode=no-verify');
+	} else {
+		databaseUrl += (databaseUrl.includes('?') ? '&' : '?') + 'sslmode=no-verify';
+	}
+
+	const client = new Client({
+		connectionString: databaseUrl,
+		ssl: { rejectUnauthorized: false } as any,
+	});
+	await client.connect();
+	return client;
+}
+
+async function ensureSchemaIfMissing() {
+	try {
+		const cli = await getPgClient();
+		if (!cli) return; // sem PG URL, não há como criar automaticamente
+		try {
+			await cli.query(`
+				create table if not exists public.reschedule_requests (
+					id uuid primary key default gen_random_uuid(),
+					booking_id uuid not null references public.bookings(id) on delete cascade,
+					requested_date date not null,
+					requested_time time not null,
+					status text not null default 'pending' check (status in ('pending','approved','denied')),
+					note text,
+					response_note text,
+					created_at timestamptz default now(),
+					responded_at timestamptz
+				);
+				create index if not exists idx_reschedule_requests_booking on public.reschedule_requests(booking_id);
+				create index if not exists idx_reschedule_requests_status on public.reschedule_requests(status);
+			`);
+		} finally {
+			await cli.end();
+		}
+	} catch {
+		// Silencioso: se falhar a criação automática, o próximo passo retornará erro claro
+	}
+}
+
+async function refreshSchemaCacheIfNeeded(supabase: ReturnType<typeof getSupabaseServer>) {
+	// Tentativa de sondar a tabela; se falhar por inexistência, tentar criar via PG e seguir
+	const probe = await supabase
+		.from('reschedule_requests')
+		.select('id')
+		.limit(1);
+	if (probe.error && /relation|schema cache|not found/i.test(probe.error.message || '')) {
+		await ensureSchemaIfMissing();
+	}
+}
+
 export default async function handler(req: any, res: any) {
 	try {
 		const supabase = getSupabaseServer();
+		await refreshSchemaCacheIfNeeded(supabase);
 
 		if (req.method === 'GET') {
 			const url = new URL(req?.url || '/', 'http://localhost');

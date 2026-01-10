@@ -281,6 +281,15 @@ const ClientBookingsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <div className="mt-8 text-center">
+        <a
+          href="/"
+          className="inline-flex items-center justify-center bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
+        >
+          Fazer novo agendamento
+        </a>
+      </div>
     </div>
   );
 };

@@ -367,53 +367,61 @@ const AppointmentsView: React.FC = () => {
             <h3 className="text-pink-600 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
               {dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
-                <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-300">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
-                      <p className="text-sm text-gray-600">{b.client_phone}</p>
+                <div key={b.booking_id} className="bg-white px-4 py-3 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-200">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="text-pink-600 font-bold text-lg tabular-nums">{b.time.slice(0,5)}</div>
+                      <div className="min-w-0">
+                        <div className="text-gray-900 font-semibold truncate">{b.client_name}</div>
+                        <div className="text-gray-600 text-sm truncate">{(b.services || []).map(s => s.name).join(', ')}</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-pink-600 text-lg">R${Number(b.total_price).toFixed(2)}</p>
-                      <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-pink-600 font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>
+                      <button
+                        onClick={() => openEdit(b)}
+                        className="px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"
+                        title="Alterar horário"
+                      >
+                        Alterar
+                      </button>
+                      <button
+                        onClick={() => cancelBooking(b.booking_id)}
+                        disabled={actionLoadingId === b.booking_id}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
+                        title="Cancelar"
+                      >
+                        {actionLoadingId === b.booking_id ? '...' : 'Cancelar'}
+                      </button>
                     </div>
                   </div>
-                  <div className="border-t border-gray-300 my-3"></div>
-                  <div>
-                    <h5 className="font-semibold mb-2 text-gray-200">Serviços:</h5>
-                    <ul className="list-disc list-inside text-gray-700 space-y-1">
-                      {(b.services || []).map(s => (
-                        <li key={s.id}>{s.name}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="border-t border-gray-300 my-3 pt-3">
+                  <div className="mt-2">
                     {Boolean((requestsMap[b.booking_id] || []).find(x => x.status === 'pending')) ? (
-                      <div className="space-y-2">
+                      <div className="flex items-center justify-between">
                         {(() => {
                           const req = (requestsMap[b.booking_id] || []).find(x => x.status === 'pending')!;
                           return (
-                            <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
                               Solicitação de troca: {new Date(req.requested_date).toLocaleDateString('pt-BR')} às {req.requested_time.slice(0,5)}
                             </div>
                           );
                         })()}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => approve(b.booking_id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => approve(b.booking_id)} className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded">
                             Aprovar
                           </button>
-                          <button onClick={() => deny(b.booking_id)} className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-2 rounded">
+                          <button onClick={() => deny(b.booking_id)} className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">
                             Negar
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-500">Sem solicitações pendentes</div>
+                      <div className="text-xs text-gray-500">Sem solicitações pendentes</div>
                     )}
-                    <details className="mt-2 text-gray-700">
-                      <summary className="cursor-pointer select-none text-sm">Histórico de solicitações</summary>
+                    <details className="mt-1 text-gray-700">
+                      <summary className="cursor-pointer select-none text-xs">Histórico de solicitações</summary>
                       <ul className="mt-1 space-y-1">
                         {(requestsMap[b.booking_id] || []).map((q, idx) => (
                           <li key={q.id || idx} className="text-xs">
@@ -426,21 +434,6 @@ const AppointmentsView: React.FC = () => {
                         ))}
                       </ul>
                     </details>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => openEdit(b)}
-                        className="bg-gray-900 hover:bg-black text-white font-semibold px-3 py-2 rounded"
-                      >
-                        Alterar horário
-                      </button>
-                      <button
-                        onClick={() => cancelBooking(b.booking_id)}
-                        disabled={actionLoadingId === b.booking_id}
-                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded"
-                      >
-                        {actionLoadingId === b.booking_id ? 'Cancelando...' : 'Cancelar'}
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}

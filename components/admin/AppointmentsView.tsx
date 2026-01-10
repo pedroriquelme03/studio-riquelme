@@ -370,32 +370,35 @@ const AppointmentsView: React.FC = () => {
             <div className="space-y-2">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
                 <div key={b.booking_id} className="bg-white px-4 py-4 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full">
+                  {/* Linha 1: hora + cliente/serviços à esquerda, preço à direita */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
                       <div className="text-pink-600 font-bold text-lg tabular-nums flex-shrink-0">{b.time.slice(0,5)}</div>
                       <div className="min-w-0">
                         <div className="text-gray-900 font-semibold break-words">{b.client_name}</div>
                         <div className="text-gray-600 text-sm break-words">{(b.services || []).map(s => s.name).join(', ')}</div>
                       </div>
                     </div>
-                    <div className="w-full sm:w-auto mt-1 sm:mt-0 flex items-center gap-2 justify-end">
-                      <div className="text-pink-600 font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>
-                      <button
-                        onClick={() => openEdit(b)}
-                        className="px-3 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"
-                        title="Alterar horário"
-                      >
-                        Alterar
-                      </button>
-                      <button
-                        onClick={() => cancelBooking(b.booking_id)}
-                        disabled={actionLoadingId === b.booking_id}
-                        className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
-                        title="Cancelar"
-                      >
-                        {actionLoadingId === b.booking_id ? '...' : 'Cancelar'}
-                      </button>
-                    </div>
+                    <div className="text-pink-600 font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>
+                  </div>
+
+                  {/* Linha 2: botões alinhados à esquerda */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(b)}
+                      className="px-3 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"
+                      title="Alterar horário"
+                    >
+                      Alterar
+                    </button>
+                    <button
+                      onClick={() => cancelBooking(b.booking_id)}
+                      disabled={actionLoadingId === b.booking_id}
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
+                      title="Cancelar"
+                    >
+                      {actionLoadingId === b.booking_id ? '...' : 'Cancelar'}
+                    </button>
                   </div>
                   <div className="mt-2">
                     {Boolean((requestsMap[b.booking_id] || []).find(x => x.status === 'pending')) ? (

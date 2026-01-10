@@ -114,7 +114,7 @@ const ClientBookingsPage: React.FC = () => {
                     const res = await fetch('/api/bookings', {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled' }),
+                      body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled', cancelled_by: 'client' }),
                     });
                     const data = await res.json();
                     if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');

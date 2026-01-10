@@ -39,6 +39,14 @@ const AppointmentsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; requested_date: string; requested_time: string; status: string; created_at?: string }>>>({});
+  const [cancellations, setCancellations] = useState<Array<{
+    id: string;
+    at: string;
+    booking_date: string;
+    booking_time: string;
+    client_name?: string;
+    client_phone?: string;
+  }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -97,6 +105,29 @@ const AppointmentsView: React.FC = () => {
       } else {
         setRequestsMap({});
       }
+
+      // Carregar cancelamentos de clientes (últimos 50, opcionalmente filtrados por profissional)
+      try {
+        const qs2 = new URLSearchParams();
+        if (professionalId) qs2.set('professional_id', professionalId);
+        qs2.set('cancelled_by', 'client');
+        qs2.set('limit', '50');
+        const cRes = await fetch(`/api/cancellations?${qs2.toString()}`);
+        const cData = await cRes.json();
+        if (cRes.ok && Array.isArray(cData?.cancellations)) {
+          const rows = (cData.cancellations as any[]).map((r) => ({
+            id: r.id,
+            at: r.created_at,
+            booking_date: r.bookings?.date,
+            booking_time: r.bookings?.time,
+            client_name: r.bookings?.clients?.name,
+            client_phone: r.bookings?.clients?.phone,
+          }));
+          setCancellations(rows);
+        } else {
+          setCancellations([]);
+        }
+      } catch { setCancellations([]); }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -183,7 +214,7 @@ const AppointmentsView: React.FC = () => {
       const res = await fetch('/api/bookings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ booking_id: id, status: 'cancelled' }),
+        body: JSON.stringify({ booking_id: id, status: 'cancelled', cancelled_by: 'admin' }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
@@ -290,6 +321,34 @@ const AppointmentsView: React.FC = () => {
       </div>
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
+
+      {/* Cancelamentos feitos pelos clientes */}
+      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Cancelamentos dos clientes</h3>
+          <button onClick={load} className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900">
+            Atualizar
+          </button>
+        </div>
+        {cancellations.length === 0 ? (
+          <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
+        ) : (
+          <ul className="mt-2 divide-y divide-gray-200">
+            {cancellations.map(c => (
+              <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{c.client_name || 'Cliente'}</div>
+                  <div className="text-gray-600">{c.client_phone || '-'}</div>
+                </div>
+                <div className="text-right">
+                  <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
+                  <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {loading && <div className="text-gray-700">Carregando...</div>}
 

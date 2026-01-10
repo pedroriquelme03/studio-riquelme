@@ -401,6 +401,19 @@ export default async function handler(req: any, res: any) {
 				console.warn('Erro ao atualizar status (coluna pode não existir):', updateErr.message);
 			}
 
+			// Registrar cancelamento em booking_cancellations (histórico)
+			if (status === 'cancelled') {
+				try {
+					const cancelledBy = (body as any)?.cancelled_by || 'client';
+					await supabase
+						.from('booking_cancellations')
+						.insert({
+							booking_id: bookingId,
+							cancelled_by: cancelledBy,
+						});
+				} catch {}
+			}
+
 			// Removido: envio de mensagens WhatsApp ao marcar como concluído
 
 			return res.status(200).json({ ok: true, message: 'Status atualizado com sucesso' });

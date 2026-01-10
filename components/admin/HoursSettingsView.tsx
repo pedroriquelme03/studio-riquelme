@@ -29,6 +29,7 @@ const HoursSettingsView: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [limitMonth, setLimitMonth] = useState<string>('');
 
   // Form de slot manual
   const [slotDate, setSlotDate] = useState<string>('');
@@ -51,6 +52,7 @@ const HoursSettingsView: React.FC = () => {
           open_time: normalizeTime(h.open_time),
           close_time: normalizeTime(h.close_time),
         }));
+        setLimitMonth((data.booking_limit_month || '') as string);
         // Garantir 7 dias
         const map = new Map<number, BusinessHour>();
         incoming.forEach(h => map.set(h.weekday, h));
@@ -80,6 +82,7 @@ const HoursSettingsView: React.FC = () => {
           open_time: h.open_time,
           close_time: h.close_time,
         })),
+        booking_limit_month: limitMonth || undefined,
       };
       const res = await fetch('/api/schedule-settings', {
         method: 'PUT',
@@ -194,6 +197,37 @@ const HoursSettingsView: React.FC = () => {
             {saving ? 'Salvando...' : 'Salvar horários'}
           </button>
         </div>
+      </div>
+
+      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-3">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Limite de mês para agendamentos</h3>
+        <div className="flex items-end gap-3">
+          <label className="block">
+            <span className="block text-sm text-gray-700 mb-1">Mês limite</span>
+            <input
+              type="month"
+              value={limitMonth}
+              onChange={(e) => setLimitMonth(e.target.value)}
+              className="bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+            />
+          </label>
+          <button
+            onClick={saveHours}
+            className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded"
+            disabled={saving}
+          >
+            {saving ? 'Salvando...' : 'Aplicar'}
+          </button>
+          {limitMonth && (
+            <button
+              onClick={() => setLimitMonth('')}
+              className="px-4 py-2 bg-gray-200 text-gray-900 rounded"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-600 mt-2">O calendário do cliente não permitirá agendamentos após o mês selecionado.</p>
       </div>
 
       <div className="mt-8">

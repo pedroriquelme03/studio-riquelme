@@ -1,6 +1,6 @@
 // API para configurar horários usando Supabase (service role)
-// - GET: lista business_hours e manual_slots
-// - PUT: upsert de business_hours (7 dias)
+// - GET: lista business_hours, manual_slots e booking_limit_month
+// - PUT: upsert de business_hours (7 dias) e booking_limit_month (opcional, 'YYYY-MM')
 // - POST: insert de manual_slots
 // - DELETE: delete de manual_slots por id
 
@@ -33,15 +33,30 @@ export default async function handler(req: any, res: any) {
 					.select('id, date, time, professional_id, note, available, created_at')
 					.order('date', { ascending: true })
 					.order('time', { ascending: true });
+				const { data: setting, error: setErr } = await supabase
+					.from('system_settings')
+					.select('key, value')
+					.eq('key', 'booking_limit_month')
+					.single();
 				if (hErr) return res.status(500).json({ ok: false, error: hErr.message });
 				if (sErr) return res.status(500).json({ ok: false, error: sErr.message });
-				return res.status(200).json({ ok: true, business_hours: hours || [], manual_slots: slots || [] });
+				if (setErr && setErr.code !== 'PGRST116') {
+					// ignore missing row error
+					console.warn('settings read error', setErr.message);
+				}
+				return res.status(200).json({
+					ok: true,
+					business_hours: hours || [],
+					manual_slots: slots || [],
+					booking_limit_month: setting?.value || null
+				});
 			}
 
 			if (req.method === 'PUT') {
 				const raw = req.body ?? {};
 				const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 				const hours = Array.isArray(body?.business_hours) ? body.business_hours : [];
+				const limitMonth = (body?.booking_limit_month || '').toString(); // 'YYYY-MM' ou ''
 				if (hours.length !== 7) {
 					return res.status(400).json({ ok: false, error: 'business_hours deve conter 7 itens (0=domingo ... 6=sábado)' });
 				}
@@ -60,6 +75,18 @@ export default async function handler(req: any, res: any) {
 					.from('business_hours')
 					.upsert(payload, { onConflict: 'weekday' });
 				if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+
+				// Salvar mês limite opcionalmente
+				if (limitMonth) {
+					// validar formato YYYY-MM simples
+					const okFmt = /^\d{4}-\d{2}$/.test(limitMonth);
+					if (!okFmt) return res.status(400).json({ ok: false, error: 'booking_limit_month deve ser no formato YYYY-MM' });
+					const { error: setErr } = await supabase
+						.from('system_settings')
+						.upsert({ key: 'booking_limit_month', value: limitMonth }, { onConflict: 'key' });
+					if (setErr) return res.status(500).json({ ok: false, error: setErr.message });
+				}
+
 				return res.status(200).json({ ok: true });
 			}
 

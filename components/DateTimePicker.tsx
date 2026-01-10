@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 interface DateTimePickerProps {
@@ -7,7 +7,7 @@ interface DateTimePickerProps {
   serviceDuration: number;
 }
 
-const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => void }> = ({ selectedDate, onDateSelect }) => {
+const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => void; maxDate?: Date | null }> = ({ selectedDate, onDateSelect, maxDate }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -28,9 +28,14 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
 
   const changeMonth = (amount: number) => {
     setCurrentMonth(prev => {
-        const newDate = new Date(prev);
-        newDate.setMonth(newDate.getMonth() + amount);
-        return newDate;
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() + amount);
+      // clamp to maxDate month if needed
+      if (maxDate) {
+        const limit = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+        if (newDate > limit) return limit;
+      }
+      return newDate;
     });
   };
 
@@ -39,7 +44,13 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
       <div className="flex justify-between items-center mb-4">
         <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 text-gray-700"><ChevronLeftIcon className="w-5 h-5" /></button>
         <h3 className="font-bold text-lg text-gray-900">{currentMonth.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
-        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 text-gray-700"><ChevronRightIcon className="w-5 h-5" /></button>
+        <button
+          onClick={() => changeMonth(1)}
+          disabled={!!maxDate && new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1) > new Date(maxDate.getFullYear(), maxDate.getMonth(), 1)}
+          className="p-2 rounded-full hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronRightIcon className="w-5 h-5" />
+        </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-600 mb-2 font-semibold">
         {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => <div key={d}>{d}</div>)}
@@ -48,10 +59,14 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
         {days.map((d, i) => (
           <button
             key={i}
-            onClick={() => !isPast(d) && onDateSelect(d)}
-            disabled={isPast(d)}
+            onClick={() => {
+              if (isPast(d)) return;
+              if (maxDate && d > maxDate) return;
+              onDateSelect(d);
+            }}
+            disabled={isPast(d) || (maxDate ? d > maxDate : false)}
             className={`w-10 h-10 rounded-full transition-colors duration-200
-              ${isPast(d) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-pink-600 hover:text-white'}
+              ${isPast(d) || (maxDate && d > maxDate) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-pink-600 hover:text-white'}
               ${d.getMonth() !== currentMonth.getMonth() ? 'text-gray-400' : 'text-gray-900'}
               ${isToday(d) && !isSelected(d) ? 'border-2 border-pink-600' : ''}
               ${isSelected(d) ? 'bg-pink-600 text-white font-bold' : ''}
@@ -110,6 +125,24 @@ const generateTimeSlots = (serviceDuration: number): { morning: string[], aftern
 const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [maxDate, setMaxDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/schedule-settings');
+        const data = await res.json();
+        if (res.ok && data?.booking_limit_month) {
+          const [y, m] = String(data.booking_limit_month).split('-').map((v: string) => Number(v));
+          if (y && m) {
+            // last day of that month
+            const d = new Date(y, m, 0);
+            setMaxDate(d);
+          }
+        }
+      } catch {}
+    })();
+  }, []);
 
   const availableSlots = useMemo(() => generateTimeSlots(serviceDuration), [serviceDuration]);
   
@@ -124,7 +157,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Escolha a Data e Hora</h2>
       <div className="grid md:grid-cols-2 gap-8">
         <div>
-          <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+          <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} maxDate={maxDate || undefined} />
         </div>
         <div className="max-h-[400px] overflow-y-auto pr-2">
             <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>

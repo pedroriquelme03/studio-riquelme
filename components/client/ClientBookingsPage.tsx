@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 type Row = {
   booking_id: string;
@@ -13,6 +14,7 @@ const ClientBookingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const phone = (typeof window !== 'undefined' && localStorage.getItem('client_phone')) || '';
+  const navigate = useNavigate();
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
@@ -92,7 +94,15 @@ const ClientBookingsPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Meus agendamentos</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">Meus agendamentos</h2>
+        <button
+          onClick={() => { try { localStorage.removeItem('client_phone'); } catch {} navigate('/login-cliente'); }}
+          className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50"
+        >
+          Sair
+        </button>
+      </div>
       <p className="text-gray-600 mb-6">Conectado pelo WhatsApp <span className="font-semibold">{phone}</span></p>
 
       {loading && <div className="text-gray-700">Carregando...</div>}

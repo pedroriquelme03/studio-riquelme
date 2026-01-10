@@ -143,6 +143,15 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         Agendar outro horário
       </button>
 
+      <div className="mt-3 text-center">
+        <a
+          href="/login-cliente"
+          className="inline-flex items-center justify-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 px-6 rounded-lg transition-colors"
+        >
+          Acessar minha conta
+        </a>
+      </div>
+
       {/* Modal de criação de conta via WhatsApp */}
       {isCreateOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">

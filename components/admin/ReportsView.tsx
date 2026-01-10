@@ -194,42 +194,46 @@ const ReportsView: React.FC = () => {
             className="px-3 py-2 bg-white text-gray-900 rounded border border-gray-300"
           >▶</button>
         </div>
-        <div className="inline-flex items-end gap-2 border border-gray-300 rounded p-2 bg-white">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">De</label>
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
-            />
+        <div className="border border-gray-300 rounded p-2 bg-white">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">De</label>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Até</label>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Até</label>
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
-            />
-          </div>
-          <button
-            onClick={load}
-            disabled={!customFrom || !customTo}
-            className="px-3 py-2 bg-pink-600 disabled:bg-gray-400 text-white rounded"
-            title="Aplicar período personalizado"
-          >
-            Aplicar
-          </button>
-          {(customFrom || customTo) && (
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
-              onClick={() => { setCustomFrom(''); setCustomTo(''); load(); }}
-              className="px-3 py-2 bg-gray-200 text-gray-900 rounded"
-              title="Limpar período"
+              onClick={load}
+              disabled={!customFrom || !customTo}
+              className="px-3 py-2 bg-pink-600 disabled:bg-gray-400 text-white rounded"
+              title="Aplicar período personalizado"
             >
-              Limpar
+              Aplicar
             </button>
-          )}
+            {(customFrom || customTo) && (
+              <button
+                onClick={() => { setCustomFrom(''); setCustomTo(''); load(); }}
+                className="px-3 py-2 bg-gray-200 text-gray-900 rounded"
+                title="Limpar período"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

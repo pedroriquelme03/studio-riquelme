@@ -1,93 +1,41 @@
-// API para configurar horários de funcionamento por dia da semana
-// e gerenciar horários manuais (extras/ajustes).
-// - GET: retorna business_hours e manual_slots
-// - PUT: atualiza business_hours (array de 7 dias)
-// - POST: cria manual slot { date, time, professional_id?, note? }
-// - DELETE: remove manual slot { id }
+// API para configurar horários usando Supabase (service role)
+// - GET: lista business_hours e manual_slots
+// - PUT: upsert de business_hours (7 dias)
+// - POST: insert de manual_slots
+// - DELETE: delete de manual_slots por id
 
-import { Client } from 'pg';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-async function getClient() {
-	const rawUrl =
-		process.env.SUPABASE_DB_URL ||
-		process.env.DATABASE_URL ||
-		process.env.POSTGRES_URL ||
-		'';
-	if (!rawUrl) throw new Error('DATABASE_URL/SUPABASE_DB_URL não configurada');
-
-	// Ajustar sslmode
-	let databaseUrl = rawUrl;
-	if (databaseUrl.includes('sslmode=')) {
-		databaseUrl = databaseUrl.replace(/([?&])sslmode=[^&]*/i, '$1sslmode=no-verify');
-	} else {
-		databaseUrl += (databaseUrl.includes('?') ? '&' : '?') + 'sslmode=no-verify';
+function getSupabaseServer() {
+	const supabaseUrl =
+		process.env.SUPABASE_URL ||
+		process.env.VITE_SUPABASE_URL;
+	const supabaseKey =
+		process.env.SUPABASE_SERVICE_ROLE_KEY ||
+		process.env.VITE_SUPABASE_ANON_KEY;
+	if (!supabaseUrl || !supabaseKey) {
+		throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados');
 	}
-
-	const client = new Client({
-		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false } as any,
-	});
-	await client.connect();
-	return client;
-}
-
-async function ensureSchema(cli: Client) {
-	await cli.query(`
-		create table if not exists public.business_hours (
-			id uuid primary key default gen_random_uuid(),
-			weekday smallint not null check (weekday between 0 and 6),
-			enabled boolean not null default true,
-			open_time time not null default '09:00',
-			close_time time not null default '20:00',
-			created_at timestamptz default now(),
-			updated_at timestamptz default now(),
-			unique (weekday)
-		);
-		create table if not exists public.manual_slots (
-			id uuid primary key default gen_random_uuid(),
-			date date not null,
-			time time not null,
-			professional_id uuid null,
-			note text,
-			available boolean not null default true,
-			created_at timestamptz default now()
-		);
-	`);
-	// Seed padrão se vazio
-	const r = await cli.query(`select count(*)::int as c from public.business_hours`);
-	const count = r.rows?.[0]?.c ?? 0;
-	if (count === 0) {
-		// 0=domingo ... 6=sábado
-		const defaults = [
-			{ weekday: 0, enabled: false, open_time: '09:00', close_time: '20:00' },
-			{ weekday: 1, enabled: true, open_time: '09:00', close_time: '20:00' },
-			{ weekday: 2, enabled: true, open_time: '09:00', close_time: '20:00' },
-			{ weekday: 3, enabled: true, open_time: '09:00', close_time: '20:00' },
-			{ weekday: 4, enabled: true, open_time: '09:00', close_time: '20:00' },
-			{ weekday: 5, enabled: true, open_time: '09:00', close_time: '20:00' },
-			{ weekday: 6, enabled: true, open_time: '09:00', close_time: '16:00' },
-		];
-		for (const d of defaults) {
-			await cli.query(
-				`insert into public.business_hours (weekday, enabled, open_time, close_time) values ($1,$2,$3,$4)`,
-				[d.weekday, d.enabled, d.open_time, d.close_time]
-			);
-		}
-	}
+	return createSupabaseClient(supabaseUrl, supabaseKey);
 }
 
 export default async function handler(req: any, res: any) {
 	try {
-		const cli = await getClient();
-		try {
-			await ensureSchema(cli);
+		const supabase = getSupabaseServer();
 
 			if (req.method === 'GET') {
-				const [hours, slots] = await Promise.all([
-					cli.query(`select id, weekday, enabled, open_time, close_time from public.business_hours order by weekday asc`),
-					cli.query(`select id, date, time, professional_id, note, available, created_at from public.manual_slots order by date asc, time asc limit 500`),
-				]);
-				return res.status(200).json({ ok: true, business_hours: hours.rows, manual_slots: slots.rows });
+				const { data: hours, error: hErr } = await supabase
+					.from('business_hours')
+					.select('id, weekday, enabled, open_time, close_time')
+					.order('weekday', { ascending: true });
+				const { data: slots, error: sErr } = await supabase
+					.from('manual_slots')
+					.select('id, date, time, professional_id, note, available, created_at')
+					.order('date', { ascending: true })
+					.order('time', { ascending: true });
+				if (hErr) return res.status(500).json({ ok: false, error: hErr.message });
+				if (sErr) return res.status(500).json({ ok: false, error: sErr.message });
+				return res.status(200).json({ ok: true, business_hours: hours || [], manual_slots: slots || [] });
 			}
 
 			if (req.method === 'PUT') {
@@ -97,21 +45,21 @@ export default async function handler(req: any, res: any) {
 				if (hours.length !== 7) {
 					return res.status(400).json({ ok: false, error: 'business_hours deve conter 7 itens (0=domingo ... 6=sábado)' });
 				}
-				for (const h of hours) {
-					const weekday = Number(h?.weekday);
-					const enabled = Boolean(h?.enabled);
-					const open_time = String(h?.open_time || '09:00');
-					const close_time = String(h?.close_time || '20:00');
-					if (!(weekday >= 0 && weekday <= 6)) {
-						return res.status(400).json({ ok: false, error: `weekday inválido: ${weekday}` });
-					}
-					await cli.query(
-						`insert into public.business_hours (weekday, enabled, open_time, close_time)
-             values ($1,$2,$3,$4)
-             on conflict (weekday) do update set enabled=excluded.enabled, open_time=excluded.open_time, close_time=excluded.close_time, updated_at=now()`,
-						[weekday, enabled, open_time, close_time]
-					);
+				// Upsert em lote
+				const payload = hours.map((h: any) => ({
+					weekday: Number(h?.weekday),
+					enabled: !!h?.enabled,
+					open_time: (String(h?.open_time || '09:00')).length === 5 ? `${h.open_time}:00` : String(h?.open_time || '09:00'),
+					close_time: (String(h?.close_time || '20:00')).length === 5 ? `${h.close_time}:00` : String(h?.close_time || '20:00'),
+					updated_at: new Date().toISOString(),
+				}));
+				if (payload.some((p: any) => !(p.weekday >= 0 && p.weekday <= 6))) {
+					return res.status(400).json({ ok: false, error: 'weekday inválido' });
 				}
+				const { error: upErr } = await supabase
+					.from('business_hours')
+					.upsert(payload, { onConflict: 'weekday' });
+				if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
 				return res.status(200).json({ ok: true });
 			}
 
@@ -125,11 +73,19 @@ export default async function handler(req: any, res: any) {
 				if (!date || !time) {
 					return res.status(400).json({ ok: false, error: 'date e time são obrigatórios' });
 				}
-				const r = await cli.query(
-					`insert into public.manual_slots (date, time, professional_id, note, available) values ($1,$2,$3,$4,true) returning id`,
-					[date, time, professional_id, note || null]
-				);
-				return res.status(201).json({ ok: true, id: r.rows?.[0]?.id });
+				const { data, error: insErr } = await supabase
+					.from('manual_slots')
+					.insert({
+						date,
+						time: time.length === 5 ? `${time}:00` : time,
+						professional_id,
+						note: note || null,
+						available: true,
+					})
+					.select('id')
+					.single();
+				if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
+				return res.status(201).json({ ok: true, id: (data as any)?.id });
 			}
 
 			if (req.method === 'DELETE') {
@@ -137,15 +93,16 @@ export default async function handler(req: any, res: any) {
 				const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 				const id = String(body?.id || '');
 				if (!id) return res.status(400).json({ ok: false, error: 'id é obrigatório' });
-				await cli.query(`delete from public.manual_slots where id = $1`, [id]);
+				const { error: delErr } = await supabase
+					.from('manual_slots')
+					.delete()
+					.eq('id', id);
+				if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
 				return res.status(200).json({ ok: true });
 			}
 
 			res.setHeader('Allow', 'GET, PUT, POST, DELETE');
 			return res.status(405).json({ ok: false, error: 'Método não permitido' });
-		} finally {
-			await cli.end();
-		}
 	} catch (err: any) {
 		return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 	}

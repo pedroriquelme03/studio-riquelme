@@ -1,78 +1,27 @@
 // Autenticação simples de clientes via WhatsApp (telefone)
-// - Cria automaticamente a tabela registered_clients se não existir
 // - Registro: action = 'register' (POST), com name, phone, email (opcional)
 // - Login: action = 'login' (POST), com phone
+// Agora usa Supabase (service role) em vez de conexão PG direta.
 
-import { Client } from 'pg';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-async function getClient() {
-	const rawUrl =
-		process.env.SUPABASE_DB_URL ||
-		process.env.DATABASE_URL ||
-		process.env.POSTGRES_URL ||
-		'';
-
-	if (!rawUrl) {
-		throw new Error('DATABASE_URL/SUPABASE_DB_URL não configurada');
+function getSupabaseServer() {
+	const supabaseUrl =
+		process.env.SUPABASE_URL ||
+		process.env.VITE_SUPABASE_URL;
+	const supabaseKey =
+		process.env.SUPABASE_SERVICE_ROLE_KEY ||
+		process.env.VITE_SUPABASE_ANON_KEY;
+	if (!supabaseUrl || !supabaseKey) {
+		throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados');
 	}
-
-	// Log seguro do host para facilitar debug no deploy (sem credenciais)
-	try {
-		const u = new URL(rawUrl);
-		console.log('[client-auth] Conectando ao banco em host:', u.hostname);
-	} catch {
-		console.warn('[client-auth] DATABASE_URL inválida (não é uma URL). Verifique o valor configurado.');
-	}
-
-	// Forçar sslmode=no-verify para evitar erro de cadeia self-signed em provedores gerenciados
-	let databaseUrl = rawUrl;
-	if (databaseUrl.includes('sslmode=')) {
-		databaseUrl = databaseUrl.replace(/([?&])sslmode=[^&]*/i, '$1sslmode=no-verify');
-	} else {
-		databaseUrl += (databaseUrl.includes('?') ? '&' : '?') + 'sslmode=no-verify';
-	}
-
-	// Usar SSL compatível com provedores gerenciados (Supabase/Neon/etc)
-	// Evitar mexer no NODE_TLS_REJECT_UNAUTHORIZED global
-	const client = new Client({
-		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false } as any,
-	});
-
-	try {
-		await client.connect();
-		return client;
-	} catch (e: any) {
-		const msg = e?.message || String(e);
-		// Normalizar mensagens comuns de configuração incorreta
-		if (/tenant|user not found/i.test(msg)) {
-			throw new Error('Falha ao conectar no banco: verifique a DATABASE_URL (tenant/usuário não encontrado). Use a string de conexão do seu banco (ex.: Supabase)');
-		}
-		throw new Error(`Falha ao conectar no banco: ${msg}`);
-	}
+	return createSupabaseClient(supabaseUrl, supabaseKey);
 }
 
 function normalizePhone(phone?: string): string {
 	const digits = (phone || '').replace(/\D/g, '');
 	// mantém DDI/DDD/numero como informado, apenas números
 	return digits;
-}
-
-async function ensureSchema(cli: Client) {
-	// Criar tabela registered_clients se não existir
-	await cli.query(`
-		create table if not exists public.registered_clients (
-			id uuid primary key default gen_random_uuid(),
-			client_id uuid null references public.clients(id) on delete set null,
-			name text not null,
-			phone text not null unique,
-			email text,
-			created_at timestamptz default now(),
-			updated_at timestamptz default now(),
-			last_login timestamptz
-		);
-		create index if not exists idx_registered_clients_phone on public.registered_clients(phone);
-	`);
 }
 
 export default async function handler(req: any, res: any) {
@@ -98,69 +47,98 @@ export default async function handler(req: any, res: any) {
 			return res.status(400).json({ ok: false, error: 'phone é obrigatório' });
 		}
 
-		const cli = await getClient();
-		try {
-			await ensureSchema(cli);
+		const supabase = getSupabaseServer();
 
 			if (action === 'register') {
 				if (!name) {
 					return res.status(400).json({ ok: false, error: 'name é obrigatório para register' });
 				}
 
-				// Encontrar client_id existente por phone na tabela clients
-				const existingClient = await cli.query(
-					`select id from public.clients where regexp_replace(phone, '\\D', '', 'g') = $1 limit 1`,
-					[phone]
-				);
-				const clientId = existingClient.rows?.[0]?.id || null;
+				// Tentar achar client_id em clients por igualdade exata (sem normalização avançada aqui)
+				let clientId: string | null = null;
+				{
+					const { data: c, error: cErr } = await supabase
+						.from('clients')
+						.select('id, phone')
+						.eq('phone', phone)
+						.limit(1)
+						.maybeSingle();
+					if (!cErr && c?.id) {
+						clientId = String(c.id);
+					}
+				}
 
-				// Upsert em registered_clients por phone
-				await cli.query(
-					`insert into public.registered_clients (client_id, name, phone, email)
-					 values ($1, $2, $3, $4)
-					 on conflict (phone) do update
-					 set name = excluded.name,
-					     email = coalesce(excluded.email, public.registered_clients.email),
-					     client_id = coalesce(public.registered_clients.client_id, excluded.client_id),
-					     updated_at = now()`,
-					[clientId, name, phone, email]
-				);
+				// Buscar registro existente em registered_clients por phone (dígitos)
+				const { data: existing, error: rErr } = await supabase
+					.from('registered_clients')
+					.select('id, client_id, email')
+					.eq('phone', phone)
+					.limit(1)
+					.maybeSingle();
+				if (rErr) {
+					return res.status(500).json({ ok: false, error: rErr.message });
+				}
 
-				// Atualiza email na clients se existir e foi informado agora
-				if (clientId && email) {
-					await cli.query(
-						`update public.clients set email = $1, updated_at = now() where id = $2`,
-						[email, clientId]
-					);
+				if (existing?.id) {
+					// Atualizar nome e email (se informado agora), preservar client_id existente se já houver
+					const { error: upErr } = await supabase
+						.from('registered_clients')
+						.update({
+							name,
+							email: email || existing.email || null,
+							client_id: existing.client_id || clientId,
+							updated_at: new Date().toISOString(),
+						})
+						.eq('id', existing.id);
+					if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+				} else {
+					// Inserir novo registro
+					const { error: insErr } = await supabase
+						.from('registered_clients')
+						.insert({
+							client_id: clientId,
+							name,
+							phone,
+							email,
+						});
+					if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
 				}
 
 				return res.status(201).json({ ok: true, phone });
 			}
 
 			if (action === 'login') {
-				// Verificar se telefone existe na registered_clients; se não, tentar clients como fallback
-				const r1 = await cli.query(
-					`select id, name, phone, email from public.registered_clients where phone = $1 limit 1`,
-					[phone]
-				);
-				if (r1.rowCount === 0) {
-					const r2 = await cli.query(
-						`select id, name, phone, email from public.clients where regexp_replace(phone, '\\D', '', 'g') = $1 limit 1`,
-						[phone]
-					);
-					if (r2.rowCount === 0) {
+				// Verificar se telefone existe na registered_clients
+				const { data: r, error: rErr } = await supabase
+					.from('registered_clients')
+					.select('id')
+					.eq('phone', phone)
+					.limit(1)
+					.maybeSingle();
+				if (rErr) return res.status(500).json({ ok: false, error: rErr.message });
+
+				if (!r?.id) {
+					// Fallback simples: procurar em clients por igualdade exata (sem normalização avançada)
+					const { data: c, error: cErr } = await supabase
+						.from('clients')
+						.select('id')
+						.eq('phone', phone)
+						.limit(1)
+						.maybeSingle();
+					if (cErr || !c?.id) {
 						return res.status(404).json({ ok: false, error: 'Telefone não encontrado' });
 					}
 				} else {
-					await cli.query(`update public.registered_clients set last_login = now(), updated_at = now() where phone = $1`, [phone]);
+					// Atualizar last_login
+					await supabase
+						.from('registered_clients')
+						.update({ last_login: new Date().toISOString(), updated_at: new Date().toISOString() })
+						.eq('id', r.id);
 				}
 				return res.status(200).json({ ok: true, phone });
 			}
 
 			return res.status(400).json({ ok: false, error: 'Ação inválida' });
-		} finally {
-			await cli.end();
-		}
 	} catch (err: any) {
 		return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 	}

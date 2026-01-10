@@ -144,6 +144,57 @@ const AppointmentsView: React.FC = () => {
     }
   };
 
+  // Alterar / Cancelar direto pelo admin
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState<string>('');
+  const [editTime, setEditTime] = useState<string>('');
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const openEdit = (b: BookingRow) => {
+    setEditId(b.booking_id);
+    setEditDate(b.date);
+    setEditTime(b.time.slice(0,5));
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    setActionLoadingId(editId);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reschedule', booking_id: editId, date: editDate, time: editTime }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao atualizar horário');
+      setEditId(null);
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao atualizar horário');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const cancelBooking = async (id: string) => {
+    if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
+    setActionLoadingId(id);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: id, status: 'cancelled' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao cancelar');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const grouped = useMemo(() => {
     const m = new Map<string, BookingRow[]>();
     bookings.forEach(b => {
@@ -314,6 +365,21 @@ const AppointmentsView: React.FC = () => {
                         ))}
                       </ul>
                     </details>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => openEdit(b)}
+                        className="bg-gray-900 hover:bg-black text-white font-semibold px-3 py-2 rounded"
+                      >
+                        Alterar horário
+                      </button>
+                      <button
+                        onClick={() => cancelBooking(b.booking_id)}
+                        disabled={actionLoadingId === b.booking_id}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded"
+                      >
+                        {actionLoadingId === b.booking_id ? 'Cancelando...' : 'Cancelar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -322,6 +388,31 @@ const AppointmentsView: React.FC = () => {
           );
         })}
       </div>
+
+      {editId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-bold text-gray-900">Alterar horário</h4>
+              <button onClick={() => setEditId(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nova data</label>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Novo horário</label>
+                <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900" />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button className="px-4 py-2 rounded-lg border border-gray-300" onClick={() => setEditId(null)}>Fechar</button>
+                <button className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700" onClick={saveEdit}>Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

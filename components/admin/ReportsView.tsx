@@ -28,6 +28,8 @@ const ReportsView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [customFrom, setCustomFrom] = useState<string>('');
+  const [customTo, setCustomTo] = useState<string>('');
 
   const formatDate = (d: Date) => d.toISOString().slice(0,10);
   const startOfWeek = (d: Date) => {
@@ -59,15 +61,21 @@ const ReportsView: React.FC = () => {
     setError(null);
     try {
       const qs = new URLSearchParams();
-      if (view === 'day') {
-        qs.set('from', formatDate(currentDate));
-        qs.set('to', formatDate(currentDate));
-      } else if (view === 'week') {
-        qs.set('from', formatDate(startOfWeek(currentDate)));
-        qs.set('to', formatDate(endOfWeek(currentDate)));
+      // Se o usuário definir um período personalizado, tem prioridade
+      if (customFrom && customTo) {
+        qs.set('from', customFrom);
+        qs.set('to', customTo);
       } else {
-        qs.set('from', formatDate(startOfMonth(currentDate)));
-        qs.set('to', formatDate(endOfMonth(currentDate)));
+        if (view === 'day') {
+          qs.set('from', formatDate(currentDate));
+          qs.set('to', formatDate(currentDate));
+        } else if (view === 'week') {
+          qs.set('from', formatDate(startOfWeek(currentDate)));
+          qs.set('to', formatDate(endOfWeek(currentDate)));
+        } else {
+          qs.set('from', formatDate(startOfMonth(currentDate)));
+          qs.set('to', formatDate(endOfMonth(currentDate)));
+        }
       }
       const res = await fetch(`/api/bookings?${qs.toString()}`);
       const data = await res.json();
@@ -156,6 +164,43 @@ const ReportsView: React.FC = () => {
             }}
             className="px-3 py-2 bg-white text-gray-900 rounded border border-gray-300"
           >▶</button>
+        </div>
+        <div className="inline-flex items-end gap-2 border border-gray-300 rounded p-2 bg-white">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">De</label>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Até</label>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+            />
+          </div>
+          <button
+            onClick={load}
+            disabled={!customFrom || !customTo}
+            className="px-3 py-2 bg-pink-600 disabled:bg-gray-400 text-white rounded"
+            title="Aplicar período personalizado"
+          >
+            Aplicar
+          </button>
+          {(customFrom || customTo) && (
+            <button
+              onClick={() => { setCustomFrom(''); setCustomTo(''); load(); }}
+              className="px-3 py-2 bg-gray-200 text-gray-900 rounded"
+              title="Limpar período"
+            >
+              Limpar
+            </button>
+          )}
         </div>
       </div>
 

@@ -110,8 +110,9 @@ export default async function handler(req: any, res: any) {
 			});
 
       const filtered = rows.filter((r: any) => {
-        // Ocultar agendamentos cancelados do painel
-        if (r.is_cancelled) return false;
+        // Ocultar agendamentos cancelados do painel (mas manter para o cliente ver o histórico)
+        // Se NÃO houver filtro de cliente na query string, significa listagem administrativa → esconde cancelados
+        if (!clientQuery && r.is_cancelled) return false;
 				if (serviceId && !(r.services || []).some((s: any) => String(s.id) === String(serviceId))) {
 					return false;
 				}

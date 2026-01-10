@@ -5,7 +5,7 @@ type Row = {
   booking_id: string;
   date: string;
   time: string;
-  services: Array<{ name: string; price: number }>;
+  services: Array<{ name: string; price: number; duration_minutes?: number; quantity?: number }>;
   total_price: string;
 };
 
@@ -148,7 +148,11 @@ const ClientBookingsPage: React.FC = () => {
               </div>
             </div>
             <div className="text-gray-700 mt-2">
-              {(r.services || []).map(s => s.name).join(', ')}
+            {(r.services || []).map(s => {
+              const qty = Number(s.quantity || 1);
+              const dur = Number(s.duration_minutes || 0) * qty;
+              return `${s.name}${dur ? ` (${dur} min)` : ''}`;
+            }).join(', ')}
             </div>
           {cancellations[r.booking_id] && (
             <div className="mt-2 text-sm text-gray-700">

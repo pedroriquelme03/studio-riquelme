@@ -25,7 +25,7 @@ const Header: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center hidden">
+        <div className="flex items-center">
           <Link
             to="/login-cliente"
             className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-600 transition-colors"

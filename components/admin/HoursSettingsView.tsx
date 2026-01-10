@@ -157,20 +157,22 @@ const HoursSettingsView: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Janela por dia da semana</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {hours.map((h, idx) => (
-            <div key={h.weekday} className="border border-gray-300 rounded-lg p-3 flex items-center gap-3">
-              <div className="w-28 text-gray-800 font-medium">{WEEKDAYS[h.weekday]}</div>
-              <label className="flex items-center gap-2 text-gray-800">
-                <input
-                  type="checkbox"
-                  checked={h.enabled}
-                  onChange={(e) => {
-                    const v = e.target.checked;
-                    setHours(prev => prev.map((x, i) => i === idx ? { ...x, enabled: v } : x));
-                  }}
-                />
-                Ativo
-              </label>
-              <div className="flex items-center gap-2 ml-auto">
+            <div key={h.weekday} className="border border-gray-300 rounded-lg p-3 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
+              <div className="flex items-center justify-between sm:justify-start gap-3">
+                <div className="text-gray-800 font-medium sm:w-28">{WEEKDAYS[h.weekday]}</div>
+                <label className="flex items-center gap-2 text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={h.enabled}
+                    onChange={(e) => {
+                      const v = e.target.checked;
+                      setHours(prev => prev.map((x, i) => i === idx ? { ...x, enabled: v } : x));
+                    }}
+                  />
+                  Ativo
+                </label>
+              </div>
+              <div className="flex items-center gap-2 sm:ml-auto">
                 <input
                   type="time"
                   value={normalizeTime(h.open_time)}

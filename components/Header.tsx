@@ -1,11 +1,13 @@
 import React from 'react';
-import { UserIcon } from './icons';
+import { UserIcon, BellIcon } from './icons';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 // Importar a imagem como módulo
 const iconPath = '/icone-rosa.png';
 
 const Header: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   return (
     <header className="bg-white/90 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-300 shadow-sm">
       <div className="container mx-auto flex items-center justify-between p-4">
@@ -26,14 +28,25 @@ const Header: React.FC = () => {
         </div>
 
         <div className="flex items-center">
-          <Link
-            to="/login-cliente"
-            className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-600 transition-colors"
-            title="Acessar meus agendamentos"
-          >
-            <UserIcon className="w-6 h-6" />
-            <span className="hidden sm:inline font-medium">Minha conta</span>
-          </Link>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              aria-label="Notificações"
+              title="Notificações"
+              className="inline-flex items-center justify-center text-gray-900 hover:text-pink-600 transition-colors"
+            >
+              <BellIcon className="w-6 h-6" />
+            </button>
+          ) : (
+            <Link
+              to="/login-cliente"
+              className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-600 transition-colors"
+              title="Acessar meus agendamentos"
+            >
+              <UserIcon className="w-6 h-6" />
+              <span className="hidden sm:inline font-medium">Minha conta</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>

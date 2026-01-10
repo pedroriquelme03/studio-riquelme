@@ -417,7 +417,9 @@ const AppointmentsView: React.FC = () => {
                       <ul className="mt-1 space-y-1">
                         {(requestsMap[b.booking_id] || []).map((q, idx) => (
                           <li key={q.id || idx} className="text-xs">
-                            <span className="font-medium">{q.status.toUpperCase()}</span>
+                            <span className="font-medium">
+                              {q.status === 'pending' ? 'Pendente' : q.status === 'approved' ? 'Aprovada' : q.status === 'denied' ? 'Negada' : q.status}
+                            </span>
                             {' — '}
                             {new Date(q.requested_date).toLocaleDateString('pt-BR')} {q.requested_time.slice(0,5)}
                           </li>

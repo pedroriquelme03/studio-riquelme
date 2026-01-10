@@ -4,6 +4,7 @@
 // Agora usa Supabase (service role) em vez de conexão PG direta.
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -35,19 +36,68 @@ export default async function handler(req: any, res: any) {
 		const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 		const action = String(body?.action || '').toLowerCase();
 
-		if (!['register', 'login'].includes(action)) {
-			return res.status(400).json({ ok: false, error: 'action deve ser "register" ou "login"' });
+		if (!['register', 'login', 'set_password', 'login_password'].includes(action)) {
+			return res.status(400).json({ ok: false, error: 'action deve ser "register", "login", "set_password" ou "login_password"' });
 		}
 
 		const phone = normalizePhone(body?.phone);
 		const name = (body?.name || '').toString().trim();
 		const email = (body?.email || '').toString().trim() || null;
+		const password = (body?.password || '').toString();
 
-		if (!phone) {
+		if (!phone && action !== 'set_password' && action !== 'login_password') {
 			return res.status(400).json({ ok: false, error: 'phone é obrigatório' });
 		}
 
 		const supabase = getSupabaseServer();
+
+		// Definir/atualizar senha do cliente
+		if (action === 'set_password') {
+			if (!password) return res.status(400).json({ ok: false, error: 'password é obrigatório' });
+
+			// identificar cliente por phone ou email
+			let client: any = null;
+			if (phone) {
+				const { data } = await supabase.from('clients').select('id, phone').eq('phone', phone).maybeSingle();
+				client = data;
+			} else if (email) {
+				const { data } = await supabase.from('clients').select('id, email').eq('email', email).maybeSingle();
+				client = data;
+			}
+			if (!client?.id) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
+
+			const password_hash = createHash('sha256').update(password).digest('hex');
+			const { error: upErr } = await supabase.from('clients').update({ password_hash, updated_at: new Date().toISOString() }).eq('id', client.id);
+			if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+			return res.status(200).json({ ok: true });
+		}
+
+		// Login com senha
+		if (action === 'login_password') {
+			if (!password) return res.status(400).json({ ok: false, error: 'password é obrigatório' });
+			// localizar cliente por phone (preferencial) ou email
+			let client: any = null;
+			if (phone) {
+				const { data } = await supabase.from('clients').select('id, phone, password_hash').eq('phone', phone).maybeSingle();
+				client = data;
+			} else if (email) {
+				const { data } = await supabase.from('clients').select('id, phone, password_hash').eq('email', email).maybeSingle();
+				client = data;
+			}
+			if (!client?.id || !client?.password_hash) {
+				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
+			}
+			const computed = createHash('sha256').update(password).digest('hex');
+			if (computed !== client.password_hash) {
+				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
+			}
+
+			// salvar last_login em registered_clients se existir
+			if (client.phone) {
+				await supabase.from('registered_clients').update({ last_login: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('phone', client.phone.replace(/\D/g, ''));
+			}
+			return res.status(200).json({ ok: true, phone: client.phone || phone });
+		}
 
 			if (action === 'register') {
 				if (!name) {

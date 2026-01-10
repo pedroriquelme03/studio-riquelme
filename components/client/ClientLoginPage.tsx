@@ -30,6 +30,8 @@ function toE164(digits: string): string {
 
 const ClientLoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -40,15 +42,27 @@ const ClientLoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       const digits = normalizePhone(phone);
-      const res = await fetch('/api/client-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', phone: digits }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
-      localStorage.setItem('client_phone', digits);
-      navigate('/meus-agendamentos');
+      if (usePassword) {
+        const res = await fetch('/api/client-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login_password', phone: digits, password }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
+        localStorage.setItem('client_phone', digits);
+        navigate('/meus-agendamentos');
+      } else {
+        const res = await fetch('/api/client-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login', phone: digits }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
+        localStorage.setItem('client_phone', digits);
+        navigate('/meus-agendamentos');
+      }
     } catch (err: any) {
       setError(err?.message || 'Erro inesperado');
     } finally {
@@ -87,6 +101,26 @@ const ClientLoginPage: React.FC = () => {
               required
             />
           </div>
+
+        <div className="flex items-center gap-2">
+          <input id="usePassword" type="checkbox" checked={usePassword} onChange={(e) => setUsePassword(e.target.checked)} />
+          <label htmlFor="usePassword" className="text-sm text-gray-800">Entrar com senha</label>
+        </div>
+
+        {usePassword && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+              placeholder="Sua senha"
+              minLength={6}
+              required={usePassword}
+            />
+          </div>
+        )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">

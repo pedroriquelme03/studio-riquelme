@@ -385,7 +385,7 @@ const AppointmentsView: React.FC = () => {
         ) : (
           <>
           <div className="relative">
-            <ul className="mt-2 divide-y divide-gray-200">
+            <ul className="mt-2 divide-y divide-gray-200 pb-12">
               {cancellations.slice(0, Math.min(visibleClientCount, cancellations.length)).map(c => (
                 <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
                   <div>
@@ -401,8 +401,8 @@ const AppointmentsView: React.FC = () => {
             </ul>
             {(cancellations.length > visibleClientCount || clientCancHasMore) && (
               <div className="absolute inset-x-0 bottom-0 pb-2 pt-8 pointer-events-none">
-                <div className="absolute inset-x-0 bottom-10 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
-                <div className="relative flex justify-center pointer-events-auto">
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                <div className="relative flex justify-center pointer-events-auto pb-2">
                   <button
                     disabled={clientCancLoadingMore}
                     onClick={async () => {
@@ -478,7 +478,7 @@ const AppointmentsView: React.FC = () => {
         ) : (
           <>
           <div className="relative">
-            <ul className="mt-2 divide-y divide-gray-200">
+            <ul className="mt-2 divide-y divide-gray-200 pb-12">
               {adminCancellations.slice(0, Math.min(visibleAdminCount, adminCancellations.length)).map(c => (
                 <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
                   <div>
@@ -494,8 +494,8 @@ const AppointmentsView: React.FC = () => {
             </ul>
             {(adminCancellations.length > visibleAdminCount || adminCancHasMore) && (
               <div className="absolute inset-x-0 bottom-0 pb-2 pt-8 pointer-events-none">
-                <div className="absolute inset-x-0 bottom-10 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
-                <div className="relative flex justify-center pointer-events-auto">
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                <div className="relative flex justify-center pointer-events-auto pb-2">
                   <button
                     disabled={adminCancLoadingMore}
                     onClick={async () => {

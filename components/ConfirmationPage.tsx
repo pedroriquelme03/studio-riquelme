@@ -19,6 +19,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
   const [phone, setPhone] = useState(client.phone || '');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [password, setPassword] = useState('');
+  const [created, setCreated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -58,6 +59,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       localStorage.setItem('client_phone', digits);
 
       setFeedback('Conta criada! Você já pode acessar seu histórico com seu WhatsApp e senha.');
+      setCreated(true);
     } catch (err: any) {
       setFeedback(err?.message || 'Não foi possível criar a conta.');
     } finally {
@@ -206,21 +208,30 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-between gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setIsCreateOpen(false); setFeedback(null); }}
+                  onClick={() => { setIsCreateOpen(false); setFeedback(null); setCreated(false); }}
                   className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 bg-white hover:bg-gray-50"
                 >
-                  Cancelar
+                  Fechar
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Criando...' : 'Criar conta'}
-                </button>
+                {!created ? (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Criando...' : 'Criar conta'}
+                  </button>
+                ) : (
+                  <a
+                    href="/login-cliente"
+                    className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold hover:bg-black"
+                  >
+                    Acessar conta
+                  </a>
+                )}
               </div>
             </form>
           </div>

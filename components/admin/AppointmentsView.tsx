@@ -47,6 +47,14 @@ const AppointmentsView: React.FC = () => {
     client_name?: string;
     client_phone?: string;
   }>>([]);
+  const [adminCancellations, setAdminCancellations] = useState<Array<{
+    id: string;
+    at: string;
+    booking_date: string;
+    booking_time: string;
+    client_name?: string;
+    client_phone?: string;
+  }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -128,6 +136,29 @@ const AppointmentsView: React.FC = () => {
           setCancellations([]);
         }
       } catch { setCancellations([]); }
+
+      // Carregar cancelamentos feitos pelo admin (últimos 50, opcionalmente filtrados por profissional)
+      try {
+        const qs3 = new URLSearchParams();
+        if (professionalId) qs3.set('professional_id', professionalId);
+        qs3.set('cancelled_by', 'admin');
+        qs3.set('limit', '50');
+        const aRes = await fetch(`/api/cancellations?${qs3.toString()}`);
+        const aData = await aRes.json();
+        if (aRes.ok && Array.isArray(aData?.cancellations)) {
+          const rows = (aData.cancellations as any[]).map((r) => ({
+            id: r.id,
+            at: r.created_at,
+            booking_date: r.bookings?.date,
+            booking_time: r.bookings?.time,
+            client_name: r.bookings?.clients?.name,
+            client_phone: r.bookings?.clients?.phone,
+          }));
+          setAdminCancellations(rows);
+        } else {
+          setAdminCancellations([]);
+        }
+      } catch { setAdminCancellations([]); }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -335,6 +366,34 @@ const AppointmentsView: React.FC = () => {
         ) : (
           <ul className="mt-2 divide-y divide-gray-200">
             {cancellations.map(c => (
+              <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{c.client_name || 'Cliente'}</div>
+                  <div className="text-gray-600">{c.client_phone || '-'}</div>
+                </div>
+                <div className="text-right">
+                  <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
+                  <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Cancelamentos feitos pelo admin */}
+      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Cancelamentos feitos pelo painel (admin)</h3>
+          <button onClick={load} className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900">
+            Atualizar
+          </button>
+        </div>
+        {adminCancellations.length === 0 ? (
+          <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
+        ) : (
+          <ul className="mt-2 divide-y divide-gray-200">
+            {adminCancellations.map(c => (
               <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{c.client_name || 'Cliente'}</div>

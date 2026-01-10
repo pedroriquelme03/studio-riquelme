@@ -30,6 +30,7 @@ const ReportsView: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [customFrom, setCustomFrom] = useState<string>('');
   const [customTo, setCustomTo] = useState<string>('');
+  const [cancellations, setCancellations] = useState<Array<{ created_at: string; cancelled_by: 'client' | 'admin' }>>([]);
 
   const formatDate = (d: Date) => d.toISOString().slice(0,10);
   const startOfWeek = (d: Date) => {
@@ -77,10 +78,17 @@ const ReportsView: React.FC = () => {
           qs.set('to', formatDate(endOfMonth(currentDate)));
         }
       }
-      const res = await fetch(`/api/bookings?${qs.toString()}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Erro ao carregar relatórios');
-      setBookings((data.bookings || []) as BookingRow[]);
+      // Carregar bookings e cancelamentos em paralelo
+      const [resB, resC] = await Promise.all([
+        fetch(`/api/bookings?${qs.toString()}`),
+        fetch(`/api/cancellations?${qs.toString()}&limit=1000`),
+      ]);
+      const [dataB, dataC] = await Promise.all([resB.json(), resC.json()]);
+      if (!resB.ok) throw new Error(dataB?.error || 'Erro ao carregar relatórios (agendamentos)');
+      if (!resC.ok) throw new Error(dataC?.error || 'Erro ao carregar relatórios (cancelamentos)');
+      setBookings((dataB.bookings || []) as BookingRow[]);
+      const cancelRows = Array.isArray(dataC?.cancellations) ? dataC.cancellations : [];
+      setCancellations(cancelRows.map((r: any) => ({ created_at: r.created_at, cancelled_by: (r.cancelled_by || 'client') as 'client' | 'admin' })));
     } catch (e: any) {
       setError(e.message || 'Erro ao carregar relatórios');
     } finally {
@@ -127,6 +135,27 @@ const ReportsView: React.FC = () => {
       data: sorted.map(([,n]) => n),
     };
   }, [bookings]);
+
+  // Cancelamentos por dia (cliente x admin)
+  const cancellationsByDay = useMemo(() => {
+    const map = new Map<string, { total: number; client: number; admin: number }>();
+    cancellations.forEach((c) => {
+      const d = new Date(c.created_at);
+      const key = d.toISOString().slice(0,10);
+      const obj = map.get(key) || { total: 0, client: 0, admin: 0 };
+      obj.total += 1;
+      if (c.cancelled_by === 'admin') obj.admin += 1;
+      else obj.client += 1;
+      map.set(key, obj);
+    });
+    const sorted = Array.from(map.entries()).sort(([a],[b]) => a.localeCompare(b));
+    return {
+      labels: sorted.map(([d]) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
+      client: sorted.map(([,v]) => v.client),
+      admin: sorted.map(([,v]) => v.admin),
+      total: sorted.map(([,v]) => v.total),
+    };
+  }, [cancellations]);
 
   return (
     <div>
@@ -228,6 +257,23 @@ const ReportsView: React.FC = () => {
                   datasets: [{ label: 'Receita', data: byDay.revenue, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.2)' }]
                 }}
                 options={{ responsive: true, plugins: { legend: { display: false } } }}
+              />
+            </div>
+            <div className="bg-white border border-gray-300 rounded-lg p-4 md:col-span-2">
+              <h3 className="text-gray-900 font-semibold mb-3">Cancelamentos por dia</h3>
+              <Bar
+                data={{
+                  labels: cancellationsByDay.labels,
+                  datasets: [
+                    { label: 'Cliente', data: cancellationsByDay.client, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#ef4444', stack: 'canc' },
+                    { label: 'Admin', data: cancellationsByDay.admin, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: '#3b82f6', stack: 'canc' },
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  plugins: { legend: { position: 'top' } },
+                  scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } }
+                }}
               />
             </div>
             <div className="bg-white border border-gray-300 rounded-lg p-4">

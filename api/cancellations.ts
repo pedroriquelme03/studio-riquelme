@@ -73,6 +73,10 @@ export default async function handler(req: any, res: any) {
 		const from = url.searchParams.get('from') || undefined;
 		const to = url.searchParams.get('to') || undefined;
 		const limit = Number(url.searchParams.get('limit') || 50);
+		const bookingIds = (url.searchParams.get('booking_ids') || '')
+			.split(',')
+			.map(s => s.trim())
+			.filter(Boolean);
 
 		let query = supabase
 			.from('booking_cancellations')
@@ -89,6 +93,7 @@ export default async function handler(req: any, res: any) {
 		if (cancelledBy) query = query.eq('cancelled_by', cancelledBy);
 		if (from) query = query.gte('created_at', from);
 		if (to) query = query.lte('created_at', to);
+		if (bookingIds.length) query = query.in('booking_id', bookingIds);
 
 		const { data, error } = await query;
 		if (error) return res.status(500).json({ ok: false, error: error.message });

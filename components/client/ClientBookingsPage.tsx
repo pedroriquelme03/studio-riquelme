@@ -17,6 +17,7 @@ const ClientBookingsPage: React.FC = () => {
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [cancellations, setCancellations] = useState<Record<string, { at: string; by: string }>>({});
   const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; status: string; requested_date: string; requested_time: string; created_at?: string; responded_at?: string; response_note?: string }>>>({});
 
   useEffect(() => {
@@ -50,8 +51,27 @@ const ClientBookingsPage: React.FC = () => {
               setRequestsMap({});
             }
           } catch { setRequestsMap({}); }
+
+          // Buscar cancelamentos do cliente para esses bookings
+          try {
+            const cRes = await fetch(`/api/cancellations?booking_ids=${encodeURIComponent(ids)}&cancelled_by=client&limit=200`);
+            const cData = await cRes.json();
+            if (cRes.ok && Array.isArray(cData?.cancellations)) {
+              const cmap: Record<string, { at: string; by: string }> = {};
+              for (const c of cData.cancellations) {
+                const bId = c?.bookings?.id || c?.booking_id;
+                if (bId) {
+                  cmap[bId] = { at: c.created_at, by: c.cancelled_by || 'client' };
+                }
+              }
+              setCancellations(cmap);
+            } else {
+              setCancellations({});
+            }
+          } catch { setCancellations({}); }
         } else {
           setRequestsMap({});
+          setCancellations({});
         }
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar agendamentos');
@@ -89,46 +109,58 @@ const ClientBookingsPage: React.FC = () => {
               <div className="font-semibold text-gray-900">
                 {new Date(r.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.time?.slice(0,5)}
               </div>
-              <div className="text-pink-600 font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
+              <div className="flex items-center gap-2">
+                {cancellations[r.booking_id] && (
+                  <span className="text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 text-xs font-semibold">
+                    Cancelado
+                  </span>
+                )}
+                <div className="text-pink-600 font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
+              </div>
             </div>
             <div className="text-gray-700 mt-2">
               {(r.services || []).map(s => s.name).join(', ')}
             </div>
             <div className="mt-3 flex gap-2">
-              <button
-                className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
-                onClick={() => {
-                  setRescheduleId(r.booking_id);
-                  setNewDate(r.date);
-                  setNewTime((r.time || '').slice(0,5));
-                }}
-              >
-                Solicitar troca
-              </button>
-              <button
-                className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
-                onClick={async () => {
-                  if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
-                  try {
-                    setActionLoading(r.booking_id);
-                    const res = await fetch('/api/bookings', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled', cancelled_by: 'client' }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
-                    setRows(prev => prev.filter(row => row.booking_id !== r.booking_id));
-                  } catch (e: any) {
-                    alert(e?.message || 'Erro ao cancelar');
-                  } finally {
-                    setActionLoading(null);
-                  }
-                }}
-                disabled={actionLoading === r.booking_id}
-              >
-                {actionLoading === r.booking_id ? 'Cancelando...' : 'Cancelar'}
-              </button>
+              {!cancellations[r.booking_id] && (
+                <>
+                  <button
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
+                    onClick={() => {
+                      setRescheduleId(r.booking_id);
+                      setNewDate(r.date);
+                      setNewTime((r.time || '').slice(0,5));
+                    }}
+                  >
+                    Solicitar troca
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
+                    onClick={async () => {
+                      if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
+                      try {
+                        setActionLoading(r.booking_id);
+                        const res = await fetch('/api/bookings', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled', cancelled_by: 'client' }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
+                        // Marca como cancelado (mantendo visível na lista)
+                        setCancellations(prev => ({ ...prev, [r.booking_id]: { at: new Date().toISOString(), by: 'client' } }));
+                      } catch (e: any) {
+                        alert(e?.message || 'Erro ao cancelar');
+                      } finally {
+                        setActionLoading(null);
+                      }
+                    }}
+                    disabled={actionLoading === r.booking_id}
+                  >
+                    {actionLoading === r.booking_id ? 'Cancelando...' : 'Cancelar'}
+                  </button>
+                </>
+              )}
             </div>
             {/* Status e histórico das solicitações */}
             {(() => {

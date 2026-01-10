@@ -107,7 +107,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       </div>
 
       {/* CTA: Criar conta para histórico */}
-      <div className="mt-6 bg-white p-6 rounded-2xl border border-gray-300 shadow-xl text-left hidden">
+      <div className="mt-6 bg-white p-6 rounded-2xl border border-gray-300 shadow-xl text-left">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Quer acompanhar seu histórico de atendimentos?</h3>
         <p className="text-gray-700 mb-4">
           Crie sua conta com seu WhatsApp e tenha acesso aos seus agendamentos.

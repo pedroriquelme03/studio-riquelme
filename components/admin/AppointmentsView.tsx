@@ -38,7 +38,7 @@ const AppointmentsView: React.FC = () => {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [requests, setRequests] = useState<Record<string, { id: string; requested_date: string; requested_time: string }>>({});
+  const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; requested_date: string; requested_time: string; status: string; created_at?: string }>>>({});
 
   useEffect(() => {
     (async () => {
@@ -76,24 +76,26 @@ const AppointmentsView: React.FC = () => {
       if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
       const list = (data.bookings || []) as BookingRow[];
       setBookings(list);
-      // Carregar solicitações pendentes para estes bookings
       const ids = list.map(r => r.booking_id).join(',');
       if (ids) {
         try {
-          const rres = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}&state=pending`);
+          const rres = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`);
           const rdata = await rres.json();
           if (rres.ok && Array.isArray(rdata?.requests)) {
-            const map: Record<string, any> = {};
+            const map: Record<string, Array<any>> = {};
             for (const req of rdata.requests) {
-              map[req.booking_id] = { id: req.id, requested_date: req.requested_date, requested_time: req.requested_time };
+              const arr = map[req.booking_id] || [];
+              arr.push(req);
+              map[req.booking_id] = arr;
             }
-            setRequests(map);
+            Object.keys(map).forEach(k => map[k].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))));
+            setRequestsMap(map);
           } else {
-            setRequests({});
+            setRequestsMap({});
           }
-        } catch { setRequests({}); }
+        } catch { setRequestsMap({}); }
       } else {
-        setRequests({});
+        setRequestsMap({});
       }
     } catch (e: any) {
       setError(e.message);
@@ -109,7 +111,7 @@ const AppointmentsView: React.FC = () => {
   }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
 
   const approve = async (bookingId: string) => {
-    const req = requests[bookingId];
+    const req = (requestsMap[bookingId] || []).find(x => x.status === 'pending');
     if (!req) return;
     try {
       const res = await fetch('/api/reschedule-requests', {
@@ -126,7 +128,7 @@ const AppointmentsView: React.FC = () => {
   };
 
   const deny = async (bookingId: string) => {
-    const req = requests[bookingId];
+    const req = (requestsMap[bookingId] || []).find(x => x.status === 'pending');
     if (!req) return;
     try {
       const res = await fetch('/api/reschedule-requests', {
@@ -278,11 +280,16 @@ const AppointmentsView: React.FC = () => {
                     </ul>
                   </div>
                   <div className="border-t border-gray-300 my-3 pt-3">
-                    {requests[b.booking_id] ? (
+                    {Boolean((requestsMap[b.booking_id] || []).find(x => x.status === 'pending')) ? (
                       <div className="space-y-2">
-                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                          Solicitação de troca: {new Date(requests[b.booking_id].requested_date).toLocaleDateString('pt-BR')} às {requests[b.booking_id].requested_time.slice(0,5)}
-                        </div>
+                        {(() => {
+                          const req = (requestsMap[b.booking_id] || []).find(x => x.status === 'pending')!;
+                          return (
+                            <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                              Solicitação de troca: {new Date(req.requested_date).toLocaleDateString('pt-BR')} às {req.requested_time.slice(0,5)}
+                            </div>
+                          );
+                        })()}
                         <div className="grid grid-cols-2 gap-2">
                           <button onClick={() => approve(b.booking_id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded">
                             Aprovar
@@ -295,6 +302,18 @@ const AppointmentsView: React.FC = () => {
                     ) : (
                       <div className="text-sm text-gray-500">Sem solicitações pendentes</div>
                     )}
+                    <details className="mt-2 text-gray-700">
+                      <summary className="cursor-pointer select-none text-sm">Histórico de solicitações</summary>
+                      <ul className="mt-1 space-y-1">
+                        {(requestsMap[b.booking_id] || []).map((q, idx) => (
+                          <li key={q.id || idx} className="text-xs">
+                            <span className="font-medium">{q.status.toUpperCase()}</span>
+                            {' — '}
+                            {new Date(q.requested_date).toLocaleDateString('pt-BR')} {q.requested_time.slice(0,5)}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   </div>
                 </div>
               ))}

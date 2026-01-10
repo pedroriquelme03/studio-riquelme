@@ -17,7 +17,7 @@ const ClientBookingsPage: React.FC = () => {
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [requests, setRequests] = useState<Record<string, { status: string; requested_date: string; requested_time: string }>>({});
+  const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; status: string; requested_date: string; requested_time: string; created_at?: string; responded_at?: string }>>>({});
 
   useEffect(() => {
     (async () => {
@@ -31,20 +31,27 @@ const ClientBookingsPage: React.FC = () => {
         if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
         const list = (data.bookings || []) as Row[];
         setRows(list);
-        // Buscar status de solicitações de troca para estes agendamentos
+        // Buscar histórico de solicitações para estes agendamentos
         const ids = list.map(r => r.booking_id).join(',');
         if (ids) {
           try {
             const rRes = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`);
             const rData = await rRes.json();
             if (rRes.ok && Array.isArray(rData?.requests)) {
-              const map: Record<string, any> = {};
+              const map: Record<string, Array<any>> = {};
               for (const req of rData.requests) {
-                map[req.booking_id] = { status: req.status, requested_date: req.requested_date, requested_time: req.requested_time };
+                const arr = map[req.booking_id] || [];
+                arr.push(req);
+                map[req.booking_id] = arr;
               }
-              setRequests(map);
+              Object.keys(map).forEach(k => map[k].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))));
+              setRequestsMap(map);
+            } else {
+              setRequestsMap({});
             }
-          } catch {}
+          } catch { setRequestsMap({}); }
+        } else {
+          setRequestsMap({});
         }
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar agendamentos');
@@ -123,6 +130,44 @@ const ClientBookingsPage: React.FC = () => {
                 {actionLoading === r.booking_id ? 'Cancelando...' : 'Cancelar'}
               </button>
             </div>
+            {/* Status e histórico das solicitações */}
+            {(() => {
+              const arr = requestsMap[r.booking_id] || [];
+              if (!arr.length) return null;
+              const current = arr[0];
+              return (
+                <div className="mt-2 text-sm space-y-2">
+                  {current.status === 'pending' && (
+                    <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      Solicitação enviada para {new Date(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)} — Aguardando aprovação
+                    </div>
+                  )}
+                  {current.status === 'approved' && (
+                    <div className="text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+                      Solicitação aprovada! Novo horário confirmado para {new Date(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)}.
+                    </div>
+                  )}
+                  {current.status === 'denied' && (
+                    <div className="text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                      Solicitação negada.
+                    </div>
+                  )}
+                  <details className="text-gray-700">
+                    <summary className="cursor-pointer select-none">Histórico de solicitações</summary>
+                    <ul className="mt-1 space-y-1">
+                      {arr.map((q, idx) => (
+                        <li key={q.id || idx} className="text-xs">
+                          <span className="font-medium">{q.status.toUpperCase()}</span>
+                          {' — '}
+                          {new Date(q.requested_date).toLocaleDateString('pt-BR')} {q.requested_time?.slice(0,5)}
+                          {q.responded_at ? ` (respondido em ${new Date(q.responded_at).toLocaleString('pt-BR')})` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
@@ -174,7 +219,16 @@ const ClientBookingsPage: React.FC = () => {
                       });
                       const data = await res.json();
                       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao solicitar troca');
-                      setRequests(prev => ({ ...prev, [rescheduleId!]: { status: 'pending', requested_date: newDate, requested_time: `${newTime}:00` } }));
+                      setRequestsMap(prev => {
+                        const arr = prev[rescheduleId!] ? [...prev[rescheduleId!]] : [];
+                        arr.unshift({
+                          id: `temp-${Date.now()}`,
+                          status: 'pending',
+                          requested_date: newDate,
+                          requested_time: `${newTime}:00`,
+                        });
+                        return { ...prev, [rescheduleId!]: arr };
+                      });
                       setRescheduleId(null);
                     } catch (e: any) {
                       alert(e?.message || 'Erro ao solicitar troca');

@@ -5,6 +5,7 @@ interface DateTimePickerProps {
   onBack: () => void;
   onDateTimeSelect: (date: Date, time: string) => void;
   serviceDuration: number;
+  professionalId?: string | null; // ID do profissional responsável pelo serviço
 }
 
 const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => void; maxDate?: Date | null }> = ({ selectedDate, onDateSelect, maxDate }) => {
@@ -145,7 +146,7 @@ const buildAvailableTimeSlots = (serviceDuration: number, window: DayWindow, boo
   return { morning, afternoon, evening };
 };
 
-const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration }) => {
+const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration, professionalId }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [maxDate, setMaxDate] = useState<Date | null>(null);
@@ -155,7 +156,11 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/schedule-settings');
+        // Buscar horários do profissional específico ou globais
+        const url = professionalId 
+          ? `/api/schedule-settings?professional_id=${professionalId}`
+          : '/api/schedule-settings';
+        const res = await fetch(url);
         const data = await res.json();
         if (res.ok) {
           if (data?.booking_limit_month) {
@@ -181,9 +186,9 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
       } catch {}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate.toDateString()]);
+  }, [selectedDate.toDateString(), professionalId]);
 
-  // Carregar agendamentos do dia para bloquear sobreposições
+  // Carregar agendamentos do dia para bloquear sobreposições (filtrar por profissional se houver)
   useEffect(() => {
     (async () => {
       try {
@@ -192,11 +197,18 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         const d = String(selectedDate.getDate()).padStart(2, '0');
         const yyyyMMdd = `${y}-${m}-${d}`;
         const qs = new URLSearchParams({ from: yyyyMMdd, to: yyyyMMdd });
+        if (professionalId) {
+          qs.append('professional_id', professionalId);
+        }
         const res = await fetch(`/api/bookings?${qs.toString()}`);
         const data = await res.json();
         if (res.ok) {
           const rows = Array.isArray(data?.bookings) ? data.bookings : [];
-          setBookedBlocks(rows.map((b: any) => ({ time: String(b.time || '00:00:00'), duration: Number(b.total_duration_minutes || 0) })));
+          // Filtrar apenas agendamentos do profissional se houver
+          const filteredRows = professionalId 
+            ? rows.filter((b: any) => b.professional_id === professionalId)
+            : rows;
+          setBookedBlocks(filteredRows.map((b: any) => ({ time: String(b.time || '00:00:00'), duration: Number(b.total_duration_minutes || 0) })));
         } else {
           setBookedBlocks([]);
         }
@@ -204,7 +216,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         setBookedBlocks([]);
       }
     })();
-  }, [selectedDate]);
+  }, [selectedDate, professionalId]);
 
   const availableSlots = useMemo(() => buildAvailableTimeSlots(serviceDuration, dayWindow, bookedBlocks, selectedDate), [serviceDuration, dayWindow, bookedBlocks, selectedDate]);
   

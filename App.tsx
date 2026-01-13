@@ -148,11 +148,20 @@ const App: React.FC = () => {
           />
         );
       case 'datetime':
+        // Determinar professionalId: se todos os serviços têm o mesmo profissional, usar esse; senão, null
+        const selectedServices = booking.services || [];
+        const professionalIds = selectedServices
+          .map(s => s.responsibleProfessionalId)
+          .filter((id): id is string => id != null);
+        const uniqueProfessionalIds = Array.from(new Set(professionalIds));
+        const professionalId = uniqueProfessionalIds.length === 1 ? uniqueProfessionalIds[0] : null;
+        
         return (
           <DateTimePicker
             onBack={() => setStep('services')}
             onDateTimeSelect={handleDateTimeSelect}
             serviceDuration={totalDuration}
+            professionalId={professionalId}
           />
         );
       case 'details':

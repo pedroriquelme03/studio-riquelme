@@ -1,11 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
+type Professional = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  is_active: boolean;
+};
+
 type BusinessHour = {
   id?: string;
   weekday: number; // 0..6 (domingo..sábado)
   enabled: boolean;
   open_time: string;  // HH:MM:SS or HH:MM
   close_time: string; // HH:MM:SS or HH:MM
+  professional_id?: string | null;
 };
 
 type ManualSlot = {
@@ -30,19 +39,40 @@ const HoursSettingsView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [limitMonth, setLimitMonth] = useState<string>('');
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(null);
 
   // Form de slot manual
   const [slotDate, setSlotDate] = useState<string>('');
   const [slotTime, setSlotTime] = useState<string>('09:00');
   const [slotNote, setSlotNote] = useState<string>('');
 
+  // Carregar profissionais
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/professionals');
+        const data = await res.json();
+        if (res.ok && data.professionals) {
+          setProfessionals(data.professionals.filter((p: Professional) => p.is_active));
+        }
+      } catch (e) {
+        console.error('Erro ao carregar profissionais:', e);
+      }
+    })();
+  }, []);
+
+  // Carregar horários quando o profissional selecionado mudar
   useEffect(() => {
     (async () => {
       setLoading(true);
       setError(null);
       setMessage(null);
       try {
-        const res = await fetch('/api/schedule-settings');
+        const url = selectedProfessionalId 
+          ? `/api/schedule-settings?professional_id=${selectedProfessionalId}`
+          : '/api/schedule-settings';
+        const res = await fetch(url);
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao carregar');
         const incoming: BusinessHour[] = (data.business_hours || []).map((h: any) => ({
@@ -51,6 +81,7 @@ const HoursSettingsView: React.FC = () => {
           enabled: !!h.enabled,
           open_time: normalizeTime(h.open_time),
           close_time: normalizeTime(h.close_time),
+          professional_id: h.professional_id || null,
         }));
         setLimitMonth((data.booking_limit_month || '') as string);
         // Garantir 7 dias
@@ -58,7 +89,13 @@ const HoursSettingsView: React.FC = () => {
         incoming.forEach(h => map.set(h.weekday, h));
         const normalized: BusinessHour[] = [];
         for (let w = 0; w < 7; w++) {
-          normalized.push(map.get(w) || { weekday: w, enabled: w !== 0, open_time: '09:00', close_time: w === 6 ? '16:00' : '20:00' });
+          normalized.push(map.get(w) || { 
+            weekday: w, 
+            enabled: w !== 0, 
+            open_time: '09:00', 
+            close_time: w === 6 ? '16:00' : '20:00',
+            professional_id: selectedProfessionalId,
+          });
         }
         setHours(normalized);
         setSlots((data.manual_slots || []) as ManualSlot[]);
@@ -68,7 +105,7 @@ const HoursSettingsView: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [selectedProfessionalId]);
 
   const saveHours = async () => {
     setSaving(true);
@@ -76,6 +113,7 @@ const HoursSettingsView: React.FC = () => {
     setMessage(null);
     try {
       const payload = {
+        professional_id: selectedProfessionalId,
         business_hours: hours.map(h => ({
           weekday: h.weekday,
           enabled: h.enabled,
@@ -91,7 +129,10 @@ const HoursSettingsView: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao salvar horários');
-      setMessage('Horários salvos com sucesso');
+      const profName = selectedProfessionalId 
+        ? professionals.find(p => p.id === selectedProfessionalId)?.name || 'Profissional'
+        : 'Global';
+      setMessage(`Horários de ${profName} salvos com sucesso`);
     } catch (e: any) {
       setError(e?.message || 'Erro ao salvar');
     } finally {
@@ -152,6 +193,27 @@ const HoursSettingsView: React.FC = () => {
 
       {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
       {message && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{message}</div>}
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Selecionar Profissional
+        </label>
+        <select
+          value={selectedProfessionalId || ''}
+          onChange={(e) => setSelectedProfessionalId(e.target.value || null)}
+          className="bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 w-full md:w-auto min-w-[250px]"
+        >
+          <option value="">Horários Globais (todos os profissionais)</option>
+          {professionals.map(prof => (
+            <option key={prof.id} value={prof.id}>{prof.name}</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-600 mt-2">
+          {selectedProfessionalId 
+            ? `Configurando horários para: ${professionals.find(p => p.id === selectedProfessionalId)?.name || 'Profissional'}`
+            : 'Configurando horários globais (aplicados quando o serviço não tem profissional específico)'}
+        </p>
+      </div>
 
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Janela por dia da semana</h3>

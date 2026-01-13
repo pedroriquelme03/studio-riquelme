@@ -8,7 +8,12 @@ interface DateTimePickerProps {
   professionalId?: string | null; // ID do profissional responsável pelo serviço
 }
 
-const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => void; maxDate?: Date | null }> = ({ selectedDate, onDateSelect, maxDate }) => {
+const Calendar: React.FC<{ 
+  selectedDate: Date; 
+  onDateSelect: (date: Date) => void; 
+  maxDate?: Date | null;
+  isDayEnabled?: (date: Date) => boolean; // Função para verificar se um dia está ativo
+}> = ({ selectedDate, onDateSelect, maxDate, isDayEnabled }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -26,6 +31,12 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
   const isToday = (date: Date) => new Date().toDateString() === date.toDateString();
   const isSelected = (date: Date) => selectedDate.toDateString() === date.toDateString();
   const isPast = (date: Date) => date < new Date() && !isToday(date);
+  const isDisabled = (date: Date) => {
+    if (isPast(date)) return true;
+    if (maxDate && date > maxDate) return true;
+    if (isDayEnabled && !isDayEnabled(date)) return true; // Verificar se o dia da semana está ativo
+    return false;
+  };
 
   const changeMonth = (amount: number) => {
     setCurrentMonth(prev => {
@@ -57,25 +68,27 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
         {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => <div key={d}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {days.map((d, i) => (
-          <button
-            key={i}
-            onClick={() => {
-              if (isPast(d)) return;
-              if (maxDate && d > maxDate) return;
-              onDateSelect(d);
-            }}
-            disabled={isPast(d) || (maxDate ? d > maxDate : false)}
-            className={`w-10 h-10 rounded-full transition-colors duration-200
-              ${isPast(d) || (maxDate && d > maxDate) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-pink-600 hover:text-white'}
-              ${d.getMonth() !== currentMonth.getMonth() ? 'text-gray-400' : 'text-gray-900'}
-              ${isToday(d) && !isSelected(d) ? 'border-2 border-pink-600' : ''}
-              ${isSelected(d) ? 'bg-pink-600 text-white font-bold' : ''}
-            `}
-          >
-            {d.getDate()}
-          </button>
-        ))}
+        {days.map((d, i) => {
+          const disabled = isDisabled(d);
+          return (
+            <button
+              key={i}
+              onClick={() => {
+                if (disabled) return;
+                onDateSelect(d);
+              }}
+              disabled={disabled}
+              className={`w-10 h-10 rounded-full transition-colors duration-200
+                ${disabled ? 'text-gray-300 cursor-not-allowed opacity-50' : 'hover:bg-pink-600 hover:text-white'}
+                ${d.getMonth() !== currentMonth.getMonth() ? 'text-gray-400' : 'text-gray-900'}
+                ${isToday(d) && !isSelected(d) && !disabled ? 'border-2 border-pink-600' : ''}
+                ${isSelected(d) ? 'bg-pink-600 text-white font-bold' : ''}
+              `}
+            >
+              {d.getDate()}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -152,7 +165,9 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
   const [maxDate, setMaxDate] = useState<Date | null>(null);
   const [dayWindow, setDayWindow] = useState<DayWindow>({ open: '09:00', close: '20:00', enabled: true });
   const [bookedBlocks, setBookedBlocks] = useState<Array<{ time: string; duration: number }>>([]);
+  const [businessHours, setBusinessHours] = useState<Array<{ weekday: number; enabled: boolean; open_time: string; close_time: string }>>([]); // Todos os horários da semana
 
+  // Carregar todos os horários da semana uma vez
   useEffect(() => {
     (async () => {
       try {
@@ -170,14 +185,23 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
               setMaxDate(d);
             }
           }
-          // Definir janela por dia da semana, se existir
+          // Salvar todos os horários da semana
+          const hours = (data?.business_hours || []).map((h: any) => ({
+            weekday: Number(h.weekday),
+            enabled: !!h.enabled,
+            open_time: String(h.open_time || '09:00').slice(0,5),
+            close_time: String(h.close_time || '20:00').slice(0,5),
+          }));
+          setBusinessHours(hours);
+          
+          // Definir janela por dia da semana do dia selecionado
           const weekday = selectedDate.getDay(); // 0..6
-          const h = (data?.business_hours || []).find((x: any) => Number(x.weekday) === Number(weekday));
+          const h = hours.find((x: any) => Number(x.weekday) === Number(weekday));
           if (h) {
             setDayWindow({
               enabled: !!h.enabled,
-              open: String(h.open_time || '09:00').slice(0,5),
-              close: String(h.close_time || '20:00').slice(0,5),
+              open: h.open_time,
+              close: h.close_time,
             });
           } else {
             setDayWindow({ open: '09:00', close: '20:00', enabled: true });
@@ -186,7 +210,22 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
       } catch {}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate.toDateString(), professionalId]);
+  }, [professionalId]);
+
+  // Atualizar janela quando o dia selecionado mudar
+  useEffect(() => {
+    const weekday = selectedDate.getDay(); // 0..6
+    const h = businessHours.find((x: any) => Number(x.weekday) === Number(weekday));
+    if (h) {
+      setDayWindow({
+        enabled: !!h.enabled,
+        open: h.open_time,
+        close: h.close_time,
+      });
+    } else {
+      setDayWindow({ open: '09:00', close: '20:00', enabled: true });
+    }
+  }, [selectedDate, businessHours]);
 
   // Carregar agendamentos do dia para bloquear sobreposições (filtrar por profissional se houver)
   useEffect(() => {
@@ -220,6 +259,17 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
 
   const availableSlots = useMemo(() => buildAvailableTimeSlots(serviceDuration, dayWindow, bookedBlocks, selectedDate), [serviceDuration, dayWindow, bookedBlocks, selectedDate]);
   
+  // Função para verificar se um dia está ativo (baseado no dia da semana)
+  const isDayEnabled = useMemo(() => {
+    return (date: Date) => {
+      const weekday = date.getDay(); // 0..6
+      const hourConfig = businessHours.find(h => h.weekday === weekday);
+      // Se não encontrou configuração, assume que está ativo (compatibilidade)
+      if (!hourConfig) return true;
+      return hourConfig.enabled;
+    };
+  }, [businessHours]);
+  
   const handleNext = () => {
     if (selectedDate && selectedTime) {
       onDateTimeSelect(selectedDate, selectedTime);
@@ -231,29 +281,48 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Escolha a Data e Hora</h2>
       <div className="grid md:grid-cols-2 gap-8">
         <div>
-          <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} maxDate={maxDate || undefined} />
+          <Calendar 
+            selectedDate={selectedDate} 
+            onDateSelect={setSelectedDate} 
+            maxDate={maxDate || undefined}
+            isDayEnabled={isDayEnabled}
+          />
         </div>
         <div className="max-h-[400px] overflow-y-auto pr-2">
             <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
-            {Object.entries(availableSlots).map(([period, slots]) => (
-                <div key={period} className="mb-4">
-                    <h4 className="font-semibold text-pink-600 mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {/* Fix: Use Array.isArray as a type guard to ensure 'slots' is treated as an array, resolving the 'unknown' type issue. */}
-                        {Array.isArray(slots) && slots.map(time => (
-                            <button 
-                                key={time} 
-                                onClick={() => setSelectedTime(time)}
-                                className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
-                                    ${selectedTime === time ? 'bg-pink-600 text-white border-pink-600 font-bold' : 'bg-gray-50 border-gray-300 hover:border-pink-600'}
-                                `}
-                            >
-                                {time}
-                            </button>
-                        ))}
-                    </div>
+            {!dayWindow.enabled ? (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm">
+                    ⚠️ Este dia da semana não está disponível para agendamentos. Por favor, selecione outro dia.
                 </div>
-            ))}
+            ) : (
+                <>
+                    {Object.entries(availableSlots).map(([period, slots]) => (
+                        Array.isArray(slots) && slots.length > 0 && (
+                            <div key={period} className="mb-4">
+                                <h4 className="font-semibold text-pink-600 mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                    {slots.map(time => (
+                                        <button 
+                                            key={time} 
+                                            onClick={() => setSelectedTime(time)}
+                                            className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
+                                                ${selectedTime === time ? 'bg-pink-600 text-white border-pink-600 font-bold' : 'bg-gray-50 border-gray-300 hover:border-pink-600'}
+                                            `}
+                                        >
+                                            {time}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    ))}
+                    {Object.values(availableSlots).every(slots => !Array.isArray(slots) || slots.length === 0) && (
+                        <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded-lg text-sm">
+                            ⚠️ Não há horários disponíveis neste dia.
+                        </div>
+                    )}
+                </>
+            )}
         </div>
       </div>
       <div className="flex justify-between mt-8 border-t border-gray-300 pt-6">

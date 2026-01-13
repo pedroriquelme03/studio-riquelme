@@ -131,15 +131,15 @@ const buildAvailableTimeSlots = (serviceDuration: number, window: DayWindow, boo
   // Separar por períodos (respeitando janelas reais)
   const morning = slots.filter(time => {
     const hour = parseInt(time.split(':')[0]);
-    return hour >= Math.max(9, parseInt(w.open)) && hour < 12;
+    return hour >= parseInt(w.open) && hour < Math.min(12, parseInt(w.close));
   });
   const afternoon = slots.filter(time => {
     const hour = parseInt(time.split(':')[0]);
-    return hour >= 12 && hour < 18;
+    return hour >= Math.max(12, parseInt(w.open)) && hour < Math.min(18, parseInt(w.close));
   });
   const evening = slots.filter(time => {
     const hour = parseInt(time.split(':')[0]);
-    return hour >= 18 && hour < Math.min(20, parseInt(w.close));
+    return hour >= Math.max(18, parseInt(w.open)) && hour < parseInt(w.close);
   });
 
   return { morning, afternoon, evening };

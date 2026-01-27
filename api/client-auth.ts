@@ -99,63 +99,87 @@ export default async function handler(req: any, res: any) {
 			return res.status(200).json({ ok: true, phone: client.phone || phone });
 		}
 
-			if (action === 'register') {
-				if (!name) {
-					return res.status(400).json({ ok: false, error: 'name é obrigatório para register' });
-				}
-
-				// Tentar achar client_id em clients por igualdade exata (sem normalização avançada aqui)
-				let clientId: string | null = null;
-				{
-					const { data: c, error: cErr } = await supabase
-						.from('clients')
-						.select('id, phone')
-						.eq('phone', phone)
-						.limit(1)
-						.maybeSingle();
-					if (!cErr && c?.id) {
-						clientId = String(c.id);
-					}
-				}
-
-				// Buscar registro existente em registered_clients por phone (dígitos)
-				const { data: existing, error: rErr } = await supabase
-					.from('registered_clients')
-					.select('id, client_id, email')
-					.eq('phone', phone)
-					.limit(1)
-					.maybeSingle();
-				if (rErr) {
-					return res.status(500).json({ ok: false, error: rErr.message });
-				}
-
-				if (existing?.id) {
-					// Atualizar nome e email (se informado agora), preservar client_id existente se já houver
-					const { error: upErr } = await supabase
-						.from('registered_clients')
-						.update({
-							name,
-							email: email || existing.email || null,
-							client_id: existing.client_id || clientId,
-							updated_at: new Date().toISOString(),
-						})
-						.eq('id', existing.id);
-					if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
-				} else {
-					// Inserir novo registro
-					const { error: insErr } = await supabase
-						.from('registered_clients')
-						.insert({
-							client_id: clientId,
-							name,
-							phone,
-							email,
-						});
-					if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
-				}
-
-				return res.status(201).json({ ok: true, phone });
+		if (action === 'register') {
+			if (!name) {
+				return res.status(400).json({ ok: false, error: 'name é obrigatório para register' });
 			}
+
+			// Verificar se cliente já existe na tabela clients
+			let clientId: string | null = null;
+			const { data: existingClient, error: cErr } = await supabase
+				.from('clients')
+				.select('id, phone')
+				.eq('phone', phone)
+				.limit(1)
+				.maybeSingle();
+			
+			if (!cErr && existingClient?.id) {
+				clientId = String(existingClient.id);
+				// Atualizar dados do cliente se necessário
+				await supabase
+					.from('clients')
+					.update({
+						name,
+						email: email || null,
+						updated_at: new Date().toISOString(),
+					})
+					.eq('id', clientId);
+			} else {
+				// Criar novo cliente na tabela clients
+				const { data: newClient, error: insClientErr } = await supabase
+					.from('clients')
+					.insert({
+						name,
+						phone,
+						email: email || null,
+					})
+					.select('id')
+					.single();
+				
+				if (insClientErr) {
+					return res.status(500).json({ ok: false, error: `Erro ao criar cliente: ${insClientErr.message}` });
+				}
+				clientId = String(newClient.id);
+			}
+
+			// Buscar registro existente em registered_clients por phone (dígitos)
+			const { data: existing, error: rErr } = await supabase
+				.from('registered_clients')
+				.select('id, client_id, email')
+				.eq('phone', phone)
+				.limit(1)
+				.maybeSingle();
+			if (rErr) {
+				return res.status(500).json({ ok: false, error: rErr.message });
+			}
+
+			if (existing?.id) {
+				// Atualizar nome e email (se informado agora), preservar client_id existente se já houver
+				const { error: upErr } = await supabase
+					.from('registered_clients')
+					.update({
+						name,
+						email: email || existing.email || null,
+						client_id: clientId,
+						updated_at: new Date().toISOString(),
+					})
+					.eq('id', existing.id);
+				if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+			} else {
+				// Inserir novo registro
+				const { error: insErr } = await supabase
+					.from('registered_clients')
+					.insert({
+						client_id: clientId,
+						name,
+						phone,
+						email,
+					});
+				if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
+			}
+
+			return res.status(201).json({ ok: true, phone });
+		}
 
 			if (action === 'login') {
 				// Verificar se telefone existe na registered_clients

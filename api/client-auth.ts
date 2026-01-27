@@ -116,23 +116,31 @@ export default async function handler(req: any, res: any) {
 			if (!cErr && existingClient?.id) {
 				clientId = String(existingClient.id);
 				// Atualizar dados do cliente se necessário
+				const updateData: any = {
+					name,
+					updated_at: new Date().toISOString(),
+				};
+				if (email && email.trim()) {
+					updateData.email = email.trim();
+				}
 				await supabase
 					.from('clients')
-					.update({
-						name,
-						email: email || null,
-						updated_at: new Date().toISOString(),
-					})
+					.update(updateData)
 					.eq('id', clientId);
 			} else {
 				// Criar novo cliente na tabela clients
+				// Construir objeto de inserção sem email se for vazio/null
+				const insertData: any = {
+					name,
+					phone,
+				};
+				if (email && email.trim()) {
+					insertData.email = email.trim();
+				}
+				
 				const { data: newClient, error: insClientErr } = await supabase
 					.from('clients')
-					.insert({
-						name,
-						phone,
-						email: email || null,
-					})
+					.insert(insertData)
 					.select('id')
 					.single();
 				

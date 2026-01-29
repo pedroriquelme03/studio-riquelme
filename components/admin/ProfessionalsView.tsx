@@ -26,6 +26,14 @@ const ProfessionalsView: React.FC = () => {
   const [editPhone, setEditPhone] = useState('');
   const [editActive, setEditActive] = useState<boolean>(true);
 
+  const [footerContact1Name, setFooterContact1Name] = useState('');
+  const [footerContact1Phone, setFooterContact1Phone] = useState('');
+  const [footerContact2Name, setFooterContact2Name] = useState('');
+  const [footerContact2Phone, setFooterContact2Phone] = useState('');
+  const [footerAddress, setFooterAddress] = useState('');
+  const [footerContactSaving, setFooterContactSaving] = useState(false);
+  const [footerContactError, setFooterContactError] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -44,6 +52,46 @@ const ProfessionalsView: React.FC = () => {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    fetch('/api/footer-contact')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ok) {
+          setFooterContact1Name(data.contact1_name ?? '');
+          setFooterContact1Phone(data.contact1_phone ?? '');
+          setFooterContact2Name(data.contact2_name ?? '');
+          setFooterContact2Phone(data.contact2_phone ?? '');
+          setFooterAddress(data.address ?? '');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const saveFooterContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFooterContactSaving(true);
+    setFooterContactError(null);
+    try {
+      const res = await fetch('/api/footer-contact', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact1_name: footerContact1Name.trim(),
+          contact1_phone: footerContact1Phone.trim(),
+          contact2_name: footerContact2Name.trim(),
+          contact2_phone: footerContact2Phone.trim(),
+          address: footerAddress.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Erro ao salvar contato do rodapé');
+    } catch (e: any) {
+      setFooterContactError(e.message);
+    } finally {
+      setFooterContactSaving(false);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,6 +203,69 @@ const ProfessionalsView: React.FC = () => {
       </form>
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
+
+      {/* Contato do rodapé */}
+      <div className="bg-white p-6 rounded-lg border border-gray-300 mb-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Contato do rodapé</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Estes dados aparecem no rodapé do site: dois contatos WhatsApp (nome + número) e um endereço (abre no Google Maps).
+        </p>
+        <form onSubmit={saveFooterContact} className="grid gap-4 max-w-2xl">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">1º WhatsApp – Nome</label>
+            <input
+              value={footerContact1Name}
+              onChange={(e) => setFooterContact1Name(e.target.value)}
+              placeholder="Ex: Atendimento"
+              className="w-full bg-gray-50 text-gray-900 rounded px-3 py-2 border border-gray-300 focus:border-pink-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">1º WhatsApp – Número</label>
+            <input
+              value={footerContact1Phone}
+              onChange={(e) => setFooterContact1Phone(e.target.value)}
+              placeholder="(00) 00000-0000"
+              className="w-full bg-gray-50 text-gray-900 rounded px-3 py-2 border border-gray-300 focus:border-pink-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">2º WhatsApp – Nome</label>
+            <input
+              value={footerContact2Name}
+              onChange={(e) => setFooterContact2Name(e.target.value)}
+              placeholder="Ex: Reservas"
+              className="w-full bg-gray-50 text-gray-900 rounded px-3 py-2 border border-gray-300 focus:border-pink-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">2º WhatsApp – Número</label>
+            <input
+              value={footerContact2Phone}
+              onChange={(e) => setFooterContact2Phone(e.target.value)}
+              placeholder="(00) 00000-0000"
+              className="w-full bg-gray-50 text-gray-900 rounded px-3 py-2 border border-gray-300 focus:border-pink-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Endereço (Google Maps)</label>
+            <input
+              value={footerAddress}
+              onChange={(e) => setFooterAddress(e.target.value)}
+              placeholder="Rua, número, bairro, cidade"
+              className="w-full bg-gray-50 text-gray-900 rounded px-3 py-2 border border-gray-300 focus:border-pink-600"
+            />
+          </div>
+          {footerContactError && <div className="text-red-500 text-sm">{footerContactError}</div>}
+          <button
+            type="submit"
+            disabled={footerContactSaving}
+            className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-70 w-fit"
+          >
+            {footerContactSaving ? 'Salvando...' : 'Salvar contato do rodapé'}
+          </button>
+        </form>
+      </div>
 
       {/* Tabela (desktop) */}
       <div className="hidden md:block bg-white rounded-lg border border-gray-300">

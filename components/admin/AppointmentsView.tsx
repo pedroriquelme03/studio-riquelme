@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarIcon } from '../icons';
+import { CalendarIcon, WhatsAppIcon, whatsAppNumber } from '../icons';
 
 type Professional = { id: string; name: string; };
 type Service = { id: number; name: string; };
@@ -284,7 +284,7 @@ const AppointmentsView: React.FC = () => {
       arr.push(b);
       m.set(key, arr);
     });
-    return Array.from(m.entries()).sort(([a],[b]) => a.localeCompare(b));
+    return Array.from(m.entries()).sort(([a],[b]) => b.localeCompare(a));
   }, [bookings]);
 
   return (
@@ -582,6 +582,20 @@ const AppointmentsView: React.FC = () => {
                       <div className="text-pink-600 font-bold text-lg tabular-nums flex-shrink-0">{b.time.slice(0,5)}</div>
                       <div className="min-w-0">
                         <div className="text-gray-900 font-semibold break-words">{b.client_name}</div>
+                        {b.client_phone && (
+                          <div className="text-gray-600 text-sm flex items-center gap-1.5 mt-0.5">
+                            <span>{b.client_phone}</span>
+                            <a
+                              href={`https://wa.me/${whatsAppNumber(b.client_phone)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-green-600 hover:text-green-700 inline-flex"
+                              title="Abrir WhatsApp"
+                            >
+                              <WhatsAppIcon className="w-5 h-5" />
+                            </a>
+                          </div>
+                        )}
                         <div className="text-gray-600 text-sm break-words">{(b.services || []).map(s => s.name).join(', ')}</div>
                       </div>
                     </div>

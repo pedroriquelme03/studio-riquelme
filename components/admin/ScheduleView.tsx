@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarIcon } from '../icons';
+import { CalendarIcon, WhatsAppIcon, whatsAppNumber } from '../icons';
 
 type Professional = {
   id: string;
@@ -256,7 +256,20 @@ const ScheduleView: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
-                    <p className="text-sm text-gray-600">{b.client_phone}</p>
+                    {b.client_phone && (
+                      <p className="text-sm text-gray-600 flex items-center gap-1.5 mt-0.5">
+                        <span>{b.client_phone}</span>
+                        <a
+                          href={`https://wa.me/${whatsAppNumber(b.client_phone)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-600 hover:text-green-700 inline-flex"
+                          title="Abrir WhatsApp"
+                        >
+                          <WhatsAppIcon className="w-5 h-5" />
+                        </a>
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-pink-600 text-lg">R${Number(b.total_price).toFixed(2)}</p>
@@ -378,7 +391,20 @@ const ScheduleView: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
-                    <p className="text-sm text-gray-600">{b.client_phone}</p>
+                    {b.client_phone && (
+                      <p className="text-sm text-gray-600 flex items-center gap-1.5 mt-0.5">
+                        <span>{b.client_phone}</span>
+                        <a
+                          href={`https://wa.me/${whatsAppNumber(b.client_phone)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-600 hover:text-green-700 inline-flex"
+                          title="Abrir WhatsApp"
+                        >
+                          <WhatsAppIcon className="w-5 h-5" />
+                        </a>
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-pink-600 text-lg">R${Number(b.total_price).toFixed(2)}</p>

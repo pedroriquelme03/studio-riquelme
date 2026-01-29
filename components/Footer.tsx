@@ -45,11 +45,13 @@ const Footer: React.FC = () => {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 text-gray-700 hover:text-pink-600 transition-colors"
               >
-                <span className="text-pink-600 flex-shrink-0">
+                <span className="text-pink-600 flex-shrink-0 flex items-center justify-center" aria-hidden>
                   <WhatsAppIcon className="w-6 h-6" />
                 </span>
-                <span className="font-medium">{contact.contact1_name || 'WhatsApp'}</span>
-                <span className="text-gray-600">{contact.contact1_phone}</span>
+                <span className="flex flex-col items-start">
+                  <span className="font-medium">{contact.contact1_name || 'WhatsApp'}</span>
+                  <span className="text-gray-600 text-sm mt-0.5">{contact.contact1_phone}</span>
+                </span>
               </a>
             )}
             {hasWhatsApp2 && contact.contact2_phone && (
@@ -59,11 +61,13 @@ const Footer: React.FC = () => {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 text-gray-700 hover:text-pink-600 transition-colors"
               >
-                <span className="text-pink-600 flex-shrink-0">
+                <span className="text-pink-600 flex-shrink-0 flex items-center justify-center" aria-hidden>
                   <WhatsAppIcon className="w-6 h-6" />
                 </span>
-                <span className="font-medium">{contact.contact2_name || 'WhatsApp'}</span>
-                <span className="text-gray-600">{contact.contact2_phone}</span>
+                <span className="flex flex-col items-start">
+                  <span className="font-medium">{contact.contact2_name || 'WhatsApp'}</span>
+                  <span className="text-gray-600 text-sm mt-0.5">{contact.contact2_phone}</span>
+                </span>
               </a>
             )}
             {hasAddress && (

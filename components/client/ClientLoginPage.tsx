@@ -30,19 +30,49 @@ function toE164(digits: string): string {
 
 const ClientLoginPage: React.FC = () => {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [isForgotMode, setIsForgotMode] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setIsLoading(true);
     try {
       const digits = normalizePhone(phone);
+
+      if (isForgotMode) {
+        if (!password || password.length < 6) {
+          setError('A senha deve ter no mínimo 6 caracteres');
+          setIsLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError('As senhas não coincidem');
+          setIsLoading(false);
+          return;
+        }
+        const res = await fetch('/api/client-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_password', phone: digits, password }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível redefinir a senha');
+        setSuccessMessage('Senha alterada com sucesso! Faça login com sua nova senha.');
+        setPassword('');
+        setConfirmPassword('');
+        setIsForgotMode(false);
+        setIsLoading(false);
+        return;
+      }
       
       if (isRegisterMode) {
         // Criar conta
@@ -100,16 +130,18 @@ const ClientLoginPage: React.FC = () => {
   return (
     <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
       <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">
-        {isRegisterMode ? 'Criar Conta' : 'Entrar'}
+        {isForgotMode ? 'Redefinir senha' : isRegisterMode ? 'Criar Conta' : 'Entrar'}
       </h2>
       <p className="text-gray-600 text-center mb-6">
-        {isRegisterMode 
+        {isForgotMode
+          ? 'Informe seu WhatsApp e defina uma nova senha.'
+          : isRegisterMode 
           ? 'Crie sua conta para acessar seu histórico de agendamentos' 
           : 'Acesse seu histórico com seu WhatsApp'}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {isRegisterMode && (
+        {isRegisterMode && !isForgotMode && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
             <input
@@ -149,22 +181,58 @@ const ClientLoginPage: React.FC = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-            placeholder={isRegisterMode ? 'Mínimo 6 caracteres' : 'Sua senha'}
-            minLength={6}
-            required
-          />
-        </div>
+        {!isForgotMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+              placeholder={isRegisterMode ? 'Mínimo 6 caracteres' : 'Sua senha'}
+              minLength={6}
+              required={!isForgotMode}
+            />
+          </div>
+        )}
+
+        {isForgotMode && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                placeholder="Mínimo 6 caracteres"
+                minLength={6}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                placeholder="Repita a senha"
+                minLength={6}
+                required
+              />
+            </div>
+          </>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
+            {successMessage}
           </div>
         )}
 
@@ -174,27 +242,59 @@ const ClientLoginPage: React.FC = () => {
           className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading 
-            ? (isRegisterMode ? 'Criando conta...' : 'Entrando...') 
-            : (isRegisterMode ? 'Criar Conta' : 'Entrar')}
+            ? (isForgotMode ? 'Redefinindo...' : isRegisterMode ? 'Criando conta...' : 'Entrando...') 
+            : (isForgotMode ? 'Redefinir senha' : isRegisterMode ? 'Criar Conta' : 'Entrar')}
         </button>
       </form>
 
-      <div className="mt-6 text-center">
-        <button
-          type="button"
-          onClick={() => {
-            setIsRegisterMode(!isRegisterMode);
-            setError(null);
-            setName('');
-            setPhone('');
-            setPassword('');
-          }}
-          className="text-pink-600 hover:text-pink-700 text-sm font-medium"
-        >
-          {isRegisterMode 
-            ? 'Já tem uma conta? Entrar' 
-            : 'Não tem uma conta? Criar conta'}
-        </button>
+      <div className="mt-6 text-center space-y-2">
+        {isForgotMode ? (
+          <button
+            type="button"
+            onClick={() => {
+              setIsForgotMode(false);
+              setError(null);
+              setSuccessMessage(null);
+              setPassword('');
+              setConfirmPassword('');
+            }}
+            className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
+          >
+            Voltar ao login
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegisterMode(!isRegisterMode);
+                setError(null);
+                setSuccessMessage(null);
+                setName('');
+                setPhone('');
+                setPassword('');
+              }}
+              className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
+            >
+              {isRegisterMode 
+                ? 'Já tem uma conta? Entrar' 
+                : 'Não tem uma conta? Criar conta'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgotMode(true);
+                setError(null);
+                setSuccessMessage(null);
+                setPassword('');
+                setConfirmPassword('');
+              }}
+              className="block w-full text-gray-600 hover:text-gray-800 text-sm font-medium"
+            >
+              Esqueci a senha
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

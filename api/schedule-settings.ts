@@ -46,6 +46,19 @@ export default async function handler(req: any, res: any) {
 					.select('id, date, time, professional_id, note, available, created_at')
 					.order('date', { ascending: true })
 					.order('time', { ascending: true });
+
+				let specialQuery = supabase
+					.from('special_date_hours')
+					.select('id, date, open_time, close_time, enabled, professional_id')
+					.order('date', { ascending: true });
+				if (professionalId) {
+					specialQuery = specialQuery.or(`professional_id.eq.${professionalId},professional_id.is.null`);
+				} else {
+					specialQuery = specialQuery.is('professional_id', null);
+				}
+				const { data: specialHours, error: specialErr } = await specialQuery;
+				if (specialErr) console.warn('special_date_hours read error', specialErr.message);
+
 				const { data: setting, error: setErr } = await supabase
 					.from('system_settings')
 					.select('key, value')
@@ -54,13 +67,13 @@ export default async function handler(req: any, res: any) {
 				if (hErr) return res.status(500).json({ ok: false, error: hErr.message });
 				if (sErr) return res.status(500).json({ ok: false, error: sErr.message });
 				if (setErr && setErr.code !== 'PGRST116') {
-					// ignore missing row error
 					console.warn('settings read error', setErr.message);
 				}
 				return res.status(200).json({
 					ok: true,
 					business_hours: hours || [],
 					manual_slots: slots || [],
+					special_date_hours: specialHours || [],
 					booking_limit_month: setting?.value || null
 				});
 			}
@@ -141,6 +154,58 @@ export default async function handler(req: any, res: any) {
 			if (req.method === 'POST') {
 				const raw = req.body ?? {};
 				const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
+
+				// Horário especial por data/período
+				if (body?.action === 'special_date') {
+					const dateFrom = String(body?.date || '').trim();
+					const dateTo = String(body?.date_to || '').trim() || dateFrom;
+					const openTime = String(body?.open_time || '09:00').trim();
+					const closeTime = String(body?.close_time || '18:00').trim();
+					const enabled = body?.enabled !== false;
+					const profId = body?.professional_id || null;
+					if (!dateFrom || !/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+						return res.status(400).json({ ok: false, error: 'date é obrigatório (YYYY-MM-DD)' });
+					}
+					const open = openTime.length === 5 ? `${openTime}:00` : openTime;
+					const close = closeTime.length === 5 ? `${closeTime}:00` : closeTime;
+
+					const start = new Date(dateFrom);
+					const end = new Date(dateTo);
+					if (end < start) {
+						return res.status(400).json({ ok: false, error: 'date_to deve ser igual ou posterior a date' });
+					}
+
+					const ids: string[] = [];
+					for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+						const y = d.getFullYear();
+						const m = String(d.getMonth() + 1).padStart(2, '0');
+						const day = String(d.getDate()).padStart(2, '0');
+						const dateStr = `${y}-${m}-${day}`;
+						if (profId) {
+							const { data: inserted, error: insErr } = await supabase
+								.from('special_date_hours')
+								.upsert(
+									{ date: dateStr, open_time: open, close_time: close, enabled, professional_id: profId },
+									{ onConflict: 'date,professional_id' }
+								)
+								.select('id')
+								.single();
+							if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
+							if ((inserted as any)?.id) ids.push((inserted as any).id);
+						} else {
+							await supabase.from('special_date_hours').delete().eq('date', dateStr).is('professional_id', null);
+							const { data: inserted, error: insErr } = await supabase
+								.from('special_date_hours')
+								.insert({ date: dateStr, open_time: open, close_time: close, enabled, professional_id: null })
+								.select('id')
+								.single();
+							if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
+							if ((inserted as any)?.id) ids.push((inserted as any).id);
+						}
+					}
+					return res.status(201).json({ ok: true, ids, count: ids.length });
+				}
+
 				const date = String(body?.date || '');
 				const time = String(body?.time || '');
 				const professional_id = body?.professional_id || null;
@@ -167,7 +232,16 @@ export default async function handler(req: any, res: any) {
 				const raw = req.body ?? {};
 				const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 				const id = String(body?.id || '');
-				if (!id) return res.status(400).json({ ok: false, error: 'id é obrigatório' });
+				const specialId = String(body?.special_id || '').trim();
+				if (specialId) {
+					const { error: delErr } = await supabase
+						.from('special_date_hours')
+						.delete()
+						.eq('id', specialId);
+					if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+					return res.status(200).json({ ok: true });
+				}
+				if (!id) return res.status(400).json({ ok: false, error: 'id ou special_id é obrigatório' });
 				const { error: delErr } = await supabase
 					.from('manual_slots')
 					.delete()

@@ -165,13 +165,20 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
   const [maxDate, setMaxDate] = useState<Date | null>(null);
   const [dayWindow, setDayWindow] = useState<DayWindow>({ open: '09:00', close: '20:00', enabled: true });
   const [bookedBlocks, setBookedBlocks] = useState<Array<{ time: string; duration: number }>>([]);
-  const [businessHours, setBusinessHours] = useState<Array<{ weekday: number; enabled: boolean; open_time: string; close_time: string }>>([]); // Todos os horários da semana
+  const [businessHours, setBusinessHours] = useState<Array<{ weekday: number; enabled: boolean; open_time: string; close_time: string }>>([]);
+  const [specialDateHours, setSpecialDateHours] = useState<Array<{ date: string; open_time: string; close_time: string; enabled: boolean; professional_id: string | null }>>([]);
 
-  // Carregar todos os horários da semana uma vez
+  const formatDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // Carregar horários da semana e horários especiais
   useEffect(() => {
     (async () => {
       try {
-        // Buscar horários do profissional específico ou globais
         const url = professionalId 
           ? `/api/schedule-settings?professional_id=${professionalId}`
           : '/api/schedule-settings';
@@ -185,7 +192,6 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
               setMaxDate(d);
             }
           }
-          // Salvar todos os horários da semana
           const hours = (data?.business_hours || []).map((h: any) => ({
             weekday: Number(h.weekday),
             enabled: !!h.enabled,
@@ -193,28 +199,35 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
             close_time: String(h.close_time || '20:00').slice(0,5),
           }));
           setBusinessHours(hours);
-          
-          // Definir janela por dia da semana do dia selecionado
-          const weekday = selectedDate.getDay(); // 0..6
-          const h = hours.find((x: any) => Number(x.weekday) === Number(weekday));
-          if (h) {
-            setDayWindow({
-              enabled: !!h.enabled,
-              open: h.open_time,
-              close: h.close_time,
-            });
-          } else {
-            setDayWindow({ open: '09:00', close: '20:00', enabled: true });
-          }
+          const special = (data?.special_date_hours || []).map((s: any) => ({
+            date: String(s.date).slice(0, 10),
+            open_time: String(s.open_time || '09:00').slice(0,5),
+            close_time: String(s.close_time || '20:00').slice(0,5),
+            enabled: !!s.enabled,
+            professional_id: s.professional_id || null,
+          }));
+          setSpecialDateHours(special);
         }
       } catch {}
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalId]);
 
-  // Atualizar janela quando o dia selecionado mudar
+  // Atualizar janela quando o dia selecionado mudar (horário especial tem prioridade)
   useEffect(() => {
-    const weekday = selectedDate.getDay(); // 0..6
+    const dateStr = formatDateStr(selectedDate);
+    const specialForDate = specialDateHours.filter(s => s.date === dateStr);
+    const special = professionalId 
+      ? (specialForDate.find(s => s.professional_id === professionalId) || specialForDate.find(s => !s.professional_id))
+      : specialForDate.find(s => !s.professional_id);
+    if (special) {
+      setDayWindow({
+        enabled: special.enabled,
+        open: special.open_time,
+        close: special.close_time,
+      });
+      return;
+    }
+    const weekday = selectedDate.getDay();
     const h = businessHours.find((x: any) => Number(x.weekday) === Number(weekday));
     if (h) {
       setDayWindow({
@@ -225,7 +238,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
     } else {
       setDayWindow({ open: '09:00', close: '20:00', enabled: true });
     }
-  }, [selectedDate, businessHours]);
+  }, [selectedDate, businessHours, specialDateHours, professionalId]);
 
   // Carregar agendamentos do dia para bloquear sobreposições (filtrar por profissional se houver)
   useEffect(() => {
@@ -259,16 +272,21 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
 
   const availableSlots = useMemo(() => buildAvailableTimeSlots(serviceDuration, dayWindow, bookedBlocks, selectedDate), [serviceDuration, dayWindow, bookedBlocks, selectedDate]);
   
-  // Função para verificar se um dia está ativo (baseado no dia da semana)
+  // Função para verificar se um dia está ativo (horário especial tem prioridade sobre dia da semana)
   const isDayEnabled = useMemo(() => {
     return (date: Date) => {
-      const weekday = date.getDay(); // 0..6
+      const dateStr = formatDateStr(date);
+      const specialForDate = specialDateHours.filter(s => s.date === dateStr);
+      const special = professionalId 
+        ? (specialForDate.find(s => s.professional_id === professionalId) || specialForDate.find(s => !s.professional_id))
+        : specialForDate.find(s => !s.professional_id);
+      if (special) return special.enabled;
+      const weekday = date.getDay();
       const hourConfig = businessHours.find(h => h.weekday === weekday);
-      // Se não encontrou configuração, assume que está ativo (compatibilidade)
       if (!hourConfig) return true;
       return hourConfig.enabled;
     };
-  }, [businessHours]);
+  }, [businessHours, specialDateHours, professionalId]);
   
   const handleNext = () => {
     if (selectedDate && selectedTime) {

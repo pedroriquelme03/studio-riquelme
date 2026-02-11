@@ -27,6 +27,15 @@ type ManualSlot = {
   created_at?: string;
 };
 
+type SpecialDateHour = {
+  id: string;
+  date: string; // yyyy-mm-dd
+  open_time: string;
+  close_time: string;
+  enabled: boolean;
+  professional_id?: string | null;
+};
+
 const WEEKDAYS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
 const normalizeTime = (t: string) => (t || '').slice(0,5);
@@ -34,6 +43,7 @@ const normalizeTime = (t: string) => (t || '').slice(0,5);
 const HoursSettingsView: React.FC = () => {
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [slots, setSlots] = useState<ManualSlot[]>([]);
+  const [specialHours, setSpecialHours] = useState<SpecialDateHour[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +56,14 @@ const HoursSettingsView: React.FC = () => {
   const [slotDate, setSlotDate] = useState<string>('');
   const [slotTime, setSlotTime] = useState<string>('09:00');
   const [slotNote, setSlotNote] = useState<string>('');
+
+  // Form de horário especial (dia ou período)
+  const [specialDateFrom, setSpecialDateFrom] = useState<string>('');
+  const [specialDateTo, setSpecialDateTo] = useState<string>('');
+  const [specialOpen, setSpecialOpen] = useState<string>('09:00');
+  const [specialClose, setSpecialClose] = useState<string>('18:00');
+  const [specialEnabled, setSpecialEnabled] = useState<boolean>(true);
+  const [specialSaving, setSpecialSaving] = useState(false);
 
   // Carregar profissionais
   useEffect(() => {
@@ -99,6 +117,15 @@ const HoursSettingsView: React.FC = () => {
         }
         setHours(normalized);
         setSlots((data.manual_slots || []) as ManualSlot[]);
+        const special = (data.special_date_hours || []).map((s: any) => ({
+          id: s.id,
+          date: s.date,
+          open_time: normalizeTime(s.open_time),
+          close_time: normalizeTime(s.close_time),
+          enabled: !!s.enabled,
+          professional_id: s.professional_id || null,
+        }));
+        setSpecialHours(special);
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar');
       } finally {
@@ -106,6 +133,71 @@ const HoursSettingsView: React.FC = () => {
       }
     })();
   }, [selectedProfessionalId]);
+
+  const addSpecialDateHours = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    setSpecialSaving(true);
+    try {
+      if (!specialDateFrom) throw new Error('Informe a data inicial');
+      const res = await fetch('/api/schedule-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'special_date',
+          date: specialDateFrom,
+          date_to: specialDateTo || specialDateFrom,
+          open_time: specialOpen,
+          close_time: specialClose,
+          enabled: specialEnabled,
+          professional_id: selectedProfessionalId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao adicionar horário especial');
+      setSpecialDateFrom('');
+      setSpecialDateTo('');
+      setMessage(`Horário especial adicionado${data.count > 1 ? ` (${data.count} dias)` : ''}`);
+      const url = selectedProfessionalId
+        ? `/api/schedule-settings?professional_id=${selectedProfessionalId}`
+        : '/api/schedule-settings';
+      const r = await fetch(url);
+      const j = await r.json();
+      if (r.ok && j.special_date_hours) {
+        setSpecialHours(j.special_date_hours.map((s: any) => ({
+          id: s.id,
+          date: s.date,
+          open_time: normalizeTime(s.open_time),
+          close_time: normalizeTime(s.close_time),
+          enabled: !!s.enabled,
+          professional_id: s.professional_id || null,
+        })));
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao adicionar horário especial');
+    } finally {
+      setSpecialSaving(false);
+    }
+  };
+
+  const removeSpecialDateHour = async (id: string) => {
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/schedule-settings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ special_id: id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao remover');
+      setSpecialHours(prev => prev.filter(s => s.id !== id));
+      setMessage('Horário especial removido');
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao remover');
+    }
+  };
 
   const saveHours = async () => {
     setSaving(true);
@@ -294,6 +386,104 @@ const HoursSettingsView: React.FC = () => {
           </div>
         </div>
         <p className="text-xs text-gray-600 mt-2">O calendário do cliente não permitirá agendamentos após o mês selecionado.</p>
+      </div>
+
+      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Horário especial por dia ou período</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Defina um horário de funcionamento diferente para uma data específica ou um intervalo (ex.: feriado, dia de folga, horário reduzido).
+        </p>
+        <form onSubmit={addSpecialDateHours} className="flex flex-col gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Data inicial</label>
+              <input
+                type="date"
+                value={specialDateFrom}
+                onChange={(e) => setSpecialDateFrom(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Data final (opcional)</label>
+              <input
+                type="date"
+                value={specialDateTo}
+                onChange={(e) => setSpecialDateTo(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+                min={specialDateFrom}
+              />
+              <p className="text-xs text-gray-500 mt-0.5">Deixe em branco para um único dia</p>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Abertura</label>
+              <input
+                type="time"
+                value={specialOpen}
+                onChange={(e) => setSpecialOpen(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Fechamento</label>
+              <input
+                type="time"
+                value={specialClose}
+                onChange={(e) => setSpecialClose(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="inline-flex items-center gap-2 text-gray-700">
+              <input
+                type="checkbox"
+                checked={specialEnabled}
+                onChange={(e) => setSpecialEnabled(e.target.checked)}
+              />
+              Dia disponível para agendamento
+            </label>
+            <button
+              type="submit"
+              disabled={specialSaving}
+              className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50"
+            >
+              {specialSaving ? 'Salvando...' : 'Adicionar horário especial'}
+            </button>
+          </div>
+        </form>
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Abertura</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fechamento</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {specialHours.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-4 text-sm text-gray-500">Nenhum horário especial definido.</td>
+                </tr>
+              )}
+              {specialHours.map((s) => (
+                <tr key={s.id}>
+                  <td className="px-4 py-2 text-sm text-gray-900">{s.date}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{normalizeTime(s.open_time)}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{normalizeTime(s.close_time)}</td>
+                  <td className="px-4 py-2 text-sm">{s.enabled ? <span className="text-green-600">Ativo</span> : <span className="text-red-600">Fechado</span>}</td>
+                  <td className="px-4 py-2 text-right">
+                    <button type="button" onClick={() => removeSpecialDateHour(s.id)} className="text-red-600 hover:text-red-700 text-sm">Remover</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="mt-8">

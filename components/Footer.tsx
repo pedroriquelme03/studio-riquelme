@@ -31,7 +31,9 @@ const Footer: React.FC = () => {
 
   const hasWhatsApp1 = contact && (contact.contact1_name.trim() || contact.contact1_phone.trim());
   const hasWhatsApp2 = contact && (contact.contact2_name.trim() || contact.contact2_phone.trim());
-  const hasAddress = contact && contact.address.trim();
+  const addressText = 'R. dos Golfinhos, 1166 - Parque Ouro Verde';
+  const addressMapUrl = 'https://maps.app.goo.gl/aazdYzCi2zsD8xK48';
+  const hasAddress = true;
 
   return (
     <footer className="py-[50px] border-t border-gray-300 mt-auto">
@@ -72,7 +74,7 @@ const Footer: React.FC = () => {
             )}
             {hasAddress && (
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contact!.address)}`}
+                href={addressMapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 text-gray-700 hover:text-pink-600 transition-colors"
@@ -80,7 +82,7 @@ const Footer: React.FC = () => {
                 <span className="text-pink-600 flex-shrink-0">
                   <LocationIcon className="w-6 h-6" />
                 </span>
-                <span className="text-gray-700">{contact!.address}</span>
+                <span className="text-gray-700">{addressText}</span>
               </a>
             )}
           </div>

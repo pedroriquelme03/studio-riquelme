@@ -1,6 +1,7 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { Client } from 'pg';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { triggerN8nWebhook } from './whatsapp';
 
 async function getClient() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -109,25 +110,25 @@ export default async function handler(req: any, res: any) {
 				};
 			});
 
-      const filtered = rows.filter((r: any) => {
-        // Ocultar agendamentos cancelados do painel (mas manter para o cliente ver o histórico)
-        // Se NÃO houver filtro de cliente na query string, significa listagem administrativa → esconde cancelados
-        if (!clientQuery && r.is_cancelled) return false;
+			const filtered = rows.filter((r: any) => {
+				// Ocultar agendamentos cancelados do painel (mas manter para o cliente ver o histórico)
+				// Se NÃO houver filtro de cliente na query string, significa listagem administrativa → esconde cancelados
+				if (!clientQuery && r.is_cancelled) return false;
 				if (serviceId && !(r.services || []).some((s: any) => String(s.id) === String(serviceId))) {
 					return false;
 				}
 				if (clientQuery) {
-          const q = clientQuery.toLowerCase();
-          const hay = `${r.client_name || ''} ${r.client_email || ''} ${r.client_phone || ''}`.toLowerCase();
-          // Busca textual
-          let match = hay.includes(q);
-          // Busca por telefone normalizado (apenas dígitos)
-          const qDigits = q.replace(/\D/g, '');
-          if (!match && qDigits) {
-            const hayDigits = String(r.client_phone || '').replace(/\D/g, '');
-            match = hayDigits.includes(qDigits);
-          }
-          if (!match) return false;
+					const q = clientQuery.toLowerCase();
+					const hay = `${r.client_name || ''} ${r.client_email || ''} ${r.client_phone || ''}`.toLowerCase();
+					// Busca textual
+					let match = hay.includes(q);
+					// Busca por telefone normalizado (apenas dígitos)
+					const qDigits = q.replace(/\D/g, '');
+					if (!match && qDigits) {
+						const hayDigits = String(r.client_phone || '').replace(/\D/g, '');
+						match = hayDigits.includes(qDigits);
+					}
+					if (!match) return false;
 				}
 				return true;
 			});
@@ -315,6 +316,56 @@ export default async function handler(req: any, res: any) {
 				}
 			}
 
+			// ── Disparar webhook n8n (WhatsApp) ──────────────────────────────
+			try {
+				// Buscar detalhes dos serviços para montar o payload
+				const { data: svcDetails } = await supabase
+					.from('services')
+					.select('id, name, price, duration_minutes')
+					.in('id', services.map(s => s.id));
+
+				// Buscar nome do profissional (se houver)
+				let professionalName: string | undefined;
+				const finalProfessionalId = professionalId || inferredProfessionalId;
+				if (finalProfessionalId) {
+					const { data: profData } = await supabase
+						.from('professionals')
+						.select('name')
+						.eq('id', finalProfessionalId)
+						.single();
+					professionalName = profData?.name;
+				}
+
+				const svcMap = new Map((svcDetails || []).map((s: any) => [Number(s.id), s]));
+				const webhookServices = services.map(s => {
+					const detail = svcMap.get(Number(s.id));
+					return {
+						name: detail?.name || `Serviço #${s.id}`,
+						price: Number(detail?.price || 0),
+						duration_minutes: Number(detail?.duration_minutes || 0),
+					};
+				});
+				const totalPrice = webhookServices.reduce((sum, s) => sum + s.price, 0);
+
+				// Disparo não-bloqueante: a resposta da API NÃO espera o n8n
+				triggerN8nWebhook({
+					event: 'booking_created',
+					booking_id: bookingId,
+					client_name: clientPayload.name!,
+					client_phone: clientPayload.phone!,
+					date,
+					time,
+					services: webhookServices,
+					total_price: totalPrice,
+					professional_name: professionalName,
+					notes: clientPayload.notes ?? undefined,
+				}).catch(() => {/* silencioso */ });
+			} catch (webhookErr) {
+				// Nunca deixar erro do webhook impedir o retorno do agendamento
+				console.error('[n8n] Erro ao preparar payload do webhook:', webhookErr);
+			}
+			// ─────────────────────────────────────────────────────────────────
+
 			return res.status(201).json({ ok: true, booking_id: bookingId });
 		} catch (err: any) {
 			return res.status(500).json({
@@ -416,10 +467,32 @@ export default async function handler(req: any, res: any) {
 							booking_id: bookingId,
 							cancelled_by: cancelledBy,
 						});
-				} catch {}
-			}
 
-			// Removido: envio de mensagens WhatsApp ao marcar como concluído
+					// ── Disparar webhook n8n (cancelamento) ─────────────────────
+					try {
+						const bd = bookingData as any;
+						const cancelServices = (bd.booking_services || []).map((bs: any) => ({
+							name: bs?.services?.name || 'Serviço',
+							price: Number(bs?.services?.price || 0),
+							duration_minutes: Number(bs?.services?.duration_minutes || 0),
+						}));
+						const cancelTotal = cancelServices.reduce((s: number, sv: any) => s + sv.price, 0);
+
+						triggerN8nWebhook({
+							event: 'booking_cancelled',
+							booking_id: bookingId,
+							client_name: bd.clients?.name || 'Cliente',
+							client_phone: bd.clients?.phone || '',
+							date: bd.date,
+							time: bd.time,
+							services: cancelServices,
+							total_price: cancelTotal,
+							professional_name: bd.professionals?.name,
+						}).catch(() => {/* silencioso */ });
+					} catch {/* silencioso */ }
+					// ─────────────────────────────────────────────────────────
+				} catch { }
+			}
 
 			return res.status(200).json({ ok: true, message: 'Status atualizado com sucesso' });
 		} catch (err: any) {
@@ -491,7 +564,7 @@ export default async function handler(req: any, res: any) {
 						response_note: 'Ajustado pelo profissional',
 						responded_at: new Date().toISOString(),
 					});
-			} catch {}
+			} catch { }
 
 			return res.status(200).json({ ok: true, message: 'Agendamento reagendado com sucesso' });
 		} catch (err: any) {

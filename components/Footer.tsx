@@ -13,7 +13,7 @@ const Footer: React.FC = () => {
   const [contact, setContact] = useState<FooterContact | null>(null);
 
   useEffect(() => {
-    fetch('/api/footer-contact')
+    fetch('/api/schedule-settings?footer=1')
       .then((res) => res.json())
       .then((data) => {
         if (data?.ok && data) {

@@ -1,7 +1,7 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { Client } from 'pg';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { triggerN8nWebhook } from './whatsapp';
+import { triggerN8nWebhook } from '../lib/n8n-webhook';
 
 async function getClient() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -18,6 +18,29 @@ async function getClient() {
 
 export default async function handler(req: any, res: any) {
 	if (req.method === 'GET') {
+		const urlObj = new URL(req?.url || '/', 'http://localhost');
+		if (urlObj.searchParams.get('webhook_test') === '1') {
+			const webhookUrl = process.env.N8N_WEBHOOK_URL;
+			const testPayload = {
+				event: 'booking_created' as const,
+				booking_id: 'test-' + Date.now(),
+				client_name: 'Cliente Teste',
+				client_phone: '5511999999999',
+				date: new Date().toISOString().split('T')[0],
+				time: '14:00:00',
+				services: [{ name: 'Corte + Barba', price: 65, duration_minutes: 60 }],
+				total_price: 65,
+				professional_name: 'Studio Riquelme',
+				notes: 'Mensagem de teste do sistema',
+			};
+			await triggerN8nWebhook(testPayload);
+			return res.status(200).json({
+				ok: true,
+				message: 'Payload de teste enviado ao n8n',
+				webhook_url: webhookUrl,
+				payload: testPayload,
+			});
+		}
 		try {
 			// Criar cliente Supabase com credenciais de servidor
 			const supabaseUrl =
@@ -32,7 +55,6 @@ export default async function handler(req: any, res: any) {
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
 			// Ler query string com fallback seguro
-			const urlObj = new URL(req?.url || '/', 'http://localhost');
 			const professionalId = urlObj.searchParams.get('professional_id') || undefined;
 			const serviceId = urlObj.searchParams.get('service_id') || undefined;
 			const clientQuery = urlObj.searchParams.get('client') || undefined;

@@ -305,9 +305,8 @@ export default async function handler(req: any, res: any) {
 			// Enviar email com o link de reset (import dinâmico para evitar erro de resolução em runtime do Vercel)
 			let emailResult: { success: boolean; error?: string } = { success: false, error: 'Email sender not executed' };
 			try {
-				const mod = await import('./sendEmail').catch(async () => {
-					// Tentativa com extensão .js (ambientes estritos ESM)
-					return await import('./sendEmail.js');
+				const mod = await import('../lib/sendEmail').catch(async () => {
+					return await import('../lib/sendEmail.js');
 				});
 				const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (email: string, link: string, name: string) => Promise<{ success: boolean; error?: string }>;
 				emailResult = await sendResetPasswordEmail(

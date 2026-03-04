@@ -54,7 +54,7 @@ const ProfessionalsView: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetch('/api/footer-contact')
+    fetch('/api/schedule-settings?footer=1')
       .then((res) => res.json())
       .then((data) => {
         if (data?.ok) {
@@ -73,10 +73,11 @@ const ProfessionalsView: React.FC = () => {
     setFooterContactSaving(true);
     setFooterContactError(null);
     try {
-      const res = await fetch('/api/footer-contact', {
+      const res = await fetch('/api/schedule-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'footer',
           contact1_name: footerContact1Name.trim(),
           contact1_phone: footerContact1Phone.trim(),
           contact2_name: footerContact2Name.trim(),

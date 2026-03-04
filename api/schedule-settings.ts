@@ -19,12 +19,31 @@ function getSupabaseServer() {
 	return createSupabaseClient(supabaseUrl, supabaseKey);
 }
 
+const FOOTER_KEYS = ['footer_contact1_name', 'footer_contact1_phone', 'footer_contact2_name', 'footer_contact2_phone', 'footer_address'] as const;
+
 export default async function handler(req: any, res: any) {
 	try {
 		const supabase = getSupabaseServer();
 
 			if (req.method === 'GET') {
 				const urlObj = new URL(req?.url || '/', 'http://localhost');
+				if (urlObj.searchParams.get('footer') === '1') {
+					const { data: rows, error } = await supabase
+						.from('system_settings')
+						.select('key, value')
+						.in('key', [...FOOTER_KEYS]);
+					if (error) return res.status(500).json({ ok: false, error: error.message });
+					const map: Record<string, string> = {};
+					(rows || []).forEach((r: { key: string; value: string }) => { map[r.key] = r.value || ''; });
+					return res.status(200).json({
+						ok: true,
+						contact1_name: map.footer_contact1_name || '',
+						contact1_phone: map.footer_contact1_phone || '',
+						contact2_name: map.footer_contact2_name || '',
+						contact2_phone: map.footer_contact2_phone || '',
+						address: map.footer_address || '',
+					});
+				}
 				const professionalId = urlObj.searchParams.get('professional_id') || null;
 				
 				// Buscar horários: se professional_id fornecido, buscar desse profissional; senão, buscar globais (professional_id IS NULL)
@@ -81,9 +100,27 @@ export default async function handler(req: any, res: any) {
 			if (req.method === 'PUT') {
 				const raw = req.body ?? {};
 				const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
+				if (body?.type === 'footer') {
+					const contact1_name = String(body?.contact1_name ?? '').trim();
+					const contact1_phone = String(body?.contact1_phone ?? '').trim();
+					const contact2_name = String(body?.contact2_name ?? '').trim();
+					const contact2_phone = String(body?.contact2_phone ?? '').trim();
+					const address = String(body?.address ?? '').trim();
+					for (const row of [
+						{ key: 'footer_contact1_name', value: contact1_name },
+						{ key: 'footer_contact1_phone', value: contact1_phone },
+						{ key: 'footer_contact2_name', value: contact2_name },
+						{ key: 'footer_contact2_phone', value: contact2_phone },
+						{ key: 'footer_address', value: address },
+					]) {
+						const { error: err } = await supabase.from('system_settings').upsert({ key: row.key, value: row.value }, { onConflict: 'key' });
+						if (err) return res.status(500).json({ ok: false, error: err.message });
+					}
+					return res.status(200).json({ ok: true });
+				}
 				const hours = Array.isArray(body?.business_hours) ? body.business_hours : [];
-				const professionalId = body?.professional_id || null; // UUID do profissional ou null para horários globais
-				const limitMonth = (body?.booking_limit_month || '').toString(); // 'YYYY-MM' ou ''
+				const professionalId = body?.professional_id || null;
+				const limitMonth = (body?.booking_limit_month || '').toString();
 				if (hours.length !== 7) {
 					return res.status(400).json({ ok: false, error: 'business_hours deve conter 7 itens (0=domingo ... 6=sábado)' });
 				}

@@ -1,5 +1,7 @@
 # 📱 Configurar n8n + WhatsApp para Avisos de Agendamento
 
+A conexão entre o sistema e o n8n é feita **via webhook**: o sistema envia um `POST` para a URL do webhook sempre que um agendamento é criado ou cancelado. No n8n você monta o workflow e envia as mensagens via **WhatsApp Business** (Evolution API, Z-API, Twilio, etc.).
+
 ## Visão Geral do Fluxo
 
 ```
@@ -7,12 +9,11 @@ Cliente faz agendamento
         ↓
   sistema salva no banco
         ↓
-  envia POST para n8n webhook
+  envia POST para o webhook do n8n (N8N_WEBHOOK_URL)
         ↓
   n8n monta a mensagem
         ↓
-  envia WhatsApp para o cliente
-  envia WhatsApp para o Studio (aviso interno)
+  n8n envia via WhatsApp Business para o cliente / Studio
 ```
 
 ---
@@ -190,7 +191,7 @@ Para enviar lembretes automáticos, crie **um segundo workflow** no n8n:
 Após configurar tudo, faça um teste:
 
 1. Adicione a variável `N8N_WEBHOOK_URL` na Vercel
-2. Acesse: `https://seu-site.vercel.app/api/whatsapp?test=1`
+2. Acesse: `https://seu-site.vercel.app/api/bookings?webhook_test=1`
 3. Isso enviará um payload de teste para o n8n
 4. Verifique nos logs do n8n se chegou
 

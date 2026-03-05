@@ -1,6 +1,44 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { triggerN8nWebhook } from '../lib/n8n-webhook';
+
+async function triggerN8nWebhook(payload: {
+  event: 'booking_created' | 'booking_cancelled' | 'reschedule_approved';
+  booking_id: string;
+  client_name: string;
+  client_phone: string;
+  date: string;
+  time: string;
+  services: Array<{ name: string; price: number; duration_minutes: number }>;
+  total_price: number;
+  professional_name?: string;
+  notes?: string;
+  new_date?: string;
+  new_time?: string;
+}): Promise<void> {
+  const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.log('[n8n] N8N_WEBHOOK_URL não configurada — webhook ignorado.');
+    return;
+  }
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.N8N_WEBHOOK_SECRET ? { 'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      console.error(`[n8n] Webhook falhou (${response.status}):`, text);
+    } else {
+      console.log(`[n8n] Webhook disparado. Evento: ${payload.event}, Cliente: ${payload.client_name}`);
+    }
+  } catch (err: any) {
+    console.error('[n8n] Erro ao disparar webhook:', err?.message || err);
+  }
+}
 
 export default async function handler(req: any, res: any) {
 	const sendJson = (status: number, body: object) => {

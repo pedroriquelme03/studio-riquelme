@@ -1,25 +1,20 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
-import { Client } from 'pg';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { triggerN8nWebhook } from '../lib/n8n-webhook';
 
-async function getClient() {
-	const databaseUrl = process.env.DATABASE_URL;
-	if (!databaseUrl) {
-		throw new Error('DATABASE_URL não configurada');
-	}
-	const client = new Client({
-		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false },
-	});
-	await client.connect();
-	return client;
-}
-
 export default async function handler(req: any, res: any) {
+	const sendJson = (status: number, body: object) => {
+		try {
+			res.status(status).json(body);
+		} catch (_) {
+			res.status(status).setHeader('Content-Type', 'application/json').end(JSON.stringify(body));
+		}
+	};
+
 	if (req.method === 'GET') {
-		const urlObj = new URL(req?.url || '/', 'http://localhost');
-		if (urlObj.searchParams.get('webhook_test') === '1') {
+		try {
+			const urlObj = new URL(req?.url || '/', 'http://localhost');
+			if (urlObj.searchParams.get('webhook_test') === '1') {
 			const webhookUrl = process.env.N8N_WEBHOOK_URL;
 			const testPayload = {
 				event: 'booking_created' as const,
@@ -157,7 +152,12 @@ export default async function handler(req: any, res: any) {
 
 			return res.status(200).json({ ok: true, bookings: filtered });
 		} catch (err: any) {
-			return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
+			sendJson(500, { ok: false, error: err?.message || 'Erro inesperado' });
+			return;
+		}
+		} catch (err: any) {
+			sendJson(500, { ok: false, error: err?.message || 'Erro inesperado (GET)' });
+			return;
 		}
 	}
 

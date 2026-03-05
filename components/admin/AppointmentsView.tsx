@@ -24,6 +24,19 @@ type BookingRow = {
   }>;
 }
 
+async function parseJsonResponse(res: Response): Promise<any> {
+  const text = await res.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    const msg = res.ok
+      ? 'Resposta inválida do servidor. Tente novamente.'
+      : (res.status >= 500 ? `Erro do servidor (${res.status}). Tente novamente mais tarde.` : `Erro ${res.status}. Tente novamente.`);
+    throw new Error(msg);
+  }
+}
+
 const AppointmentsView: React.FC = () => {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -75,11 +88,11 @@ const AppointmentsView: React.FC = () => {
           fetch('/api/services')
         ]);
         if (proRes.ok) {
-          const j = await proRes.json();
+          const j = await parseJsonResponse(proRes).catch(() => ({}));
           setProfessionals((j.professionals || []).map((p: any) => ({ id: p.id, name: p.name })));
         }
         if (srvRes.ok) {
-          const j = await srvRes.json();
+          const j = await parseJsonResponse(srvRes).catch(() => ({}));
           setServices((j.services || []).map((s: any) => ({ id: s.id, name: s.name })));
         }
       } catch {}
@@ -99,7 +112,7 @@ const AppointmentsView: React.FC = () => {
       if (!time && timeTo) qs.set('time_to', timeTo);
       const url = `/api/bookings${qs.toString() ? `?${qs.toString()}` : ''}`;
       const res = await fetch(url);
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
       const list = (data.bookings || []) as BookingRow[];
       setBookings(list);
@@ -107,7 +120,7 @@ const AppointmentsView: React.FC = () => {
       if (ids) {
         try {
           const rres = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`);
-          const rdata = await rres.json();
+          const rdata = await parseJsonResponse(rres).catch(() => ({}));
           if (rres.ok && Array.isArray(rdata?.requests)) {
             const map: Record<string, Array<any>> = {};
             for (const req of rdata.requests) {
@@ -132,7 +145,7 @@ const AppointmentsView: React.FC = () => {
         qs2.set('cancelled_by', 'client');
         qs2.set('limit', String(CANC_LIMIT));
         const cRes = await fetch(`/api/cancellations?${qs2.toString()}`);
-        const cData = await cRes.json();
+        const cData = await parseJsonResponse(cRes).catch(() => ({}));
         if (cRes.ok && Array.isArray(cData?.cancellations)) {
           const rows = (cData.cancellations as any[]).map((r) => ({
             id: r.id,
@@ -159,7 +172,7 @@ const AppointmentsView: React.FC = () => {
         qs3.set('cancelled_by', 'admin');
         qs3.set('limit', String(CANC_LIMIT));
         const aRes = await fetch(`/api/cancellations?${qs3.toString()}`);
-        const aData = await aRes.json();
+        const aData = await parseJsonResponse(aRes).catch(() => ({}));
         if (aRes.ok && Array.isArray(aData?.cancellations)) {
           const rows = (aData.cancellations as any[]).map((r) => ({
             id: r.id,
@@ -200,7 +213,7 @@ const AppointmentsView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: req.id, action: 'approve' }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao aprovar solicitação');
       await load();
     } catch (e: any) {
@@ -217,7 +230,7 @@ const AppointmentsView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: req.id, action: 'deny' }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao negar solicitação');
       await load();
     } catch (e: any) {
@@ -246,7 +259,7 @@ const AppointmentsView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reschedule', booking_id: editId, date: editDate, time: editTime }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao atualizar horário');
       setEditId(null);
       await load();
@@ -266,7 +279,7 @@ const AppointmentsView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ booking_id: id, status: 'cancelled', cancelled_by: 'admin' }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
       await load();
     } catch (e: any) {
@@ -421,7 +434,7 @@ const AppointmentsView: React.FC = () => {
                         qs.set('limit', String(CANC_LIMIT));
                         if (clientCancCursor) qs.set('to', clientCancCursor);
                         const res = await fetch(`/api/cancellations?${qs.toString()}`);
-                        const j = await res.json();
+                        const j = await parseJsonResponse(res).catch(() => ({}));
                         if (res.ok && Array.isArray(j?.cancellations)) {
                           const rows = (j.cancellations as any[]).map((r) => ({
                             id: r.id,
@@ -512,7 +525,7 @@ const AppointmentsView: React.FC = () => {
                         qs.set('limit', String(CANC_LIMIT));
                         if (adminCancCursor) qs.set('to', adminCancCursor);
                         const res = await fetch(`/api/cancellations?${qs.toString()}`);
-                        const j = await res.json();
+                        const j = await parseJsonResponse(res).catch(() => ({}));
                         if (res.ok && Array.isArray(j?.cancellations)) {
                           const rows = (j.cancellations as any[]).map((r) => ({
                             id: r.id,

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { WhatsAppIcon, LocationIcon, whatsAppNumber } from './icons';
 
 type FooterContact = {
@@ -87,6 +88,17 @@ const Footer: React.FC = () => {
             )}
           </div>
         )}
+        <nav className="text-center text-xs text-gray-600 mb-3" aria-label="Documentos jurídicos">
+          <Link to="/politica-de-privacidade" className="text-gray-600 hover:text-pink-600 underline underline-offset-2">
+            Política de Privacidade
+          </Link>
+          <span className="mx-2 text-gray-400" aria-hidden>
+            ·
+          </span>
+          <Link to="/termos-de-servicos" className="text-gray-600 hover:text-pink-600 underline underline-offset-2">
+            Termos de Serviço
+          </Link>
+        </nav>
         <p className="text-center text-xs text-gray-600">
           Desenvolvido por{' '}
           <a

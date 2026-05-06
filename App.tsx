@@ -16,6 +16,8 @@ import TestSupabaseConnection from './components/TestSupabaseConnection';
 import Footer from './components/Footer';
 import ClientLoginPage from './components/client/ClientLoginPage';
 import ClientBookingsPage from './components/client/ClientBookingsPage';
+import PoliticaPrivacidadePage from './components/legal/PoliticaPrivacidadePage';
+import TermosServicosPage from './components/legal/TermosServicosPage';
 
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
@@ -203,6 +205,8 @@ const App: React.FC = () => {
           <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />
           <Route path="/profiles" element={<ProfilesList />} />
           <Route path="/supabase-test" element={<TestSupabaseConnection />} />
+          <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
+          <Route path="/termos-de-servicos" element={<TermosServicosPage />} />
           <Route
             path="/"
             element={

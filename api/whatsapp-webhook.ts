@@ -5,7 +5,8 @@
  * URL de callback (produção): https://<seu-dominio>/api/whatsapp-webhook
  *
  * Variáveis de ambiente:
- * - WHATSAPP_WEBHOOK_VERIFY_TOKEN (obrigatório) — mesmo valor configurado no painel Meta ao assinar o webhook
+ * - WHATSAPP_WEBHOOK_VERIFY_TOKEN (obrigatório) — defina uma frase secreta no Vercel (ex.: minha-frase-secreta-x7k).
+ *   No painel Meta, em "Verificar token", cole essa **mesma frase** — não use o texto literal "WHATSAPP_WEBHOOK_VERIFY_TOKEN".
  * - WHATSAPP_APP_SECRET (recomendado) — App Secret do app Meta; habilita validação de X-Hub-Signature-256
  *
  * No Meta App Dashboard: WhatsApp → Configuration → Webhook → assine o campo "messages"
@@ -20,6 +21,26 @@ function getVerifyToken(): string | undefined {
 
 function getAppSecret(): string | undefined {
 	return process.env.WHATSAPP_APP_SECRET?.trim() || undefined;
+}
+
+/** Parâmetros hub.* da Meta (GET de verificação), tolerando req.url só com path atrás de proxy. */
+function getMetaVerifyQuery(req: any): URLSearchParams {
+	try {
+		const raw = typeof req.url === 'string' ? req.url : '';
+		if (raw.includes('?')) return new URLSearchParams(raw.slice(raw.indexOf('?') + 1));
+	} catch {
+		/* noop */
+	}
+	const q = req.query;
+	if (q && typeof q === 'object') {
+		const sp = new URLSearchParams();
+		for (const [k, val] of Object.entries(q)) {
+			const v = Array.isArray(val) ? val[0] : val;
+			if (typeof v === 'string') sp.append(k, v);
+		}
+		return sp;
+	}
+	return new URLSearchParams();
 }
 
 /**
@@ -126,10 +147,10 @@ export default async function handler(req: any, res: any) {
 			return sendJson(500, { ok: false, error: 'WHATSAPP_WEBHOOK_VERIFY_TOKEN não configurado' });
 		}
 		try {
-			const url = new URL(req.url || '/', 'http://localhost');
-			const mode = url.searchParams.get('hub.mode');
-			const token = url.searchParams.get('hub.verify_token');
-			const challenge = url.searchParams.get('hub.challenge');
+			const sp = getMetaVerifyQuery(req);
+			const mode = sp.get('hub.mode');
+			const token = sp.get('hub.verify_token');
+			const challenge = sp.get('hub.challenge');
 
 			if (mode === 'subscribe' && token === verifyToken && challenge) {
 				res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });

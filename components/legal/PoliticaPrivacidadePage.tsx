@@ -159,22 +159,6 @@ const PoliticaPrivacidadePage: React.FC = () => (
           operação e obrigações legais.
         </p>
       </section>
-
-      <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">11. Alterações desta política</h2>
-        <p>
-          Podemos atualizar este texto quando houver mudanças relevantes no sistema ou na legislação. A nova
-          versão será divulgada nesta página com data de atualização revisada no topo do documento.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">12. Aviso importante</h2>
-        <p className="text-gray-600 italic">
-          Este texto tem caráter informativo e foi elaborado com base nos recursos típicos do sistema de
-          agendamento. Não substitui orientação jurídica personalizada ao estabelecimento.
-        </p>
-      </section>
     </div>
   </article>
 );

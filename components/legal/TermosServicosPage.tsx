@@ -148,15 +148,6 @@ const TermosServicosPage: React.FC = () => (
           (telefone, WhatsApp ou demais dados que o Studio Riquelme divulgar publicamente nesta aplicação).
         </p>
       </section>
-
-      <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">12. Aviso importante</h2>
-        <p className="text-gray-600 italic">
-          Este modelo foi elaborado de forma compatível com o uso típico do sistema descrito pelo projeto — não é
-          consultoria jurídica formal. Oriente-se também com seu advogado para cláusulas específicas (multas por
-          cancelamento tardio, clube de benefícios, etc.).
-        </p>
-      </section>
     </div>
   </article>
 );

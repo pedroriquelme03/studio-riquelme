@@ -289,6 +289,24 @@ const AppointmentsView: React.FC = () => {
     }
   };
 
+  const confirmBooking = async (id: string) => {
+    setActionLoadingId(id);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: id, status: 'confirmed' }),
+      });
+      const data = await parseJsonResponse(res);
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao confirmar agendamento');
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao confirmar agendamento');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const grouped = useMemo(() => {
     const m = new Map<string, BookingRow[]>();
     bookings.forEach(b => {
@@ -617,6 +635,14 @@ const AppointmentsView: React.FC = () => {
 
                   {/* Linha 2: botões alinhados à esquerda */}
                   <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={() => confirmBooking(b.booking_id)}
+                      disabled={actionLoadingId === b.booking_id}
+                      className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
+                      title="Confirmar agendamento"
+                    >
+                      {actionLoadingId === b.booking_id ? '...' : 'Confirmar'}
+                    </button>
                     <button
                       onClick={() => openEdit(b)}
                       className="px-3 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"

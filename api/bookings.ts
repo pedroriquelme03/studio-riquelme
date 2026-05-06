@@ -40,6 +40,53 @@ async function triggerN8nWebhook(payload: {
   }
 }
 
+async function triggerWhatsAppConfirmation(payload: {
+	nome: string;
+	telefone: string;
+	data: string; // dd/mm/yyyy
+	hora: string; // HH:MM
+	template_name?: string;
+}): Promise<void> {
+	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+	if (!supabaseUrl || !serviceKey) {
+		console.log('[whatsapp] SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — envio ignorado.');
+		return;
+	}
+
+	const endpoint = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/send-whatsapp-confirmation`;
+	try {
+		const response = await fetch(endpoint, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${serviceKey}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			const text = await response.text().catch(() => '');
+			console.error(`[whatsapp] Edge Function falhou (${response.status}):`, text);
+		} else {
+			console.log(`[whatsapp] Confirmação enviada para ${payload.telefone}`);
+		}
+	} catch (err: any) {
+		console.error('[whatsapp] Erro ao chamar Edge Function:', err?.message || err);
+	}
+}
+
+function formatDateToPtBr(input: string): string {
+	const [year, month, day] = String(input).split('-');
+	if (!year || !month || !day) return input;
+	return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+}
+
+function formatTimeToHHMM(input: string): string {
+	const str = String(input || '');
+	return str.length >= 5 ? str.slice(0, 5) : str;
+}
+
 export default async function handler(req: any, res: any) {
 	const sendJson = (status: number, body: object) => {
 		try {
@@ -517,6 +564,22 @@ export default async function handler(req: any, res: any) {
 				console.warn('Erro ao atualizar status (coluna pode não existir):', updateErr.message);
 			}
 
+			// Disparar confirmação de WhatsApp quando status for confirmado
+			if (status === 'confirmed' || status === 'confirmado') {
+				try {
+					const bd = bookingData as any;
+					triggerWhatsAppConfirmation({
+						nome: bd.clients?.name || 'Cliente',
+						telefone: bd.clients?.phone || '',
+						data: formatDateToPtBr(bd.date),
+						hora: formatTimeToHHMM(bd.time),
+						template_name: 'hello_world',
+					}).catch(() => { /* silencioso */ });
+				} catch (waErr) {
+					console.error('[whatsapp] Erro ao preparar payload de confirmação:', waErr);
+				}
+			}
+
 			// Registrar cancelamento em booking_cancellations (histórico)
 			if (status === 'cancelled') {
 				try {
@@ -632,7 +695,7 @@ export default async function handler(req: any, res: any) {
 		}
 	}
 
-	res.setHeader('Allow', 'GET, POST, PUT');
+	res.setHeader('Allow', 'GET, POST, PUT, PATCH');
 	return res.status(405).json({ ok: false, error: 'Método não permitido' });
 }
 

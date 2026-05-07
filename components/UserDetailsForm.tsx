@@ -30,6 +30,14 @@ const removePhoneMask = (value: string): string => {
   return value.replace(/\D/g, '');
 };
 
+/** Celular BR para WhatsApp: DDD (2) + 9 + 8 dígitos = 11 no total. */
+function isValidBrazilianMobileWhatsAppDigits(digits: string): boolean {
+  if (digits.length !== 11) return false;
+  const ddd = digits.slice(0, 2);
+  if (!/^[1-9]\d$/.test(ddd)) return false;
+  return digits[2] === '9';
+}
+
 const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) => {
   const [formData, setFormData] = useState<Client>({
     name: '',
@@ -84,8 +92,9 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
     if (!formData.name.trim()) newErrors.name = "Nome é obrigatório";
     
     const phoneNumbers = removePhoneMask(formData.phone);
-    if (!phoneNumbers || phoneNumbers.length < 10 || phoneNumbers.length > 11) {
-      newErrors.phone = "Telefone inválido. Use o formato (XX) XXXXX-XXXX";
+    if (!isValidBrazilianMobileWhatsAppDigits(phoneNumbers)) {
+      newErrors.phone =
+        'Informe o celular completo com DDD e o 9: (XX) 9XXXX-XXXX';
     }
     
     setErrors(newErrors);
@@ -162,6 +171,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             value={formData.phone} 
             onChange={handleChange}
             onKeyDown={handlePhoneKeyDown}
+            placeholder="(45) 99155-5297"
             maxLength={15}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" 
           />

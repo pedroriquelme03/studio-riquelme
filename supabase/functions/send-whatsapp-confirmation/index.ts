@@ -1,5 +1,7 @@
 import "@supabase/functions-js/edge-runtime.d.ts"
 
+/** Secrets: WHATSAPP_TOKEN, PHONE_NUMBER_ID. Opcional: WHATSAPP_TEMPLATE_LANGUAGE (ex. pt_BR). hello_world usa en_US por padrão. */
+
 declare const Deno: {
   serve: (handler: (req: Request) => Response | Promise<Response>) => void;
   env: { get: (key: string) => string | undefined };
@@ -74,13 +76,18 @@ Deno.serve(async (req) => {
     }
 
     const endpoint = `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`;
+    // Idioma deve bater com o template na Meta (hello_world padrão costuma ser en_US).
+    const lang =
+      Deno.env.get("WHATSAPP_TEMPLATE_LANGUAGE")?.trim() ||
+      (templateName === "hello_world" ? "en_US" : "pt_BR");
+
     const templatePayload: Record<string, unknown> = {
       messaging_product: "whatsapp",
       to: normalizedPhone,
       type: "template",
       template: {
         name: templateName,
-        language: { code: "pt_BR" },
+        language: { code: lang },
       },
     };
 
@@ -88,7 +95,7 @@ Deno.serve(async (req) => {
     if (templateParams.length > 0) {
       templatePayload.template = {
         name: templateName,
-        language: { code: "pt_BR" },
+        language: { code: lang },
         components: [
           {
             type: "body",

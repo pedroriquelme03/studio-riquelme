@@ -2,7 +2,11 @@
  * Webhook WhatsApp Business Platform (Cloud API)
  * @see https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/overview/
  *
- * URL de callback (produção): https://<seu-dominio>/api/whatsapp-webhook
+ * URL de callback (Vercel): https://<seu-dominio>/api/whatsapp-webhook
+ *
+ * Se studioriquelme.com.br for só hospedagem estática (sem /api), use a Edge Function Supabase em:
+ * https://<PROJECT_REF>.supabase.co/functions/v1/whatsapp-webhook
+ * Ver supabase/functions/whatsapp-webhook/index.ts — deploy com: supabase functions deploy whatsapp-webhook
  *
  * Variáveis de ambiente:
  * - WHATSAPP_WEBHOOK_VERIFY_TOKEN (obrigatório) — defina uma frase secreta no Vercel (ex.: minha-frase-secreta-x7k).

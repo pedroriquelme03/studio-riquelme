@@ -88,10 +88,6 @@ const PoliticaPrivacidadePage: React.FC = () => (
             operação (por exemplo mensagem enviada após confirmação no painel ou fluxos relacionados ao
             agendamento); o tratamento também observa políticas da Meta.
           </li>
-          <li>
-            <strong>Ferramentas de automação (por exemplo webhook n8n)</strong>, apenas se estiver ativo na
-            implantação, para encaminhar eventos do sistema quando configurado pela equipe técnica.
-          </li>
         </ul>
         <p className="mt-2">
           Não vendemos suas informações pessoais. Prestadores ficam obrigados via contratos e configurações

@@ -11,6 +11,7 @@ type Payload = {
   data?: string;
   hora?: string;
   template_name?: string;
+  template_params?: string[];
 };
 
 const jsonHeaders = { "Content-Type": "application/json" };
@@ -43,6 +44,9 @@ Deno.serve(async (req) => {
     const data = body?.data?.trim();
     const hora = body?.hora?.trim();
     const templateName = (body?.template_name?.trim() || "hello_world");
+    const templateParams = Array.isArray(body?.template_params)
+      ? body.template_params.map((v) => String(v ?? ""))
+      : [];
 
     if (!nome || !telefone || !data || !hora) {
       return jsonResponse(400, {
@@ -80,19 +84,15 @@ Deno.serve(async (req) => {
       },
     };
 
-    // Deixa pronto o template real com placeholders dinâmicos.
-    if (templateName === "agendamento_confirmado") {
+    // Se vierem parâmetros, envia como body params do template.
+    if (templateParams.length > 0) {
       templatePayload.template = {
-        name: "agendamento_confirmado",
+        name: templateName,
         language: { code: "pt_BR" },
         components: [
           {
             type: "body",
-            parameters: [
-              { type: "text", text: nome },
-              { type: "text", text: data },
-              { type: "text", text: hora },
-            ],
+            parameters: templateParams.map((text) => ({ type: "text", text })),
           },
         ],
       };

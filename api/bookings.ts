@@ -1,51 +1,13 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-async function triggerN8nWebhook(payload: {
-  event: 'booking_created' | 'booking_cancelled' | 'reschedule_approved';
-  booking_id: string;
-  client_name: string;
-  client_phone: string;
-  date: string;
-  time: string;
-  services: Array<{ name: string; price: number; duration_minutes: number }>;
-  total_price: number;
-  professional_name?: string;
-  notes?: string;
-  new_date?: string;
-  new_time?: string;
-}): Promise<void> {
-  const webhookUrl = process.env.N8N_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.log('[n8n] N8N_WEBHOOK_URL não configurada — webhook ignorado.');
-    return;
-  }
-  try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(process.env.N8N_WEBHOOK_SECRET ? { 'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      console.error(`[n8n] Webhook falhou (${response.status}):`, text);
-    } else {
-      console.log(`[n8n] Webhook disparado. Evento: ${payload.event}, Cliente: ${payload.client_name}`);
-    }
-  } catch (err: any) {
-    console.error('[n8n] Erro ao disparar webhook:', err?.message || err);
-  }
-}
-
 async function triggerWhatsAppConfirmation(payload: {
 	nome: string;
 	telefone: string;
 	data: string; // dd/mm/yyyy
 	hora: string; // HH:MM
 	template_name?: string;
+	template_params?: string[];
 }): Promise<void> {
 	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -99,28 +61,6 @@ export default async function handler(req: any, res: any) {
 	if (req.method === 'GET') {
 		try {
 			const urlObj = new URL(req?.url || '/', 'http://localhost');
-			if (urlObj.searchParams.get('webhook_test') === '1') {
-			const webhookUrl = process.env.N8N_WEBHOOK_URL;
-			const testPayload = {
-				event: 'booking_created' as const,
-				booking_id: 'test-' + Date.now(),
-				client_name: 'Cliente Teste',
-				client_phone: '5511999999999',
-				date: new Date().toISOString().split('T')[0],
-				time: '14:00:00',
-				services: [{ name: 'Corte + Barba', price: 65, duration_minutes: 60 }],
-				total_price: 65,
-				professional_name: 'Studio Riquelme',
-				notes: 'Mensagem de teste do sistema',
-			};
-			await triggerN8nWebhook(testPayload);
-			return res.status(200).json({
-				ok: true,
-				message: 'Payload de teste enviado ao n8n',
-				webhook_url: webhookUrl,
-				payload: testPayload,
-			});
-		}
 		try {
 			// Criar cliente Supabase com credenciais de servidor
 			const supabaseUrl =
@@ -423,55 +363,24 @@ export default async function handler(req: any, res: any) {
 				}
 			}
 
-			// ── Disparar webhook n8n (WhatsApp) ──────────────────────────────
+			// ── Disparar WhatsApp no momento da criação ────────────────────────
 			try {
-				// Buscar detalhes dos serviços para montar o payload
-				const { data: svcDetails } = await supabase
-					.from('services')
-					.select('id, name, price, duration_minutes')
-					.in('id', services.map(s => s.id));
-
-				// Buscar nome do profissional (se houver)
-				let professionalName: string | undefined;
-				const finalProfessionalId = professionalId || inferredProfessionalId;
-				if (finalProfessionalId) {
-					const { data: profData } = await supabase
-						.from('professionals')
-						.select('name')
-						.eq('id', finalProfessionalId)
-						.single();
-					professionalName = profData?.name;
-				}
-
-				const svcMap = new Map((svcDetails || []).map((s: any) => [Number(s.id), s]));
-				const webhookServices = services.map(s => {
-					const detail = svcMap.get(Number(s.id));
-					return {
-						name: detail?.name || `Serviço #${s.id}`,
-						price: Number(detail?.price || 0),
-						duration_minutes: Number(detail?.duration_minutes || 0),
-					};
-				});
-				const totalPrice = webhookServices.reduce((sum, s) => sum + s.price, 0);
-
-				// Disparo não-bloqueante: a resposta da API NÃO espera o n8n
-				triggerN8nWebhook({
-					event: 'booking_created',
-					booking_id: bookingId,
-					client_name: clientPayload.name!,
-					client_phone: clientPayload.phone!,
-					date,
-					time,
-					services: webhookServices,
-					total_price: totalPrice,
-					professional_name: professionalName,
-					notes: clientPayload.notes ?? undefined,
+				// Disparo não-bloqueante de WhatsApp no momento da solicitação/criação
+				// Configure o template em WHATSAPP_BOOKING_CREATED_TEMPLATE.
+				const bookingCreatedTemplate = (process.env.WHATSAPP_BOOKING_CREATED_TEMPLATE || 'hello_world').trim();
+				triggerWhatsAppConfirmation({
+					nome: clientPayload.name!,
+					telefone: clientPayload.phone!,
+					data: formatDateToPtBr(date),
+					hora: formatTimeToHHMM(time),
+					template_name: bookingCreatedTemplate,
+					template_params: [clientPayload.name!, formatDateToPtBr(date), formatTimeToHHMM(time)],
 				}).catch(() => {/* silencioso */ });
-			} catch (webhookErr) {
-				// Nunca deixar erro do webhook impedir o retorno do agendamento
-				console.error('[n8n] Erro ao preparar payload do webhook:', webhookErr);
+			} catch (whatsErr) {
+				// Nunca deixar erro de notificação impedir o retorno do agendamento
+				console.error('[whatsapp] Erro ao preparar envio na criação:', whatsErr);
 			}
-			// ─────────────────────────────────────────────────────────────────
+			// ──────────────────────────────────────────────────────────────────
 
 			return res.status(201).json({ ok: true, booking_id: bookingId });
 		} catch (err: any) {
@@ -568,12 +477,14 @@ export default async function handler(req: any, res: any) {
 			if (status === 'confirmed' || status === 'confirmado') {
 				try {
 					const bd = bookingData as any;
+					const bookingConfirmedTemplate = (process.env.WHATSAPP_BOOKING_CONFIRMED_TEMPLATE || 'agendamento_confirmado').trim();
 					triggerWhatsAppConfirmation({
 						nome: bd.clients?.name || 'Cliente',
 						telefone: bd.clients?.phone || '',
 						data: formatDateToPtBr(bd.date),
 						hora: formatTimeToHHMM(bd.time),
-						template_name: 'hello_world',
+						template_name: bookingConfirmedTemplate,
+						template_params: [bd.clients?.name || 'Cliente', formatDateToPtBr(bd.date), formatTimeToHHMM(bd.time)],
 					}).catch(() => { /* silencioso */ });
 				} catch (waErr) {
 					console.error('[whatsapp] Erro ao preparar payload de confirmação:', waErr);
@@ -591,29 +502,6 @@ export default async function handler(req: any, res: any) {
 							cancelled_by: cancelledBy,
 						});
 
-					// ── Disparar webhook n8n (cancelamento) ─────────────────────
-					try {
-						const bd = bookingData as any;
-						const cancelServices = (bd.booking_services || []).map((bs: any) => ({
-							name: bs?.services?.name || 'Serviço',
-							price: Number(bs?.services?.price || 0),
-							duration_minutes: Number(bs?.services?.duration_minutes || 0),
-						}));
-						const cancelTotal = cancelServices.reduce((s: number, sv: any) => s + sv.price, 0);
-
-						triggerN8nWebhook({
-							event: 'booking_cancelled',
-							booking_id: bookingId,
-							client_name: bd.clients?.name || 'Cliente',
-							client_phone: bd.clients?.phone || '',
-							date: bd.date,
-							time: bd.time,
-							services: cancelServices,
-							total_price: cancelTotal,
-							professional_name: bd.professionals?.name,
-						}).catch(() => {/* silencioso */ });
-					} catch {/* silencioso */ }
-					// ─────────────────────────────────────────────────────────
 				} catch { }
 			}
 

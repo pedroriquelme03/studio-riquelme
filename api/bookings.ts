@@ -365,6 +365,21 @@ export default async function handler(req: any, res: any) {
 
 			// ── Disparar WhatsApp no momento da criação ────────────────────────
 			try {
+				// Buscar nome dos serviços para preencher placeholder no template.
+				const { data: serviceRows } = await supabase
+					.from('services')
+					.select('id, name')
+					.in('id', services.map(s => s.id));
+				const serviceMap = new Map<number, string>(
+					(serviceRows || []).map((r: any) => [Number(r.id), String(r.name || '').trim()]),
+				);
+				const serviceNames = services
+					.map(s => serviceMap.get(Number(s.id)))
+					.filter((name): name is string => Boolean(name))
+					.join(', ');
+				const serviceLabel = serviceNames || 'serviço selecionado';
+				const finalProfessionalId = professionalId || inferredProfessionalId;
+
 				// Disparo não-bloqueante de WhatsApp no momento da solicitação/criação
 				// Configure o template em WHATSAPP_BOOKING_CREATED_TEMPLATE.
 				const bookingCreatedTemplate = (process.env.WHATSAPP_BOOKING_CREATED_TEMPLATE || 'hello_world').trim();
@@ -374,8 +389,48 @@ export default async function handler(req: any, res: any) {
 					data: formatDateToPtBr(date),
 					hora: formatTimeToHHMM(time),
 					template_name: bookingCreatedTemplate,
-					template_params: [clientPayload.name!, formatDateToPtBr(date), formatTimeToHHMM(time)],
+					// Ordem esperada no template de solicitação:
+					// {{1}} nome, {{2}} nome do serviço, {{3}} data e hora
+					template_params: [
+						clientPayload.name!,
+						serviceLabel,
+						`${formatDateToPtBr(date)} às ${formatTimeToHHMM(time)}`,
+					],
 				}).catch(() => {/* silencioso */ });
+
+				// Disparo opcional para profissional responsável pelo agendamento.
+				// Configure WHATSAPP_PROFESSIONAL_BOOKING_REQUEST_TEMPLATE para ativar.
+				const professionalTemplate = (process.env.WHATSAPP_PROFESSIONAL_BOOKING_REQUEST_TEMPLATE || '').trim();
+				if (professionalTemplate && finalProfessionalId) {
+					const { data: profData } = await supabase
+						.from('professionals')
+						.select('name, phone')
+						.eq('id', finalProfessionalId)
+						.single();
+
+					const professionalPhone = String(profData?.phone || '').trim();
+					const professionalName = String(profData?.name || 'Profissional').trim();
+					if (professionalPhone) {
+						triggerWhatsAppConfirmation({
+							// "nome" é obrigatório na function; aqui usamos o nome do profissional como referência.
+							nome: professionalName,
+							telefone: professionalPhone,
+							data: formatDateToPtBr(date),
+							hora: formatTimeToHHMM(time),
+							template_name: professionalTemplate,
+							// Ordem sugerida para template do profissional:
+							// {{1}} profissional, {{2}} cliente, {{3}} serviço, {{4}} data e hora
+							template_params: [
+								professionalName,
+								clientPayload.name!,
+								serviceLabel,
+								`${formatDateToPtBr(date)} às ${formatTimeToHHMM(time)}`,
+							],
+						}).catch(() => {/* silencioso */ });
+					} else {
+						console.warn('[whatsapp] Profissional sem telefone; notificação ao profissional ignorada.');
+					}
+				}
 			} catch (whatsErr) {
 				// Nunca deixar erro de notificação impedir o retorno do agendamento
 				console.error('[whatsapp] Erro ao preparar envio na criação:', whatsErr);
@@ -501,6 +556,78 @@ export default async function handler(req: any, res: any) {
 							booking_id: bookingId,
 							cancelled_by: cancelledBy,
 						});
+
+					// Notificar cliente quando o cancelamento for feito pelo profissional/admin.
+					try {
+						if (cancelledBy === 'admin' || cancelledBy === 'professional') {
+							const clientCancelledTemplate = (process.env.WHATSAPP_CLIENT_BOOKING_CANCELLED_TEMPLATE || '').trim();
+							if (clientCancelledTemplate) {
+								const bd = bookingData as any;
+								const clientName = String(bd?.clients?.name || 'Cliente').trim();
+								const clientPhone = String(bd?.clients?.phone || '').trim();
+								const serviceLabel = ((bd?.booking_services || []) as any[])
+									.map((bs: any) => String(bs?.services?.name || '').trim())
+									.filter(Boolean)
+									.join(', ') || 'serviço selecionado';
+
+								if (clientPhone) {
+									triggerWhatsAppConfirmation({
+										nome: clientName,
+										telefone: clientPhone,
+										data: formatDateToPtBr(String(bd?.date || '')),
+										hora: formatTimeToHHMM(String(bd?.time || '')),
+										template_name: clientCancelledTemplate,
+										// Ordem sugerida para template de cancelamento ao cliente:
+										// {{1}} cliente, {{2}} serviço, {{3}} data e hora
+										template_params: [
+											clientName,
+											serviceLabel,
+											`${formatDateToPtBr(String(bd?.date || ''))} às ${formatTimeToHHMM(String(bd?.time || ''))}`,
+										],
+									}).catch(() => { /* silencioso */ });
+								}
+							}
+						}
+					} catch (notifyErr: any) {
+						console.error('[whatsapp] Erro ao preparar aviso de cancelamento para cliente:', notifyErr?.message || notifyErr);
+					}
+
+					// Notificar profissional quando o cancelamento for feito pelo cliente.
+					try {
+						if (cancelledBy === 'client') {
+							const professionalCancelledTemplate = (process.env.WHATSAPP_PROFESSIONAL_CLIENT_CANCELLED_TEMPLATE || '').trim();
+							if (professionalCancelledTemplate) {
+								const bd = bookingData as any;
+								const professionalName = String(bd?.professionals?.name || 'Profissional').trim();
+								const professionalPhone = String(bd?.professionals?.phone || '').trim();
+								const clientName = String(bd?.clients?.name || 'Cliente').trim();
+								const serviceLabel = ((bd?.booking_services || []) as any[])
+									.map((bs: any) => String(bs?.services?.name || '').trim())
+									.filter(Boolean)
+									.join(', ') || 'serviço selecionado';
+
+								if (professionalPhone) {
+									triggerWhatsAppConfirmation({
+										nome: professionalName,
+										telefone: professionalPhone,
+										data: formatDateToPtBr(String(bd?.date || '')),
+										hora: formatTimeToHHMM(String(bd?.time || '')),
+										template_name: professionalCancelledTemplate,
+										// Ordem sugerida para template ao profissional:
+										// {{1}} profissional, {{2}} cliente, {{3}} serviço, {{4}} data e hora
+										template_params: [
+											professionalName,
+											clientName,
+											serviceLabel,
+											`${formatDateToPtBr(String(bd?.date || ''))} às ${formatTimeToHHMM(String(bd?.time || ''))}`,
+										],
+									}).catch(() => { /* silencioso */ });
+								}
+							}
+						}
+					} catch (notifyErr: any) {
+						console.error('[whatsapp] Erro ao preparar aviso de cancelamento para profissional:', notifyErr?.message || notifyErr);
+					}
 
 				} catch { }
 			}

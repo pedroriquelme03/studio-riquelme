@@ -140,6 +140,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
 }) => {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(null);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
   const [loadingProfessionals, setLoadingProfessionals] = useState<boolean>(false);
   const [showFixedFooter, setShowFixedFooter] = useState<boolean>(true);
 
@@ -164,15 +165,22 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     fetchProfessionals();
   }, []);
 
-  // Filtrar serviços baseado no profissional selecionado
+  // Filtrar serviços por profissional e termo de busca
   const filteredServices = useMemo(() => {
-    if (!selectedProfessionalId) {
-      return services; // Mostrar todos os serviços se nenhum profissional estiver selecionado
-    }
-    return services.filter(service => 
-      service.responsibleProfessionalId === selectedProfessionalId
-    );
-  }, [services, selectedProfessionalId]);
+    let result = selectedProfessionalId
+      ? services.filter(service => service.responsibleProfessionalId === selectedProfessionalId)
+      : services;
+
+    const query = serviceSearchQuery.trim().toLowerCase();
+    if (!query) return result;
+
+    return result.filter(service => {
+      const name = service.name.toLowerCase();
+      const description = (service.description || '').toLowerCase();
+      const professional = (service.responsibleProfessionalName || '').toLowerCase();
+      return name.includes(query) || description.includes(query) || professional.includes(query);
+    });
+  }, [services, selectedProfessionalId, serviceSearchQuery]);
 
   // Limpar serviços selecionados quando mudar o profissional
   useEffect(() => {
@@ -256,15 +264,67 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
         )}
       </div>
 
+      {/* Pesquisa de serviços */}
+      <div className="bg-white p-4 rounded-lg border border-gray-300 shadow-sm">
+        <label htmlFor="service-search" className="block text-sm font-medium text-gray-700 mb-2">
+          Pesquisar Serviços
+        </label>
+        <div className="relative">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            id="service-search"
+            type="search"
+            value={serviceSearchQuery}
+            onChange={(e) => setServiceSearchQuery(e.target.value)}
+            placeholder="Buscar por nome, descrição ou profissional..."
+            className="w-full bg-gray-50 border border-gray-300 rounded-lg py-3 pl-10 pr-10 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
+          />
+          {serviceSearchQuery && (
+            <button
+              type="button"
+              onClick={() => setServiceSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Limpar pesquisa"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {serviceSearchQuery.trim() && (
+          <p className="mt-2 text-sm text-gray-600">
+            {filteredServices.length === 0
+              ? 'Nenhum serviço encontrado.'
+              : `${filteredServices.length} serviço${filteredServices.length === 1 ? '' : 's'} encontrado${filteredServices.length === 1 ? '' : 's'}.`}
+          </p>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Nossos Serviços</h2>
           {filteredServices.length === 0 ? (
             <div className="bg-gray-50 border border-gray-300 rounded-lg p-8 text-center">
               <p className="text-gray-600">
-                {selectedProfessionalId 
-                  ? 'Nenhum serviço disponível para este profissional.' 
-                  : 'Nenhum serviço disponível no momento.'}
+                {serviceSearchQuery.trim()
+                  ? 'Nenhum serviço encontrado para sua busca.'
+                  : selectedProfessionalId
+                    ? 'Nenhum serviço disponível para este profissional.'
+                    : 'Nenhum serviço disponível no momento.'}
               </p>
             </div>
           ) : (

@@ -32,30 +32,23 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         setFeedback('Informe um WhatsApp válido.');
         return;
       }
-      if (!password || password.length < 6) {
-        setFeedback('A senha deve ter no mínimo 6 caracteres.');
+      if (!password || password.length < 8) {
+        setFeedback('A senha deve ter no mínimo 8 caracteres.');
         return;
       }
 
-      // Registrar conta pelo backend (sem confirmação)
+      // Registro em uma única chamada: a senha faz parte da criação da conta.
+      // A API responde com o cookie de sessão do cliente.
       const res = await fetch('/api/client-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'register', name: client.name, phone: digits, email: email || null }),
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'register', name: client.name, phone: digits, password }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao registrar conta');
 
-      // Definir senha do cliente
-      const resPass = await fetch('/api/client-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set_password', phone: digits, email: email || null, password }),
-      });
-      const dataPass = await resPass.json();
-      if (!resPass.ok || !dataPass.ok) throw new Error(dataPass?.error || 'Falha ao definir a senha');
-
-      // Salvar sessão simples do cliente pelo telefone
+      // Apenas para exibir o número; a autorização vem do cookie de sessão.
       localStorage.setItem('client_phone', digits);
 
       setFeedback('Conta criada! Você já pode acessar seu histórico com seu WhatsApp e senha.');
@@ -205,8 +198,8 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-                  placeholder="Crie uma senha (mín. 6 caracteres)"
-                  minLength={6}
+                  placeholder="Crie uma senha (mín. 8 caracteres)"
+                  minLength={8}
                   required
                 />
               </div>

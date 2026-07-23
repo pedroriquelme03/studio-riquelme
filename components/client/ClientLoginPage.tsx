@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+type Mode = 'login' | 'register' | 'forgot_request' | 'forgot_confirm';
+
 function normalizePhone(phone: string) {
   return (phone || '').replace(/\D/g, '');
 }
@@ -19,107 +21,122 @@ function applyPhoneMask(value: string): string {
   }
 }
 
-function toE164(digits: string): string {
-  // Se começar com '55' (Brasil), prefixa '+'
-  if (digits.startsWith('55')) return `+${digits}`;
-  // Caso típico BR (11 dígitos) sem DDI, adiciona +55
-  if (digits.length === 11) return `+55${digits}`;
-  // Fallback: tenta adicionar +
-  return digits.startsWith('+') ? digits : `+${digits}`;
+const MIN_PASSWORD = 8;
+
+const inputClass = 'w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900';
+const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
+
+async function postClientAuth(payload: Record<string, unknown>) {
+  const res = await fetch('/api/client-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => null);
+  return { res, data };
 }
 
 const ClientLoginPage: React.FC = () => {
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [isForgotMode, setIsForgotMode] = useState(false);
+  const [mode, setMode] = useState<Mode>('login');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resetMessages = () => {
     setError(null);
     setSuccessMessage(null);
+  };
+
+  const goTo = (next: Mode) => {
+    resetMessages();
+    setPassword('');
+    setConfirmPassword('');
+    setCode('');
+    if (next === 'register' || next === 'login') setName('');
+    setMode(next);
+  };
+
+  const enter = (digits: string) => {
+    // Guardado apenas para exibir o número na tela; quem autoriza de verdade é
+    // o cookie de sessão HttpOnly emitido pela API.
+    try {
+      localStorage.setItem('client_phone', digits);
+    } catch {}
+    navigate('/meus-agendamentos');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMessages();
     setIsLoading(true);
+
     try {
       const digits = normalizePhone(phone);
 
-      if (isForgotMode) {
-        if (!password || password.length < 6) {
-          setError('A senha deve ter no mínimo 6 caracteres');
-          setIsLoading(false);
+      if (mode === 'forgot_request') {
+        const { res, data } = await postClientAuth({ action: 'request_reset', phone: digits });
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível enviar o código');
+        setSuccessMessage(
+          data.message || 'Se houver uma conta para este WhatsApp, você receberá um código em instantes.',
+        );
+        setMode('forgot_confirm');
+        return;
+      }
+
+      if (mode === 'forgot_confirm') {
+        if (password.length < MIN_PASSWORD) {
+          setError(`A senha deve ter no mínimo ${MIN_PASSWORD} caracteres`);
           return;
         }
         if (password !== confirmPassword) {
           setError('As senhas não coincidem');
-          setIsLoading(false);
           return;
         }
-        const res = await fetch('/api/client-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'set_password', phone: digits, password }),
+        const { res, data } = await postClientAuth({
+          action: 'reset_with_code',
+          phone: digits,
+          code,
+          new_password: password,
         });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível redefinir a senha');
-        setSuccessMessage('Senha alterada com sucesso! Faça login com sua nova senha.');
-        setPassword('');
-        setConfirmPassword('');
-        setIsForgotMode(false);
-        setIsLoading(false);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível redefinir a senha');
+        enter(digits);
         return;
       }
-      
-      if (isRegisterMode) {
-        // Criar conta
+
+      if (mode === 'register') {
         if (!name.trim()) {
           setError('Nome é obrigatório');
-          setIsLoading(false);
           return;
         }
-        if (!password || password.length < 6) {
-          setError('A senha deve ter no mínimo 6 caracteres');
-          setIsLoading(false);
+        if (password.length < MIN_PASSWORD) {
+          setError(`A senha deve ter no mínimo ${MIN_PASSWORD} caracteres`);
           return;
         }
-
-        // Registrar conta
-        const res = await fetch('/api/client-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'register', name: name.trim(), phone: digits }),
+        const { res, data } = await postClientAuth({
+          action: 'register',
+          name: name.trim(),
+          phone: digits,
+          password,
         });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao registrar conta');
-
-        // Definir senha do cliente
-        const resPass = await fetch('/api/client-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'set_password', phone: digits, password }),
-        });
-        const dataPass = await resPass.json();
-        if (!resPass.ok || !dataPass.ok) throw new Error(dataPass?.error || 'Falha ao definir a senha');
-
-        // Salvar sessão e redirecionar
-        localStorage.setItem('client_phone', digits);
-        navigate('/meus-agendamentos');
-      } else {
-        // Login
-        const res = await fetch('/api/client-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'login_password', phone: digits, password }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data?.error || 'Não foi possível entrar');
-        localStorage.setItem('client_phone', digits);
-        navigate('/meus-agendamentos');
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Falha ao criar a conta');
+        enter(digits);
+        return;
       }
+
+      const { res, data } = await postClientAuth({
+        action: 'login_password',
+        phone: digits,
+        password,
+      });
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível entrar');
+      enter(digits);
     } catch (err: any) {
       setError(err?.message || 'Erro inesperado');
     } finally {
@@ -127,28 +144,52 @@ const ClientLoginPage: React.FC = () => {
     }
   };
 
+  const title =
+    mode === 'forgot_request' || mode === 'forgot_confirm'
+      ? 'Redefinir senha'
+      : mode === 'register'
+      ? 'Criar Conta'
+      : 'Entrar';
+
+  const subtitle =
+    mode === 'forgot_request'
+      ? 'Informe seu WhatsApp. Enviaremos um código de 6 dígitos para confirmar que o número é seu.'
+      : mode === 'forgot_confirm'
+      ? 'Digite o código que enviamos no seu WhatsApp e escolha a nova senha.'
+      : mode === 'register'
+      ? 'Crie sua conta para acessar seu histórico de agendamentos'
+      : 'Acesse seu histórico com seu WhatsApp';
+
+  const buttonLabel = isLoading
+    ? mode === 'forgot_request'
+      ? 'Enviando...'
+      : mode === 'forgot_confirm'
+      ? 'Redefinindo...'
+      : mode === 'register'
+      ? 'Criando conta...'
+      : 'Entrando...'
+    : mode === 'forgot_request'
+    ? 'Enviar código'
+    : mode === 'forgot_confirm'
+    ? 'Redefinir senha'
+    : mode === 'register'
+    ? 'Criar Conta'
+    : 'Entrar';
+
   return (
     <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
-      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">
-        {isForgotMode ? 'Redefinir senha' : isRegisterMode ? 'Criar Conta' : 'Entrar'}
-      </h2>
-      <p className="text-gray-600 text-center mb-6">
-        {isForgotMode
-          ? 'Informe seu WhatsApp e defina uma nova senha.'
-          : isRegisterMode 
-          ? 'Crie sua conta para acessar seu histórico de agendamentos' 
-          : 'Acesse seu histórico com seu WhatsApp'}
-      </p>
+      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">{title}</h2>
+      <p className="text-gray-600 text-center mb-6">{subtitle}</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {isRegisterMode && !isForgotMode && (
+        {mode === 'register' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+            <label className={labelClass}>Nome</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+              className={inputClass}
               placeholder="Seu nome completo"
               required
             />
@@ -156,73 +197,66 @@ const ClientLoginPage: React.FC = () => {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+          <label className={labelClass}>WhatsApp</label>
           <input
             type="tel"
+            inputMode="numeric"
             value={phone}
             onChange={(e) => setPhone(applyPhoneMask(e.target.value))}
-            onKeyDown={(e) => {
-              const code = (e as any).keyCode as number;
-              if ([8,9,27,13,46,35,36,37,38,39,40].includes(code) ||
-                  (code === 65 && (e as any).ctrlKey) ||
-                  (code === 67 && (e as any).ctrlKey) ||
-                  (code === 86 && (e as any).ctrlKey) ||
-                  (code === 88 && (e as any).ctrlKey)) {
-                return;
-              }
-              if (((e as any).shiftKey || code < 48 || code > 57) && (code < 96 || code > 105)) {
-                e.preventDefault();
-              }
-            }}
             maxLength={15}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+            readOnly={mode === 'forgot_confirm'}
+            className={`${inputClass} ${mode === 'forgot_confirm' ? 'opacity-70' : ''}`}
             placeholder="(99) 99999-9999"
             required
           />
         </div>
 
-        {!isForgotMode && (
+        {mode === 'forgot_confirm' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <label className={labelClass}>Código recebido</label>
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-              placeholder={isRegisterMode ? 'Mínimo 6 caracteres' : 'Sua senha'}
-              minLength={6}
-              required={!isForgotMode}
+              type="text"
+              inputMode="numeric"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              className={`${inputClass} tracking-[0.4em] text-center text-lg font-semibold`}
+              placeholder="000000"
+              maxLength={6}
+              required
             />
           </div>
         )}
 
-        {isForgotMode && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-                placeholder="Mínimo 6 caracteres"
-                minLength={6}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-                placeholder="Repita a senha"
-                minLength={6}
-                required
-              />
-            </div>
-          </>
+        {mode !== 'forgot_request' && (
+          <div>
+            <label className={labelClass}>
+              {mode === 'forgot_confirm' ? 'Nova senha' : 'Senha'}
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+              placeholder={mode === 'login' ? 'Sua senha' : `Mínimo ${MIN_PASSWORD} caracteres`}
+              minLength={mode === 'login' ? undefined : MIN_PASSWORD}
+              required
+            />
+          </div>
+        )}
+
+        {mode === 'forgot_confirm' && (
+          <div>
+            <label className={labelClass}>Confirmar nova senha</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className={inputClass}
+              placeholder="Repita a senha"
+              minLength={MIN_PASSWORD}
+              required
+            />
+          </div>
         )}
 
         {error && (
@@ -241,54 +275,42 @@ const ClientLoginPage: React.FC = () => {
           disabled={isLoading}
           className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading 
-            ? (isForgotMode ? 'Redefinindo...' : isRegisterMode ? 'Criando conta...' : 'Entrando...') 
-            : (isForgotMode ? 'Redefinir senha' : isRegisterMode ? 'Criar Conta' : 'Entrar')}
+          {buttonLabel}
         </button>
       </form>
 
       <div className="mt-6 text-center space-y-2">
-        {isForgotMode ? (
-          <button
-            type="button"
-            onClick={() => {
-              setIsForgotMode(false);
-              setError(null);
-              setSuccessMessage(null);
-              setPassword('');
-              setConfirmPassword('');
-            }}
-            className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
-          >
-            Voltar ao login
-          </button>
+        {mode === 'forgot_request' || mode === 'forgot_confirm' ? (
+          <>
+            {mode === 'forgot_confirm' && (
+              <button
+                type="button"
+                onClick={() => goTo('forgot_request')}
+                className="block w-full text-gray-600 hover:text-gray-800 text-sm font-medium"
+              >
+                Não recebeu? Enviar outro código
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => goTo('login')}
+              className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
+            >
+              Voltar ao login
+            </button>
+          </>
         ) : (
           <>
             <button
               type="button"
-              onClick={() => {
-                setIsRegisterMode(!isRegisterMode);
-                setError(null);
-                setSuccessMessage(null);
-                setName('');
-                setPhone('');
-                setPassword('');
-              }}
+              onClick={() => goTo(mode === 'register' ? 'login' : 'register')}
               className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
             >
-              {isRegisterMode 
-                ? 'Já tem uma conta? Entrar' 
-                : 'Não tem uma conta? Criar conta'}
+              {mode === 'register' ? 'Já tem uma conta? Entrar' : 'Não tem uma conta? Criar conta'}
             </button>
             <button
               type="button"
-              onClick={() => {
-                setIsForgotMode(true);
-                setError(null);
-                setSuccessMessage(null);
-                setPassword('');
-                setConfirmPassword('');
-              }}
+              onClick={() => goTo('forgot_request')}
               className="block w-full text-gray-600 hover:text-gray-800 text-sm font-medium"
             >
               Esqueci a senha
@@ -301,5 +323,3 @@ const ClientLoginPage: React.FC = () => {
 };
 
 export default ClientLoginPage;
-
-

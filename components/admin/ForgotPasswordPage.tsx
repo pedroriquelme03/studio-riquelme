@@ -30,8 +30,8 @@ const ForgotPasswordPage: React.FC = () => {
         return;
       }
 
-      if (newPassword.length < 6) {
-        setResetError('A senha deve ter pelo menos 6 caracteres');
+      if (newPassword.length < 8) {
+        setResetError('A senha deve ter pelo menos 8 caracteres');
         return;
       }
 
@@ -93,7 +93,7 @@ const ForgotPasswordPage: React.FC = () => {
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
                   placeholder="Digite sua nova senha"
                   required
-                  minLength={6}
+                  minLength={8}
                   autoFocus
                 />
               </div>
@@ -110,7 +110,7 @@ const ForgotPasswordPage: React.FC = () => {
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
                   placeholder="Confirme sua nova senha"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
 

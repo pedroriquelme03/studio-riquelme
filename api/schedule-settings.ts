@@ -5,6 +5,7 @@
 // - DELETE: delete de manual_slots por id
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { requireAdmin } from '../lib/session';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -21,8 +22,32 @@ function getSupabaseServer() {
 
 const FOOTER_KEYS = ['footer_contact1_name', 'footer_contact1_phone', 'footer_contact2_name', 'footer_contact2_phone', 'footer_address'] as const;
 
+/**
+ * Grava uma configuração sem depender de ON CONFLICT.
+ * O upsert exige que o Postgres consiga inferir um índice único a partir das
+ * colunas informadas; quando isso não bate, o erro é o 42P10 ("não há restrição
+ * única ou de exclusão que corresponda à especificação ON CONFLICT"). Fazendo
+ * update-e-senão-insert o salvamento funciona qualquer que seja o índice.
+ */
+async function setSetting(supabase: any, key: string, value: string): Promise<string | null> {
+	const { data: updated, error: updErr } = await supabase
+		.from('system_settings')
+		.update({ value })
+		.eq('key', key)
+		.select('key');
+	if (updErr) return updErr.message;
+	if (updated?.length) return null;
+
+	const { error: insErr } = await supabase.from('system_settings').insert({ key, value });
+	return insErr ? insErr.message : null;
+}
+
 export default async function handler(req: any, res: any) {
 	try {
+		// GET é público: o calendário e o rodapé do site dependem dele.
+		// Alterar horários, datas especiais ou contatos exige admin.
+		if (req.method !== 'GET' && !requireAdmin(req, res)) return;
+
 		const supabase = getSupabaseServer();
 
 			if (req.method === 'GET') {
@@ -113,8 +138,8 @@ export default async function handler(req: any, res: any) {
 						{ key: 'footer_contact2_phone', value: contact2_phone },
 						{ key: 'footer_address', value: address },
 					]) {
-						const { error: err } = await supabase.from('system_settings').upsert({ key: row.key, value: row.value }, { onConflict: 'key' });
-						if (err) return res.status(500).json({ ok: false, error: err.message });
+						const err = await setSetting(supabase, row.key, row.value);
+						if (err) return res.status(500).json({ ok: false, error: err });
 					}
 					return res.status(200).json({ ok: true });
 				}
@@ -137,27 +162,9 @@ export default async function handler(req: any, res: any) {
 					}
 				}
 				
-				// Remover horários antigos do profissional (se houver)
-				if (professionalId) {
-					const { error: delErr } = await supabase
-						.from('business_hours')
-						.delete()
-						.eq('professional_id', professionalId);
-					if (delErr) {
-						console.warn('Erro ao remover horários antigos:', delErr.message);
-					}
-				} else {
-					// Se for null, remover horários globais antigos
-					const { error: delErr } = await supabase
-						.from('business_hours')
-						.delete()
-						.is('professional_id', null);
-					if (delErr) {
-						console.warn('Erro ao remover horários globais antigos:', delErr.message);
-					}
-				}
-				
-				// Upsert em lote
+				// Monta e valida ANTES de apagar. Na ordem anterior, um weekday
+				// inválido apagava a configuração e devolvia 400 sem inserir nada,
+				// deixando o profissional sem nenhum horário.
 				const payload = hours.map((h: any) => ({
 					weekday: Number(h?.weekday),
 					enabled: !!h?.enabled,
@@ -169,20 +176,43 @@ export default async function handler(req: any, res: any) {
 				if (payload.some((p: any) => !(p.weekday >= 0 && p.weekday <= 6))) {
 					return res.status(400).json({ ok: false, error: 'weekday inválido' });
 				}
+				if (new Set(payload.map((p: any) => p.weekday)).size !== 7) {
+					return res.status(400).json({ ok: false, error: 'business_hours deve ter os 7 dias sem repetição' });
+				}
+
+				const scopeFilter = (q: any) =>
+					professionalId ? q.eq('professional_id', professionalId) : q.is('professional_id', null);
+
+				// Guardamos o estado atual para poder repor se a inserção falhar
+				// (não há transação disponível via supabase-js).
+				const { data: previous } = await scopeFilter(
+					supabase.from('business_hours').select('weekday, enabled, open_time, close_time, professional_id'),
+				);
+
+				const { error: delErr } = await scopeFilter(supabase.from('business_hours').delete());
+				if (delErr) {
+					// Antes isso era só um console.warn e seguia adiante, batendo no
+					// índice único logo depois e falhando de forma confusa.
+					return res.status(500).json({ ok: false, error: `Erro ao limpar horários anteriores: ${delErr.message}` });
+				}
+
 				const { error: upErr } = await supabase
 					.from('business_hours')
 					.insert(payload);
-				if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+				if (upErr) {
+					if (previous?.length) {
+						await supabase.from('business_hours').insert(previous);
+					}
+					return res.status(500).json({ ok: false, error: upErr.message });
+				}
 
 				// Salvar mês limite opcionalmente
 				if (limitMonth) {
 					// validar formato YYYY-MM simples
 					const okFmt = /^\d{4}-\d{2}$/.test(limitMonth);
 					if (!okFmt) return res.status(400).json({ ok: false, error: 'booking_limit_month deve ser no formato YYYY-MM' });
-					const { error: setErr } = await supabase
-						.from('system_settings')
-						.upsert({ key: 'booking_limit_month', value: limitMonth }, { onConflict: 'key' });
-					if (setErr) return res.status(500).json({ ok: false, error: setErr.message });
+					const setErr = await setSetting(supabase, 'booking_limit_month', limitMonth);
+					if (setErr) return res.status(500).json({ ok: false, error: setErr });
 				}
 
 				return res.status(200).json({ ok: true });
@@ -206,8 +236,20 @@ export default async function handler(req: any, res: any) {
 					const open = openTime.length === 5 ? `${openTime}:00` : openTime;
 					const close = closeTime.length === 5 ? `${closeTime}:00` : closeTime;
 
-					const start = new Date(dateFrom);
-					const end = new Date(dateTo);
+					// `new Date('2026-08-01')` é interpretado como UTC; ao ler com
+					// getDate() em UTC-3 isso vira 31/07. Montamos a data no fuso
+					// local para o dia gravado ser o dia escolhido.
+					const parseLocalDate = (ymd: string): Date | null => {
+						const [y, m, d] = ymd.split('-').map(Number);
+						if (!y || !m || !d) return null;
+						return new Date(y, m - 1, d);
+					};
+
+					const start = parseLocalDate(dateFrom);
+					const end = parseLocalDate(dateTo);
+					if (!start || !end) {
+						return res.status(400).json({ ok: false, error: 'Data inválida (use YYYY-MM-DD)' });
+					}
 					if (end < start) {
 						return res.status(400).json({ ok: false, error: 'date_to deve ser igual ou posterior a date' });
 					}
@@ -218,27 +260,26 @@ export default async function handler(req: any, res: any) {
 						const m = String(d.getMonth() + 1).padStart(2, '0');
 						const day = String(d.getDate()).padStart(2, '0');
 						const dateStr = `${y}-${m}-${day}`;
-						if (profId) {
-							const { data: inserted, error: insErr } = await supabase
-								.from('special_date_hours')
-								.upsert(
-									{ date: dateStr, open_time: open, close_time: close, enabled, professional_id: profId },
-									{ onConflict: 'date,professional_id' }
-								)
-								.select('id')
-								.single();
-							if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
-							if ((inserted as any)?.id) ids.push((inserted as any).id);
-						} else {
-							await supabase.from('special_date_hours').delete().eq('date', dateStr).is('professional_id', null);
-							const { data: inserted, error: insErr } = await supabase
-								.from('special_date_hours')
-								.insert({ date: dateStr, open_time: open, close_time: close, enabled, professional_id: null })
-								.select('id')
-								.single();
-							if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
-							if ((inserted as any)?.id) ids.push((inserted as any).id);
-						}
+
+						// Apaga e insere em vez de usar upsert. O índice único de
+						// special_date_hours é PARCIAL (`where professional_id is not null`),
+						// e o Postgres só aceita inferir um índice parcial no ON CONFLICT
+						// se o mesmo predicado WHERE for informado — coisa que o
+						// supabase-js não expõe. Daí o erro 42P10 ("não há restrição
+						// única ou de exclusão que corresponda à especificação ON CONFLICT")
+						// ao salvar com um profissional selecionado.
+						let del = supabase.from('special_date_hours').delete().eq('date', dateStr);
+						del = profId ? del.eq('professional_id', profId) : del.is('professional_id', null);
+						const { error: delErr } = await del;
+						if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+
+						const { data: inserted, error: insErr } = await supabase
+							.from('special_date_hours')
+							.insert({ date: dateStr, open_time: open, close_time: close, enabled, professional_id: profId })
+							.select('id')
+							.single();
+						if (insErr) return res.status(500).json({ ok: false, error: insErr.message });
+						if ((inserted as any)?.id) ids.push((inserted as any).id);
 					}
 					return res.status(201).json({ ok: true, ids, count: ids.length });
 				}

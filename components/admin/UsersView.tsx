@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { supabase, getSupabaseClient } from '../../src/lib/supabaseClient';
+import React, { useCallback, useEffect, useState } from 'react';
 
 type AdminRow = {
   id: string;
@@ -23,34 +22,28 @@ const UsersView: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [createdMsg, setCreatedMsg] = useState<string | null>(null);
 
-  const canLoadFromSupabase = useMemo(() => {
+  // A tabela `admins` não é mais legível pelo navegador (RLS fechada).
+  // A listagem vem da API, que valida a sessão de administrador.
+  const loadAdmins = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      return Boolean(supabase || getSupabaseClient());
-    } catch {
-      return false;
+      const res = await fetch('/api/auth?list=1', { credentials: 'same-origin' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || 'Erro ao carregar usuários');
+      }
+      setRows((data.admins || []) as AdminRow[]);
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao carregar usuários');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    (async () => {
-      if (!canLoadFromSupabase) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const cli = supabase || getSupabaseClient();
-        const { data, error } = await cli
-          .from('admins')
-          .select('id, username, name, email, is_active, created_at, last_login')
-          .order('created_at', { ascending: false });
-        if (error) throw new Error(error.message);
-        setRows((data || []) as AdminRow[]);
-      } catch (e: any) {
-        setError(e?.message || 'Erro ao carregar usuários');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [canLoadFromSupabase]);
+    loadAdmins();
+  }, [loadAdmins]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +54,7 @@ const UsersView: React.FC = () => {
       const res = await fetch('/api/auth', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           username: username.trim(),
           password: password,
@@ -84,17 +78,7 @@ const UsersView: React.FC = () => {
       setPassword('');
       setName('');
       setEmail('');
-      // Recarregar lista se possível
-      if (canLoadFromSupabase) {
-        try {
-          const cli = supabase || getSupabaseClient();
-          const { data: list } = await cli
-            .from('admins')
-            .select('id, username, name, email, is_active, created_at, last_login')
-            .order('created_at', { ascending: false });
-          setRows((list || []) as AdminRow[]);
-        } catch {}
-      }
+      await loadAdmins();
     } catch (e: any) {
       setError(e?.message || 'Erro ao criar usuário');
     } finally {
@@ -144,9 +128,9 @@ const UsersView: React.FC = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-            placeholder="Defina uma senha segura"
+            placeholder="Mínimo 8 caracteres"
             required
-            minLength={6}
+            minLength={8}
           />
         </div>
         <div className="md:col-span-2 flex gap-3">

@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
+import { getSession } from '../lib/session';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -67,16 +68,39 @@ export default async function handler(req: any, res: any) {
 			return res.status(405).json({ ok: false, error: 'Método não permitido' });
 		}
 
+		const session = getSession(req);
+		if (!session) {
+			return res.status(401).json({ ok: false, error: 'Não autorizado' });
+		}
+
 		const url = new URL(req?.url || '/', 'http://localhost');
 		const professionalId = url.searchParams.get('professional_id') || undefined;
 		const cancelledBy = url.searchParams.get('cancelled_by') || 'client';
 		const from = url.searchParams.get('from') || undefined;
 		const to = url.searchParams.get('to') || undefined;
 		const limit = Number(url.searchParams.get('limit') || 50);
-		const bookingIds = (url.searchParams.get('booking_ids') || '')
+		let bookingIds = (url.searchParams.get('booking_ids') || '')
 			.split(',')
 			.map(s => s.trim())
 			.filter(Boolean);
+
+		// Cliente só enxerga cancelamentos dos próprios agendamentos: a lista de
+		// booking_ids da query string é substituída pela dele, nunca confiada.
+		if (session.role === 'client') {
+			const { data: own, error: ownErr } = await supabase
+				.from('bookings')
+				.select('id')
+				.eq('client_id', session.sub);
+			if (ownErr) return res.status(500).json({ ok: false, error: ownErr.message });
+
+			const ownIds = (own || []).map((b: any) => String(b.id));
+			if (!ownIds.length) return res.status(200).json({ ok: true, cancellations: [] });
+
+			bookingIds = bookingIds.length
+				? bookingIds.filter(id => ownIds.includes(id))
+				: ownIds;
+			if (!bookingIds.length) return res.status(200).json({ ok: true, cancellations: [] });
+		}
 
 		let query = supabase
 			.from('booking_cancellations')

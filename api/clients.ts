@@ -1,6 +1,7 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 // import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from 'pg';
+import { requireAdmin } from '../lib/session';
 
 async function getClient() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -17,6 +18,9 @@ async function getClient() {
 
 export default async function handler(req: any, res: any) {
 	try {
+		// Base completa de clientes: painel apenas.
+		if (!requireAdmin(req, res)) return;
+
 		if (req.method === 'GET') {
 			const client = await getClient();
 			try {

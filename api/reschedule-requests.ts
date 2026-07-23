@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
+import { getSession, requireAdmin, requireClient } from '../lib/session';
 
 async function triggerWhatsAppConfirmation(payload: {
 	nome: string;
@@ -128,13 +129,30 @@ export default async function handler(req: any, res: any) {
 		await refreshSchemaCacheIfNeeded(supabase);
 
 		if (req.method === 'GET') {
+			const session = getSession(req);
+			if (!session) return res.status(401).json({ ok: false, error: 'Não autorizado' });
+
 			const url = new URL(req?.url || '/', 'http://localhost');
 			const bookingId = url.searchParams.get('booking_id') || undefined;
-			const bookingIds = (url.searchParams.get('booking_ids') || '')
+			let bookingIds = (url.searchParams.get('booking_ids') || '')
 				.split(',')
 				.map(s => s.trim())
 				.filter(Boolean);
 			const state = url.searchParams.get('state') || undefined; // 'pending' | 'approved' | 'denied'
+
+			// O cliente é restrito aos próprios agendamentos.
+			if (session.role === 'client') {
+				const { data: own, error: ownErr } = await supabase
+					.from('bookings')
+					.select('id')
+					.eq('client_id', session.sub);
+				if (ownErr) return res.status(500).json({ ok: false, error: ownErr.message });
+
+				const ownIds = (own || []).map((b: any) => String(b.id));
+				const requested = bookingIds.length ? bookingIds : bookingId ? [bookingId] : ownIds;
+				bookingIds = requested.filter(id => ownIds.includes(id));
+				if (!bookingIds.length) return res.status(200).json({ ok: true, requests: [] });
+			}
 
 			let query = supabase
 				.from('reschedule_requests')
@@ -160,6 +178,20 @@ export default async function handler(req: any, res: any) {
 
 			if (!booking_id || !requested_date || !requested_time) {
 				return res.status(400).json({ ok: false, error: 'booking_id, date e time são obrigatórios' });
+			}
+
+			// Só o dono do agendamento pode pedir a troca.
+			const clientSession = requireClient(req, res);
+			if (!clientSession) return;
+
+			const { data: ownerRow, error: ownerErr } = await supabase
+				.from('bookings')
+				.select('id, client_id')
+				.eq('id', booking_id)
+				.maybeSingle();
+			if (ownerErr) return res.status(500).json({ ok: false, error: ownerErr.message });
+			if (!ownerRow || String(ownerRow.client_id) !== clientSession.sub) {
+				return res.status(403).json({ ok: false, error: 'Não autorizado' });
 			}
 
 			const { error: insErr } = await supabase
@@ -233,6 +265,9 @@ export default async function handler(req: any, res: any) {
 		}
 
 		if (req.method === 'PUT') {
+			// Aprovar/negar troca é decisão do painel.
+			if (!requireAdmin(req, res)) return;
+
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 			const id = String(body?.id || '');

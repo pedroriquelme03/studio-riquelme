@@ -28,14 +28,23 @@ const ClientBookingsPage: React.FC = () => {
   const [cancellations, setCancellations] = useState<Record<string, { at: string; by: string }>>({});
   const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; status: string; requested_date: string; requested_time: string; created_at?: string; responded_at?: string; response_note?: string }>>>({});
 
+  // A sessão expirou (ou nunca existiu): manda de volta para o login.
+  const handleExpiredSession = () => {
+    try {
+      localStorage.removeItem('client_phone');
+    } catch {}
+    navigate('/login-cliente');
+  };
+
   useEffect(() => {
     (async () => {
       if (!phone) return;
       setLoading(true);
       setError(null);
       try {
-        const qs = new URLSearchParams({ client: phone });
-        const res = await fetch(`/api/bookings?${qs.toString()}`);
+        // Sem parâmetro `client`: a API escopa pelos dados da sessão.
+        const res = await fetch('/api/bookings', { credentials: 'same-origin' });
+        if (res.status === 401) return handleExpiredSession();
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
         const list = (data.bookings || []) as Row[];
@@ -44,7 +53,7 @@ const ClientBookingsPage: React.FC = () => {
         const ids = list.map(r => r.booking_id).join(',');
         if (ids) {
           try {
-            const rRes = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`);
+            const rRes = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`, { credentials: 'same-origin' });
             const rData = await rRes.json();
             if (rRes.ok && Array.isArray(rData?.requests)) {
               const map: Record<string, Array<any>> = {};
@@ -62,7 +71,7 @@ const ClientBookingsPage: React.FC = () => {
 
           // Buscar cancelamentos do cliente para esses bookings
           try {
-            const cRes = await fetch(`/api/cancellations?booking_ids=${encodeURIComponent(ids)}&cancelled_by=client&limit=200`);
+            const cRes = await fetch(`/api/cancellations?booking_ids=${encodeURIComponent(ids)}&cancelled_by=client&limit=200`, { credentials: 'same-origin' });
             const cData = await cRes.json();
             if (cRes.ok && Array.isArray(cData?.cancellations)) {
               const cmap: Record<string, { at: string; by: string }> = {};
@@ -74,7 +83,7 @@ const ClientBookingsPage: React.FC = () => {
               }
               // Buscar também cancelamentos pelo admin e mesclar
               try {
-                const aRes = await fetch(`/api/cancellations?booking_ids=${encodeURIComponent(ids)}&cancelled_by=admin&limit=200`);
+                const aRes = await fetch(`/api/cancellations?booking_ids=${encodeURIComponent(ids)}&cancelled_by=admin&limit=200`, { credentials: 'same-origin' });
                 const aData = await aRes.json();
                 if (aRes.ok && Array.isArray(aData?.cancellations)) {
                   for (const c of aData.cancellations) {
@@ -116,7 +125,16 @@ const ClientBookingsPage: React.FC = () => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900">Meus agendamentos</h2>
         <button
-          onClick={() => { try { localStorage.removeItem('client_phone'); } catch {} navigate('/login-cliente'); }}
+          onClick={async () => {
+            // O cookie de sessão é HttpOnly: só a API consegue removê-lo.
+            await fetch('/api/client-auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({ action: 'logout' }),
+            }).catch(() => {});
+            handleExpiredSession();
+          }}
           className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50"
         >
           Sair
@@ -183,8 +201,10 @@ const ClientBookingsPage: React.FC = () => {
                         const res = await fetch('/api/bookings', {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
+                          credentials: 'same-origin',
                           body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled', cancelled_by: 'client' }),
                         });
+                        if (res.status === 401) return handleExpiredSession();
                         const data = await res.json();
                         if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
                         // Marca como cancelado (mantendo visível na lista)
@@ -294,8 +314,10 @@ const ClientBookingsPage: React.FC = () => {
                       const res = await fetch('/api/reschedule-requests', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
                         body: JSON.stringify({ booking_id: rescheduleId, date: newDate, time: newTime }),
                       });
+                      if (res.status === 401) return handleExpiredSession();
                       const data = await res.json();
                       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao solicitar troca');
                       setRequestsMap(prev => {

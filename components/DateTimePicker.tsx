@@ -248,7 +248,8 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
         const d = String(selectedDate.getDate()).padStart(2, '0');
         const yyyyMMdd = `${y}-${m}-${d}`;
-        const qs = new URLSearchParams({ from: yyyyMMdd, to: yyyyMMdd });
+        // availability=1: devolve só a ocupação dos horários, sem dados pessoais.
+        const qs = new URLSearchParams({ from: yyyyMMdd, to: yyyyMMdd, availability: '1' });
         if (professionalId) {
           qs.append('professional_id', professionalId);
         }

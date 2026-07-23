@@ -1,8 +1,14 @@
 // Tipagens relaxadas para evitar dependência local de @vercel/node
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getSession, requireAdmin } from '../lib/session';
 
 export default async function handler(req: any, res: any) {
 	try {
+		// Escrita é sempre do painel. O GET é público, mas email e telefone da
+		// equipe só saem para admin — o site precisa apenas de id/nome/ativo.
+		if (req.method !== 'GET' && !requireAdmin(req, res)) return;
+		const isAdmin = getSession(req, 'admin')?.role === 'admin';
+
 		const supabaseUrl =
 			process.env.SUPABASE_URL ||
 			process.env.VITE_SUPABASE_URL;
@@ -15,10 +21,15 @@ export default async function handler(req: any, res: any) {
 		const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
 		if (req.method === 'GET') {
-			const { data, error } = await supabase
-				.from('professionals')
-				.select('id, name, email, phone, is_active, created_at, updated_at')
-				.order('name', { ascending: true });
+			const columns = isAdmin
+				? 'id, name, email, phone, is_active, created_at, updated_at'
+				: 'id, name, is_active';
+
+			let query = supabase.from('professionals').select(columns).order('name', { ascending: true });
+			// Visitante só enxerga quem está ativo.
+			if (!isAdmin) query = query.eq('is_active', true);
+
+			const { data, error } = await query;
 			if (error) return res.status(500).json({ ok: false, error: error.message });
 			return res.status(200).json({ ok: true, professionals: data || [] });
 		}

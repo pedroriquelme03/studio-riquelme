@@ -11,8 +11,6 @@ import Admin from './components/admin/Admin';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 import ForgotPasswordPage from './components/admin/ForgotPasswordPage';
 import LoginPage from './components/admin/LoginPage';
-import ProfilesList from './components/ProfilesList';
-import TestSupabaseConnection from './components/TestSupabaseConnection';
 import Footer from './components/Footer';
 import ClientLoginPage from './components/client/ClientLoginPage';
 import ClientBookingsPage from './components/client/ClientBookingsPage';
@@ -203,8 +201,6 @@ const App: React.FC = () => {
           <Route path="/admin/reset-password" element={<ForgotPasswordPage />} />
           <Route path="/login-cliente" element={<ClientLoginPage />} />
           <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />
-          <Route path="/profiles" element={<ProfilesList />} />
-          <Route path="/supabase-test" element={<TestSupabaseConnection />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
           <Route path="/termos-de-servicos" element={<TermosServicosPage />} />
           <Route

@@ -1,136 +1,146 @@
-// Tipos afrouxados para evitar dependência de @vercel/node em build local
+// Autenticação de administradores.
+// - POST                    login (emite cookie de sessão assinado)
+// - GET                     sessão atual; GET ?list=1 lista admins (exige admin)
+// - DELETE                  logout
+// - PUT                     cria admin (exige admin; liberado só no bootstrap)
+// - PATCH request-reset     envia link de redefinição por email
+// - PATCH reset-password    redefine a senha com o token
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import {
+	ADMIN_COOKIE,
+	appendCookie,
+	buildClearCookie,
+	buildSessionCookie,
+	createSessionToken,
+	getSession,
+	hashPassword,
+	requireAdmin,
+	tokenHash,
+	verifyPassword,
+} from '../lib/session';
 
-// Função para criar hash SHA-256 da senha
-function hashPassword(password: string): string {
-	return createHash('sha256').update(password).digest('hex');
+function getSupabaseServer() {
+	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+	if (!supabaseUrl || !supabaseKey) {
+		throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados');
+	}
+	return createSupabaseClient(supabaseUrl, supabaseKey);
 }
 
-// Função para verificar senha
-function verifyPassword(password: string, hash: string): boolean {
-	const passwordHash = hashPassword(password);
-	return passwordHash === hash;
+function parseBody(req: any): any {
+	const raw = req?.body ?? {};
+	if (typeof raw !== 'string') return raw || {};
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return {};
+	}
 }
 
 export default async function handler(req: any, res: any) {
+	// ── Sessão atual / listagem de admins ────────────────────────────────
+	if (req.method === 'GET') {
+		try {
+			const urlObj = new URL(req?.url || '/', 'http://localhost');
+
+			if (urlObj.searchParams.get('list') === '1') {
+				if (!requireAdmin(req, res)) return;
+				const supabase = getSupabaseServer();
+				const { data, error } = await supabase
+					.from('admins')
+					.select('id, username, name, email, is_active, created_at, last_login')
+					.order('created_at', { ascending: false });
+				if (error) return res.status(500).json({ ok: false, error: error.message });
+				return res.status(200).json({ ok: true, admins: data || [] });
+			}
+
+			const session = getSession(req, 'admin');
+			if (!session || session.role !== 'admin') {
+				return res.status(200).json({ ok: true, authenticated: false, admin: null });
+			}
+			return res.status(200).json({
+				ok: true,
+				authenticated: true,
+				admin: { id: session.sub, username: session.username, name: session.name },
+			});
+		} catch (err: any) {
+			return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
+		}
+	}
+
+	// ── Logout ───────────────────────────────────────────────────────────
+	if (req.method === 'DELETE') {
+		appendCookie(res, buildClearCookie(ADMIN_COOKIE));
+		return res.status(200).json({ ok: true });
+	}
+
+	// ── Login ────────────────────────────────────────────────────────────
 	if (req.method === 'POST') {
 		try {
-			// Parse robusto do body (pode vir como string ou objeto)
-			const raw = req.body ?? {};
-			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { username, password } = (parsed || {}) as {
+			const { username, password } = parseBody(req) as {
 				username?: string;
 				password?: string;
 			};
 
-			console.log('[AUTH] Login attempt:', { username: username || 'N/A', hasPassword: !!password });
-
 			if (!username || !password) {
-				console.log('[AUTH] Missing credentials:', { hasUsername: !!username, hasPassword: !!password });
-				return res.status(400).json({
-					ok: false,
-					error: 'username e password são obrigatórios',
-				});
+				return res.status(400).json({ ok: false, error: 'username e password são obrigatórios' });
+			}
+			if (!process.env.SESSION_SECRET) {
+				console.error('[AUTH] SESSION_SECRET ausente — login desabilitado.');
+				return res.status(500).json({ ok: false, error: 'Servidor sem SESSION_SECRET configurada' });
 			}
 
-			// Supabase server client (usa service role)
-			const supabaseUrl =
-				process.env.SUPABASE_URL ||
-				process.env.VITE_SUPABASE_URL;
-			const supabaseKey =
-				process.env.SUPABASE_SERVICE_ROLE_KEY ||
-				process.env.VITE_SUPABASE_ANON_KEY;
+			const supabase = getSupabaseServer();
 
-			if (!supabaseUrl || !supabaseKey) {
-				console.error('[AUTH] Supabase credentials missing:', {
-					hasUrl: !!supabaseUrl,
-					hasKey: !!supabaseKey,
-					keyPrefix: supabaseKey ? supabaseKey.substring(0, 10) + '...' : 'N/A'
-				});
-				return res.status(500).json({
-					ok: false,
-					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
-				});
-			}
-
-			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-			// Buscar admin por username
 			const { data: admin, error: findError } = await supabase
 				.from('admins')
 				.select('id, username, password_hash, name, email, is_active')
 				.eq('username', username)
 				.eq('is_active', true)
-				.single();
+				.maybeSingle();
 
-			if (findError) {
-				console.log('[AUTH] Error finding admin:', findError.message);
-				return res.status(401).json({
-					ok: false,
-					error: 'Credenciais inválidas',
-				});
+			// Mensagem única para usuário inexistente e senha errada (evita enumeração).
+			if (findError || !admin) {
+				console.log('[AUTH] Login falhou (usuário não encontrado ou inativo)');
+				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
 			}
 
-			if (!admin) {
-				console.log('[AUTH] Admin not found or inactive:', username);
-				return res.status(401).json({
-					ok: false,
-					error: 'Credenciais inválidas',
-				});
+			const { valid, needsRehash } = verifyPassword(password, admin.password_hash);
+			if (!valid) {
+				console.log('[AUTH] Login falhou (senha inválida)');
+				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
 			}
 
-			console.log('[AUTH] Admin found:', { id: admin.id, username: admin.username, name: admin.name });
+			// Migra hashes legados (SHA-256 sem salt) para scrypt no primeiro login válido.
+			const updates: Record<string, unknown> = { last_login: new Date().toISOString() };
+			if (needsRehash) updates.password_hash = hashPassword(password);
+			await supabase.from('admins').update(updates).eq('id', admin.id);
 
-			// Verificar senha
-			const passwordHash = hashPassword(password);
-			const isPasswordValid = passwordHash === admin.password_hash;
-			
-			console.log('[AUTH] Password verification:', {
-				passwordHash: passwordHash.substring(0, 20) + '...',
-				storedHash: admin.password_hash.substring(0, 20) + '...',
-				isValid: isPasswordValid
+			const { token, maxAge } = createSessionToken({
+				role: 'admin',
+				sub: String(admin.id),
+				username: admin.username,
+				name: admin.name,
 			});
+			appendCookie(res, buildSessionCookie(ADMIN_COOKIE, token, maxAge));
 
-			if (!isPasswordValid) {
-				console.log('[AUTH] Invalid password for user:', username);
-				return res.status(401).json({
-					ok: false,
-					error: 'Credenciais inválidas',
-				});
-			}
-
-			// Atualizar último login
-			await supabase
-				.from('admins')
-				.update({ last_login: new Date().toISOString() })
-				.eq('id', admin.id);
-
-			console.log('[AUTH] Login successful for user:', username);
-
-			// Retornar dados do admin (sem a senha)
+			console.log('[AUTH] Login bem-sucedido:', username);
 			return res.status(200).json({
 				ok: true,
-				admin: {
-					id: admin.id,
-					username: admin.username,
-					name: admin.name,
-					email: admin.email,
-				},
+				admin: { id: admin.id, username: admin.username, name: admin.name, email: admin.email },
 			});
 		} catch (err: any) {
-			console.error('[AUTH] Unexpected error:', err);
-			return res.status(500).json({
-				ok: false,
-				error: err?.message || 'Erro inesperado',
-			});
+			console.error('[AUTH] Erro inesperado no login:', err?.message || err);
+			return res.status(500).json({ ok: false, error: 'Erro inesperado' });
 		}
 	}
 
-	// Endpoint para criar admin (apenas para setup inicial)
+	// ── Criação de admin ─────────────────────────────────────────────────
 	if (req.method === 'PUT') {
 		try {
-			const { username, password, name, email } = (req.body || {}) as {
+			const { username, password, name, email } = parseBody(req) as {
 				username?: string;
 				password?: string;
 				name?: string;
@@ -138,51 +148,39 @@ export default async function handler(req: any, res: any) {
 			};
 
 			if (!username || !password || !name) {
-				return res.status(400).json({
-					ok: false,
-					error: 'username, password e name são obrigatórios',
-				});
+				return res.status(400).json({ ok: false, error: 'username, password e name são obrigatórios' });
+			}
+			if (password.length < 8) {
+				return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
 			}
 
-			const supabaseUrl =
-				process.env.SUPABASE_URL ||
-				process.env.VITE_SUPABASE_URL;
-			const supabaseKey =
-				process.env.SUPABASE_SERVICE_ROLE_KEY ||
-				process.env.VITE_SUPABASE_ANON_KEY;
+			const supabase = getSupabaseServer();
 
-			if (!supabaseUrl || !supabaseKey) {
-				return res.status(500).json({
-					ok: false,
-					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
-				});
+			// Bootstrap: se ainda não existe nenhum admin, a primeira criação é liberada.
+			// A partir daí, só um admin autenticado pode criar outros.
+			const { count } = await supabase
+				.from('admins')
+				.select('id', { count: 'exact', head: true });
+
+			if ((count ?? 0) > 0) {
+				if (!requireAdmin(req, res)) return;
 			}
 
-			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-			// Verificar se username já existe
 			const { data: existing } = await supabase
 				.from('admins')
 				.select('id')
 				.eq('username', username)
-				.single();
+				.maybeSingle();
 
 			if (existing) {
-				return res.status(400).json({
-					ok: false,
-					error: 'Username já existe',
-				});
+				return res.status(400).json({ ok: false, error: 'Username já existe' });
 			}
 
-			// Criar hash da senha
-			const passwordHash = hashPassword(password);
-
-			// Inserir novo admin
 			const { data: newAdmin, error: insertError } = await supabase
 				.from('admins')
 				.insert({
 					username,
-					password_hash: passwordHash,
+					password_hash: hashPassword(password),
 					name,
 					email: email || null,
 					is_active: true,
@@ -191,260 +189,154 @@ export default async function handler(req: any, res: any) {
 				.single();
 
 			if (insertError) {
-				return res.status(500).json({
-					ok: false,
-					error: insertError.message,
-				});
+				return res.status(500).json({ ok: false, error: insertError.message });
 			}
 
-			return res.status(201).json({
-				ok: true,
-				admin: newAdmin,
-			});
+			return res.status(201).json({ ok: true, admin: newAdmin });
 		} catch (err: any) {
-			return res.status(500).json({
-				ok: false,
-				error: err?.message || 'Erro inesperado',
-			});
+			return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 		}
 	}
 
-	// Endpoint para solicitar reset de senha
-	if (req.method === 'PATCH' && req.body?.action === 'request-reset') {
-		try {
-			const { email } = (req.body || {}) as { email?: string };
+	if (req.method === 'PATCH') {
+		const body = parseBody(req);
+		const action = String(body?.action || '');
 
-			if (!email) {
-				return res.status(400).json({
-					ok: false,
-					error: 'email é obrigatório',
-				});
-			}
-
-			const supabaseUrl =
-				process.env.SUPABASE_URL ||
-				process.env.VITE_SUPABASE_URL;
-			const supabaseKey =
-				process.env.SUPABASE_SERVICE_ROLE_KEY ||
-				process.env.VITE_SUPABASE_ANON_KEY;
-
-			if (!supabaseUrl || !supabaseKey) {
-				return res.status(500).json({
-					ok: false,
-					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
-				});
-			}
-
-			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-			// Buscar admin por email
-			const { data: admin, error: findError } = await supabase
-				.from('admins')
-				.select('id, username, name, email')
-				.eq('email', email)
-				.eq('is_active', true)
-				.single();
-
-			// Sempre retornar sucesso (não revelar se o email existe)
-			if (findError || !admin) {
-				return res.status(200).json({
+		// ── Solicitar redefinição de senha ─────────────────────────────────
+		if (action === 'request-reset') {
+			try {
+				const email = String(body?.email || '').trim();
+				// Resposta genérica: nunca revela se o email existe.
+				const genericResponse = {
 					ok: true,
 					message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-				});
-			}
+				};
 
-			// Gerar token único
-			const token = randomBytes(32).toString('hex');
-			const expiresAt = new Date();
-			expiresAt.setHours(expiresAt.getHours() + 1); // Token válido por 1 hora
+				if (!email) {
+					return res.status(400).json({ ok: false, error: 'email é obrigatório' });
+				}
 
-			// Salvar token no banco
-			const { error: tokenError } = await supabase
-				.from('password_reset_tokens')
-				.insert({
+				const supabase = getSupabaseServer();
+
+				const { data: admin } = await supabase
+					.from('admins')
+					.select('id, username, name, email')
+					.eq('email', email)
+					.eq('is_active', true)
+					.maybeSingle();
+
+				if (!admin) return res.status(200).json(genericResponse);
+
+				// O token vai por email; no banco guardamos apenas o hash.
+				const token = randomBytes(32).toString('hex');
+				const expiresAt = new Date();
+				expiresAt.setHours(expiresAt.getHours() + 1);
+
+				const { error: tokenError } = await supabase.from('password_reset_tokens').insert({
 					admin_id: admin.id,
-					token,
+					token: tokenHash(token),
 					expires_at: expiresAt.toISOString(),
 					used: false,
 				});
 
-			if (tokenError) {
-				return res.status(500).json({
-					ok: false,
-					error: 'Erro ao gerar token de reset',
-				});
-			}
-
-			// Construir link de reset
-			let frontendUrl = process.env.FRONTEND_URL || '';
-			
-			// Se não tiver https://, adicionar
-			if (frontendUrl && !frontendUrl.startsWith('http://') && !frontendUrl.startsWith('https://')) {
-				frontendUrl = `https://${frontendUrl}`;
-			}
-			
-			// Fallback para VERCEL_URL se FRONTEND_URL não estiver configurado
-			if (!frontendUrl) {
-				if (process.env.VERCEL_URL) {
-					frontendUrl = `https://${process.env.VERCEL_URL}`;
-				} else {
-					frontendUrl = 'http://localhost:3000';
+				if (tokenError) {
+					console.error('[AUTH] Erro ao gerar token de reset:', tokenError.message);
+					return res.status(200).json(genericResponse);
 				}
+
+				let frontendUrl = process.env.FRONTEND_URL || '';
+				if (frontendUrl && !/^https?:\/\//.test(frontendUrl)) {
+					frontendUrl = `https://${frontendUrl}`;
+				}
+				if (!frontendUrl) {
+					frontendUrl = process.env.VERCEL_URL
+						? `https://${process.env.VERCEL_URL}`
+						: 'http://localhost:3000';
+				}
+				const resetLink = `${frontendUrl}/admin/reset-password?token=${token}`;
+
+				try {
+					const mod = await import('../lib/sendEmail').catch(
+						async () => await import('../lib/sendEmail.js'),
+					);
+					const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (
+						email: string,
+						link: string,
+						name: string,
+					) => Promise<{ success: boolean; error?: string }>;
+					const result = await sendResetPasswordEmail(admin.email!, resetLink, admin.name);
+					if (!result.success) {
+						// Nunca devolver o link na resposta: seria entregar o reset a quem pediu.
+						console.error('[AUTH] Falha ao enviar email de reset:', result.error);
+					}
+				} catch (e: any) {
+					console.error('[AUTH] Falha ao carregar módulo sendEmail:', e?.message || e);
+				}
+
+				return res.status(200).json(genericResponse);
+			} catch (err: any) {
+				console.error('[AUTH] Erro no request-reset:', err?.message || err);
+				return res.status(500).json({ ok: false, error: 'Erro inesperado' });
 			}
-			
-			const resetLink = `${frontendUrl}/admin/reset-password?token=${token}`;
+		}
 
-			console.log('[AUTH] Enviando email de reset:', {
-				email: admin.email,
-				from: process.env.EMAIL_FROM,
-				provider: process.env.EMAIL_PROVIDER,
-				hasApiKey: !!process.env.RESEND_API_KEY,
-				resetLink,
-			});
-
-			// Enviar email com o link de reset (import dinâmico para evitar erro de resolução em runtime do Vercel)
-			let emailResult: { success: boolean; error?: string } = { success: false, error: 'Email sender not executed' };
+		// ── Redefinir senha com token ──────────────────────────────────────
+		if (action === 'reset-password') {
 			try {
-				const mod = await import('../lib/sendEmail').catch(async () => {
-					return await import('../lib/sendEmail.js');
-				});
-				const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (email: string, link: string, name: string) => Promise<{ success: boolean; error?: string }>;
-				emailResult = await sendResetPasswordEmail(
-					admin.email!,
-					resetLink,
-					admin.name
-				);
-			} catch (e: any) {
-				console.error('[AUTH] Falha ao carregar módulo sendEmail:', e?.message || e);
-				// Não falhar o fluxo: retornaremos sucesso genérico e incluir o link para debug
-				emailResult = { success: false, error: e?.message || 'Falha ao carregar módulo de email' };
+				const token = String(body?.token || '');
+				const newPassword = String(body?.newPassword || '');
+
+				if (!token || !newPassword) {
+					return res.status(400).json({ ok: false, error: 'token e newPassword são obrigatórios' });
+				}
+				if (newPassword.length < 8) {
+					return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
+				}
+
+				const supabase = getSupabaseServer();
+
+				const { data: resetToken, error: tokenError } = await supabase
+					.from('password_reset_tokens')
+					.select('id, admin_id, expires_at, used')
+					.eq('token', tokenHash(token))
+					.eq('used', false)
+					.maybeSingle();
+
+				if (tokenError || !resetToken) {
+					return res.status(400).json({ ok: false, error: 'Token inválido ou expirado' });
+				}
+				if (new Date() > new Date(resetToken.expires_at)) {
+					return res.status(400).json({ ok: false, error: 'Token inválido ou expirado' });
+				}
+
+				const { error: updateError } = await supabase
+					.from('admins')
+					.update({ password_hash: hashPassword(newPassword) })
+					.eq('id', resetToken.admin_id);
+
+				if (updateError) {
+					return res.status(500).json({ ok: false, error: 'Erro ao atualizar senha' });
+				}
+
+				// Queima este token e todos os outros pendentes do mesmo admin.
+				await supabase
+					.from('password_reset_tokens')
+					.update({ used: true })
+					.eq('admin_id', resetToken.admin_id)
+					.eq('used', false);
+
+				// Encerra sessões do navegador atual por precaução.
+				appendCookie(res, buildClearCookie(ADMIN_COOKIE));
+
+				return res.status(200).json({ ok: true, message: 'Senha redefinida com sucesso' });
+			} catch (err: any) {
+				return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 			}
-
-			console.log('[AUTH] Resultado do envio de email:', emailResult);
-
-			// Se houver erro ao enviar email, logar mas não falhar a requisição
-			// (por segurança, sempre retornar sucesso)
-			if (!emailResult.success) {
-				console.error('[AUTH] Erro ao enviar email de reset:', emailResult.error);
-				// Em desenvolvimento ou se houver erro, retornar o link na resposta para debug
-				return res.status(200).json({
-					ok: true,
-					message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-					error: emailResult.error, // Incluir erro para debug
-					debug_link: resetLink, // Sempre incluir link para debug
-				});
-			}
-
-			return res.status(200).json({
-				ok: true,
-				message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-			});
-		} catch (err: any) {
-			return res.status(500).json({
-				ok: false,
-				error: err?.message || 'Erro inesperado',
-			});
 		}
+
+		return res.status(400).json({ ok: false, error: 'Ação inválida' });
 	}
 
-	// Endpoint para redefinir senha com token
-	if (req.method === 'PATCH' && req.body?.action === 'reset-password') {
-		try {
-			const { token, newPassword } = (req.body || {}) as {
-				token?: string;
-				newPassword?: string;
-			};
-
-			if (!token || !newPassword) {
-				return res.status(400).json({
-					ok: false,
-					error: 'token e newPassword são obrigatórios',
-				});
-			}
-
-			if (newPassword.length < 6) {
-				return res.status(400).json({
-					ok: false,
-					error: 'A senha deve ter pelo menos 6 caracteres',
-				});
-			}
-
-			const supabaseUrl =
-				process.env.SUPABASE_URL ||
-				process.env.VITE_SUPABASE_URL;
-			const supabaseKey =
-				process.env.SUPABASE_SERVICE_ROLE_KEY ||
-				process.env.VITE_SUPABASE_ANON_KEY;
-
-			if (!supabaseUrl || !supabaseKey) {
-				return res.status(500).json({
-					ok: false,
-					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
-				});
-			}
-
-			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-			// Buscar token válido
-			const { data: resetToken, error: tokenError } = await supabase
-				.from('password_reset_tokens')
-				.select('id, admin_id, expires_at, used')
-				.eq('token', token)
-				.eq('used', false)
-				.single();
-
-			if (tokenError || !resetToken) {
-				return res.status(400).json({
-					ok: false,
-					error: 'Token inválido ou expirado',
-				});
-			}
-
-			// Verificar se o token expirou
-			const now = new Date();
-			const expiresAt = new Date(resetToken.expires_at);
-			if (now > expiresAt) {
-				return res.status(400).json({
-					ok: false,
-					error: 'Token expirado',
-				});
-			}
-
-			// Criar hash da nova senha
-			const passwordHash = hashPassword(newPassword);
-
-			// Atualizar senha do admin
-			const { error: updateError } = await supabase
-				.from('admins')
-				.update({ password_hash: passwordHash })
-				.eq('id', resetToken.admin_id);
-
-			if (updateError) {
-				return res.status(500).json({
-					ok: false,
-					error: 'Erro ao atualizar senha',
-				});
-			}
-
-			// Marcar token como usado
-			await supabase
-				.from('password_reset_tokens')
-				.update({ used: true })
-				.eq('id', resetToken.id);
-
-			return res.status(200).json({
-				ok: true,
-				message: 'Senha redefinida com sucesso',
-			});
-		} catch (err: any) {
-			return res.status(500).json({
-				ok: false,
-				error: err?.message || 'Erro inesperado',
-			});
-		}
-	}
-
-	res.setHeader('Allow', 'POST, PUT, PATCH');
+	res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
 	return res.status(405).json({ ok: false, error: 'Método não permitido' });
 }
-

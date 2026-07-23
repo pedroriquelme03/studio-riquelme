@@ -1,7 +1,12 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { requireAdmin } from '../lib/session';
 
 export default async function handler(req: any, res: any) {
 	try {
+		// GET é público (o fluxo de agendamento lista os serviços).
+		// Qualquer escrita exige sessão de admin.
+		if (req.method !== 'GET' && !requireAdmin(req, res)) return;
+
 		const supabaseUrl =
 			process.env.SUPABASE_URL ||
 			process.env.VITE_SUPABASE_URL;

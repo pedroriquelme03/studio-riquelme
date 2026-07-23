@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { requireAdmin } from '../lib/session';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -19,6 +20,9 @@ export default async function handler(req: any, res: any) {
 			res.setHeader('Allow', 'GET');
 			return res.status(405).json({ ok: false, error: 'Método não permitido' });
 		}
+
+		// Feed do painel: agrega nome e telefone de todos os clientes recentes.
+		if (!requireAdmin(req, res)) return;
 
 		const supabase = getSupabaseServer();
 		const url = new URL(req?.url || '/', 'http://localhost');

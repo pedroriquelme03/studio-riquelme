@@ -1,5 +1,6 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getSession, requireAdmin } from '../lib/session';
 
 async function triggerWhatsAppConfirmation(payload: {
 	nome: string;
@@ -61,8 +62,7 @@ export default async function handler(req: any, res: any) {
 	if (req.method === 'GET') {
 		try {
 			const urlObj = new URL(req?.url || '/', 'http://localhost');
-		try {
-			// Criar cliente Supabase com credenciais de servidor
+
 			const supabaseUrl =
 				process.env.SUPABASE_URL ||
 				process.env.VITE_SUPABASE_URL;
@@ -74,17 +74,87 @@ export default async function handler(req: any, res: any) {
 			}
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
-			// Ler query string com fallback seguro
 			const professionalId = urlObj.searchParams.get('professional_id') || undefined;
 			const serviceId = urlObj.searchParams.get('service_id') || undefined;
-			const clientQuery = urlObj.searchParams.get('client') || undefined;
 			const time = urlObj.searchParams.get('time') || undefined;            // HH:MM
 			const timeFrom = urlObj.searchParams.get('time_from') || undefined;   // HH:MM
 			const timeTo = urlObj.searchParams.get('time_to') || undefined;       // HH:MM
-			const from = urlObj.searchParams.get('from') || undefined;            // yyyy-mm-dd (opcional)
-			const to = urlObj.searchParams.get('to') || undefined;                // yyyy-mm-dd (opcional)
+			const from = urlObj.searchParams.get('from') || undefined;            // yyyy-mm-dd
+			const to = urlObj.searchParams.get('to') || undefined;                // yyyy-mm-dd
 
-			// Montar query base
+			// Quem está pedindo define o escopo. São três modos distintos:
+			//  - admin     → tudo, com os filtros da query string
+			//  - cliente   → apenas os próprios agendamentos
+			//  - anônimo   → apenas ocupação de horários, sem nenhum dado pessoal
+			const session = getSession(req);
+			const isAdmin = session?.role === 'admin';
+			const isClient = session?.role === 'client';
+
+			// O parâmetro `client` era uma busca textual livre aberta a qualquer um:
+			// agora só o admin pode usá-lo. O cliente é sempre escopado pela sessão.
+			const clientQuery = isAdmin ? urlObj.searchParams.get('client') || undefined : undefined;
+
+			// `availability=1` é sempre atendido no modo público, mesmo com sessão:
+			// o calendário precisa enxergar a ocupação de TODOS, não só a do usuário.
+			const wantsAvailability = urlObj.searchParams.get('availability') === '1';
+
+			if (wantsAvailability || (!isAdmin && !isClient)) {
+				// Modo disponibilidade: exige uma janela de datas explícita e devolve
+				// somente o necessário para calcular slots livres — sem dado pessoal.
+				if (!from || !to) {
+					return res.status(wantsAvailability ? 400 : 401).json({
+						ok: false,
+						error: wantsAvailability ? 'from e to são obrigatórios' : 'Não autorizado',
+					});
+				}
+				const fromDate = new Date(`${from}T00:00:00Z`);
+				const toDate = new Date(`${to}T00:00:00Z`);
+				if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || toDate < fromDate) {
+					return res.status(400).json({ ok: false, error: 'Intervalo de datas inválido' });
+				}
+				const rangeDays = (toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000);
+				if (rangeDays > 92) {
+					return res.status(400).json({ ok: false, error: 'Intervalo máximo de 92 dias' });
+				}
+
+				let availabilityQuery = supabase
+					.from('bookings')
+					.select(`
+          id,
+          date,
+          time,
+          professional_id,
+          booking_services ( quantity, services:service_id ( duration_minutes ) ),
+          booking_cancellations ( id )
+        `)
+					.gte('date', from)
+					.lte('date', to)
+					.order('date', { ascending: true })
+					.order('time', { ascending: true });
+
+				if (professionalId) {
+					availabilityQuery = availabilityQuery.eq('professional_id', professionalId);
+				}
+
+				const { data, error } = await availabilityQuery;
+				if (error) return res.status(500).json({ ok: false, error: error.message });
+
+				const slots = (data || [])
+					.filter((b: any) => !(Array.isArray(b.booking_cancellations) && b.booking_cancellations.length > 0))
+					.map((b: any) => ({
+						date: b.date,
+						time: b.time,
+						professional_id: b.professional_id,
+						total_duration_minutes: (b.booking_services || []).reduce(
+							(sum: number, bs: any) =>
+								sum + Number(bs?.services?.duration_minutes || 0) * Number(bs?.quantity || 1),
+							0,
+						),
+					}));
+
+				return res.status(200).json({ ok: true, bookings: slots });
+			}
+
 			let query = supabase
 				.from('bookings')
 				.select(`
@@ -101,6 +171,11 @@ export default async function handler(req: any, res: any) {
         `)
 				.order('date', { ascending: true })
 				.order('time', { ascending: true });
+
+			// Escopo obrigatório do cliente: filtrado no banco, não em memória.
+			if (isClient) {
+				query = query.eq('client_id', (session as any).sub);
+			}
 
 			if (professionalId) {
 				query = query.eq('professional_id', professionalId);
@@ -123,7 +198,6 @@ export default async function handler(req: any, res: any) {
 				return res.status(500).json({ ok: false, error: error.message });
 			}
 
-			// Mapear e aplicar filtros de serviço/cliente no app
 			const rows = (data || []).map((b: any) => {
 				const services = (b.booking_services || []).map((bs: any) => ({
 					id: bs?.services?.id,
@@ -153,18 +227,16 @@ export default async function handler(req: any, res: any) {
 			});
 
 			const filtered = rows.filter((r: any) => {
-				// Ocultar agendamentos cancelados do painel (mas manter para o cliente ver o histórico)
-				// Se NÃO houver filtro de cliente na query string, significa listagem administrativa → esconde cancelados
-				if (!clientQuery && r.is_cancelled) return false;
+				// O cliente vê o próprio histórico, inclusive cancelados.
+				// A listagem administrativa esconde cancelados (eles têm aba própria).
+				if (isAdmin && !clientQuery && r.is_cancelled) return false;
 				if (serviceId && !(r.services || []).some((s: any) => String(s.id) === String(serviceId))) {
 					return false;
 				}
 				if (clientQuery) {
 					const q = clientQuery.toLowerCase();
 					const hay = `${r.client_name || ''} ${r.client_email || ''} ${r.client_phone || ''}`.toLowerCase();
-					// Busca textual
 					let match = hay.includes(q);
-					// Busca por telefone normalizado (apenas dígitos)
 					const qDigits = q.replace(/\D/g, '');
 					if (!match && qDigits) {
 						const hayDigits = String(r.client_phone || '').replace(/\D/g, '');
@@ -176,10 +248,6 @@ export default async function handler(req: any, res: any) {
 			});
 
 			return res.status(200).json({ ok: true, bookings: filtered });
-		} catch (err: any) {
-			sendJson(500, { ok: false, error: err?.message || 'Erro inesperado' });
-			return;
-		}
 		} catch (err: any) {
 			sendJson(500, { ok: false, error: err?.message || 'Erro inesperado (GET)' });
 			return;
@@ -465,6 +533,20 @@ export default async function handler(req: any, res: any) {
 				return res.status(400).json({ ok: false, error: 'status é obrigatório' });
 			}
 
+			// Autorização: o cliente só pode cancelar o próprio agendamento.
+			// Qualquer outra transição de status é exclusiva do painel.
+			const requestedBy = String((body as any)?.cancelled_by || '').toLowerCase();
+			const isClientCancelling = status === 'cancelled' && requestedBy === 'client';
+
+			const session = getSession(req);
+			if (isClientCancelling) {
+				if (session?.role !== 'client') {
+					return res.status(401).json({ ok: false, error: 'Não autorizado' });
+				}
+			} else if (!requireAdmin(req, res)) {
+				return;
+			}
+
 			const supabaseUrl =
 				process.env.SUPABASE_URL ||
 				process.env.VITE_SUPABASE_URL;
@@ -500,6 +582,14 @@ export default async function handler(req: any, res: any) {
 
 			if (bookingErr || !bookingData) {
 				return res.status(404).json({ ok: false, error: 'Agendamento não encontrado' });
+			}
+
+			// Verificação de posse: sem isso, qualquer UUID cancelaria o agendamento alheio.
+			if (isClientCancelling) {
+				const ownerId = String((bookingData as any)?.clients?.id || '');
+				if (!ownerId || ownerId !== (session as any).sub) {
+					return res.status(403).json({ ok: false, error: 'Não autorizado' });
+				}
 			}
 
 			// Atualizar status do agendamento
@@ -549,7 +639,10 @@ export default async function handler(req: any, res: any) {
 			// Registrar cancelamento em booking_cancellations (histórico)
 			if (status === 'cancelled') {
 				try {
-					const cancelledBy = (body as any)?.cancelled_by || 'client';
+					// Derivado da sessão, não do corpo: o cliente não pode se passar por admin.
+					const cancelledBy = isClientCancelling
+						? 'client'
+						: requestedBy === 'professional' ? 'professional' : 'admin';
 					await supabase
 						.from('booking_cancellations')
 						.insert({
@@ -652,6 +745,9 @@ export default async function handler(req: any, res: any) {
 				date?: string; // yyyy-mm-dd
 				time?: string; // HH:MM or HH:MM:SS
 			};
+
+			// Reagendar diretamente é ação de painel. O cliente usa /api/reschedule-requests.
+			if (!requireAdmin(req, res)) return;
 
 			if ((body.action || '').toLowerCase() !== 'reschedule') {
 				return res.status(400).json({ ok: false, error: 'Ação inválida. Use action=reschedule' });

@@ -22,70 +22,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // A sessão vive num cookie HttpOnly assinado pelo servidor: quem decide se
+  // está autenticado é a API, não o localStorage (que o usuário pode editar).
   useEffect(() => {
-    // Verificar se há sessão salva no localStorage
-    const savedAuth = localStorage.getItem('admin_authenticated');
-    const savedAdmin = localStorage.getItem('admin_data');
-    
-    if (savedAuth === 'true' && savedAdmin) {
+    let cancelled = false;
+    (async () => {
       try {
-        const adminData = JSON.parse(savedAdmin);
-        setIsAuthenticated(true);
-        setAdmin(adminData);
-      } catch (e) {
-        // Se houver erro ao parsear, limpar dados inválidos
-        localStorage.removeItem('admin_authenticated');
-        localStorage.removeItem('admin_data');
+        const res = await fetch('/api/auth', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (res.ok && data?.authenticated && data?.admin) {
+          setIsAuthenticated(true);
+          setAdmin(data.admin as Admin);
+        } else {
+          setIsAuthenticated(false);
+          setAdmin(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAuthenticated(false);
+          setAdmin(null);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      console.log('[AuthContext] Attempting login for:', username);
-      
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('[AuthContext] Response status:', res.status);
-
-      // Tentar parsear como JSON; se vier HTML/texto (erro 500 da plataforma), evitar quebra
       const contentType = res.headers.get('content-type') || '';
-      let data: any = null;
-      if (contentType.includes('application/json')) {
-        try {
-          data = await res.json();
-        } catch {
-          console.error('[AuthContext] Failed to parse JSON response');
-          return false;
-        }
-      } else {
+      if (!contentType.includes('application/json')) {
         const text = await res.text().catch(() => '');
-        console.error('[AuthContext] Non-JSON response from /api/auth:', {
+        console.error('[AuthContext] Resposta não-JSON de /api/auth:', {
           status: res.status,
           preview: text?.slice(0, 300),
         });
         return false;
       }
-      console.log('[AuthContext] Response data:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
 
-      if (data.ok && data.admin) {
+      const data = await res.json().catch(() => null);
+      if (data?.ok && data?.admin) {
         setIsAuthenticated(true);
         setAdmin(data.admin);
-        localStorage.setItem('admin_authenticated', 'true');
-        localStorage.setItem('admin_data', JSON.stringify(data.admin));
-        console.log('[AuthContext] Login successful');
         return true;
       }
-      
-      console.log('[AuthContext] Login failed:', data.error || 'Unknown error');
+
+      console.log('[AuthContext] Login recusado:', data?.error || 'erro desconhecido');
       return false;
     } catch (error) {
-      console.error('[AuthContext] Error during login:', error);
+      console.error('[AuthContext] Erro durante o login:', error);
       return false;
     }
   };
@@ -93,8 +89,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     setIsAuthenticated(false);
     setAdmin(null);
-    localStorage.removeItem('admin_authenticated');
-    localStorage.removeItem('admin_data');
+    // Limpa resíduos da versão anterior, que guardava a "sessão" no navegador.
+    try {
+      localStorage.removeItem('admin_authenticated');
+      localStorage.removeItem('admin_data');
+    } catch {}
+    // O cookie só pode ser apagado pelo servidor (HttpOnly).
+    fetch('/api/auth', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   };
 
   return (
@@ -111,4 +112,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-

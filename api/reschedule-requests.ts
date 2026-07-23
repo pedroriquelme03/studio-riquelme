@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
-import { getSession, requireAdmin, requireClient } from './_lib/session';
+import { getSession, requireAdmin, requireClient } from './_lib/session.js';
 
 async function triggerWhatsAppConfirmation(payload: {
 	nome: string;

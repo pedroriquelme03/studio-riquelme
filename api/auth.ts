@@ -18,7 +18,7 @@ import {
 	requireAdmin,
 	tokenHash,
 	verifyPassword,
-} from './_lib/session';
+} from './_lib/session.js';
 
 function getSupabaseServer() {
 	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -290,7 +290,7 @@ export default async function handler(req: any, res: any) {
 					// Import estático relativo dentro de api/: o antigo '../lib/sendEmail'
 					// não resolvia em runtime na Vercel e caía sempre no catch, o que
 					// fazia o email de redefinição nunca ser enviado, silenciosamente.
-					const mod = await import('./_lib/sendEmail');
+					const mod = await import('./_lib/sendEmail.js');
 					const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (
 						email: string,
 						link: string,

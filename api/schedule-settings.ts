@@ -5,7 +5,7 @@
 // - DELETE: delete de manual_slots por id
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { requireAdmin } from './_lib/session';
+import { requireAdmin } from './_lib/session.js';
 
 function getSupabaseServer() {
 	const supabaseUrl =

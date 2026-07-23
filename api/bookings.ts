@@ -1,6 +1,6 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { getSession, requireAdmin } from './_lib/session';
+import { getSession, requireAdmin } from './_lib/session.js';
 
 async function triggerWhatsAppConfirmation(payload: {
 	nome: string;

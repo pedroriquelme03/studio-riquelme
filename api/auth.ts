@@ -87,9 +87,22 @@ export default async function handler(req: any, res: any) {
 			if (!username || !password) {
 				return res.status(400).json({ ok: false, error: 'username e password são obrigatórios' });
 			}
-			if (!process.env.SESSION_SECRET) {
+			// Validado aqui e não só na emissão do token: assim a causa aparece
+			// como erro de configuração, e não como "usuário ou senha incorretos".
+			const secret = process.env.SESSION_SECRET || '';
+			if (!secret) {
 				console.error('[AUTH] SESSION_SECRET ausente — login desabilitado.');
-				return res.status(500).json({ ok: false, error: 'Servidor sem SESSION_SECRET configurada' });
+				return res.status(500).json({
+					ok: false,
+					error: 'Servidor sem SESSION_SECRET configurada. Defina a variável de ambiente e publique de novo.',
+				});
+			}
+			if (secret.length < 32) {
+				console.error('[AUTH] SESSION_SECRET curta demais:', secret.length);
+				return res.status(500).json({
+					ok: false,
+					error: `SESSION_SECRET tem ${secret.length} caracteres; o mínimo é 32. Gere com: openssl rand -hex 32`,
+				});
 			}
 
 			const supabase = getSupabaseServer();
@@ -103,6 +116,24 @@ export default async function handler(req: any, res: any) {
 
 			// Mensagem única para usuário inexistente e senha errada (evita enumeração).
 			if (findError || !admin) {
+				// Distinção importante desde que a RLS foi fechada: se a chave usada
+				// for a anônima em vez da service_role, a tabela `admins` volta
+				// VAZIA em vez de dar erro — e todo login viraria "senha incorreta".
+				const { count, error: countErr } = await supabase
+					.from('admins')
+					.select('id', { count: 'exact', head: true });
+				if (countErr || (count ?? 0) === 0) {
+					console.error('[AUTH] Tabela admins ilegível ou vazia.', {
+						count,
+						erro: countErr?.message,
+						usandoServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+					});
+					return res.status(500).json({
+						ok: false,
+						error:
+							'O servidor não consegue ler a tabela de administradores. Confirme se SUPABASE_SERVICE_ROLE_KEY está configurada (a chave anônima não tem mais acesso).',
+					});
+				}
 				console.log('[AUTH] Login falhou (usuário não encontrado ou inativo)');
 				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
 			}

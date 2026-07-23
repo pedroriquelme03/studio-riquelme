@@ -7,10 +7,16 @@ interface Admin {
   email?: string;
 }
 
+export interface LoginResult {
+  ok: boolean;
+  /** Mensagem já pronta para exibir quando ok = false. */
+  error?: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   admin: Admin | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -52,7 +58,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<LoginResult> => {
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -61,6 +67,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({ username, password }),
       });
 
+      // Uma resposta não-JSON significa que /api/auth não foi executada
+      // (404, HTML de erro da plataforma). Isso não é senha errada — dizer que
+      // é atrapalha o diagnóstico, então tratamos separadamente.
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         const text = await res.text().catch(() => '');
@@ -68,21 +77,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           status: res.status,
           preview: text?.slice(0, 300),
         });
-        return false;
+        return {
+          ok: false,
+          error:
+            res.status === 404
+              ? 'A rota /api/auth não respondeu. Em desenvolvimento local use "vercel dev" — o "npm run dev" não executa as funções da pasta api/.'
+              : `O servidor respondeu ${res.status} sem JSON. Verifique os logs da aplicação.`,
+        };
       }
 
       const data = await res.json().catch(() => null);
       if (data?.ok && data?.admin) {
         setIsAuthenticated(true);
         setAdmin(data.admin);
-        return true;
+        return { ok: true };
       }
 
-      console.log('[AuthContext] Login recusado:', data?.error || 'erro desconhecido');
-      return false;
-    } catch (error) {
+      // 401 é credencial inválida de verdade. Qualquer outro status é problema
+      // de servidor/configuração e merece a mensagem real.
+      const serverError = data?.error;
+      console.log('[AuthContext] Login recusado:', { status: res.status, error: serverError });
+      return {
+        ok: false,
+        error:
+          res.status === 401
+            ? 'Usuário ou senha incorretos. Tente novamente.'
+            : serverError || `Falha no login (HTTP ${res.status}).`,
+      };
+    } catch (error: any) {
       console.error('[AuthContext] Erro durante o login:', error);
-      return false;
+      return { ok: false, error: 'Não foi possível contatar o servidor. Verifique sua conexão.' };
     }
   };
 

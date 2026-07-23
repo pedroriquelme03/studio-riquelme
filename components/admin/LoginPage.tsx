@@ -16,11 +16,13 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(username, password);
-      if (success) {
+      const result = await login(username, password);
+      if (result.ok) {
         navigate('/admin');
       } else {
-        setError('Usuário ou senha incorretos. Tente novamente.');
+        // Mostra o motivo real: antes, erro de configuração do servidor
+        // aparecia como "senha incorreta" e escondia a causa.
+        setError(result.error || 'Não foi possível entrar. Tente novamente.');
       }
     } catch (err) {
       setError('Erro ao fazer login. Tente novamente.');

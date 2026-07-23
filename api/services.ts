@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { requireAdmin } from '../lib/session';
+import { requireAdmin } from './_lib/session';
 
 export default async function handler(req: any, res: any) {
 	try {

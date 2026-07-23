@@ -1,6 +1,6 @@
 // Tipagens relaxadas para evitar dependência local de @vercel/node
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { getSession, requireAdmin } from '../lib/session';
+import { getSession, requireAdmin } from './_lib/session';
 
 export default async function handler(req: any, res: any) {
 	try {

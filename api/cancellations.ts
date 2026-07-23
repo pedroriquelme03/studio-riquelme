@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
-import { getSession } from '../lib/session';
+import { getSession } from './_lib/session';
 
 function getSupabaseServer() {
 	const supabaseUrl =

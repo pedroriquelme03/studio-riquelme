@@ -3,6 +3,18 @@
 Esta rodada fechou cinco falhas exploráveis sem autenticação. **As mudanças de
 código não bastam**: sem os passos abaixo o sistema não sobe corretamente.
 
+> **Nota de arquitetura — código compartilhado entre rotas**
+>
+> Módulos usados pelas rotas ficam em **`api/_lib/`**, nunca em `lib/` na raiz.
+> Import de `api/*.ts` para `../lib/*` **não resolve em runtime na Vercel**: a
+> função quebra na invocação com `FUNCTION_INVOCATION_FAILED` e devolve 500 em
+> `text/plain`, sem JSON. Era isso que fazia o `sendEmail` falhar calado (ele
+> estava embrulhado num `try/catch`), e foi o que derrubou toda a API quando o
+> `session.ts` passou a ser importado dessa forma.
+>
+> O prefixo `_` faz a Vercel ignorar a pasta ao criar Serverless Functions,
+> então `api/_lib/` não consome slot de função.
+
 ---
 
 ## 1. Variáveis de ambiente (obrigatório)

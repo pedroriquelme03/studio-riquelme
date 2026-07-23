@@ -24,7 +24,7 @@ import {
 	hashPassword,
 	tokenHash,
 	verifyPassword,
-} from '../lib/session';
+} from './_lib/session';
 
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;

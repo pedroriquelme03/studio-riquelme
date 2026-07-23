@@ -33,7 +33,7 @@ async function sendViaResend(
 	email: string,
 	resetLink: string,
 	adminName: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; emailId?: string }> {
 	const resendApiKey = process.env.RESEND_API_KEY;
 	let fromEmail = process.env.EMAIL_FROM || 'noreply@studioriquelme.com.br';
 

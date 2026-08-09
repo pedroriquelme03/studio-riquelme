@@ -66,23 +66,23 @@ const ForgotPasswordPage: React.FC = () => {
     };
 
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-surface-raised p-8 rounded-2xl border border-line shadow-xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Redefinir Senha</h1>
-            <p className="text-gray-600">Digite sua nova senha</p>
+            <h1 className="text-3xl font-bold gold-text mb-2">Redefinir Senha</h1>
+            <p className="text-zinc-300">Digite sua nova senha</p>
           </div>
 
           {resetSuccess ? (
             <div className="text-center">
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+              <div className="bg-emerald-950/50 border border-emerald-800 text-emerald-300 px-4 py-3 rounded-lg mb-4">
                 Senha redefinida com sucesso! Redirecionando...
               </div>
             </div>
           ) : (
             <form onSubmit={handleResetPassword} className="space-y-6">
               <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="newPassword" className="block text-sm font-medium text-zinc-200 mb-2">
                   Nova Senha
                 </label>
                 <input
@@ -90,7 +90,7 @@ const ForgotPasswordPage: React.FC = () => {
                   id="newPassword"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"
                   placeholder="Digite sua nova senha"
                   required
                   minLength={8}
@@ -99,7 +99,7 @@ const ForgotPasswordPage: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-200 mb-2">
                   Confirmar Senha
                 </label>
                 <input
@@ -107,7 +107,7 @@ const ForgotPasswordPage: React.FC = () => {
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"
                   placeholder="Confirme sua nova senha"
                   required
                   minLength={8}
@@ -115,7 +115,7 @@ const ForgotPasswordPage: React.FC = () => {
               </div>
 
               {resetError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
                   {resetError}
                 </div>
               )}
@@ -123,7 +123,7 @@ const ForgotPasswordPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isResetting}
-                className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isResetting ? (
                   <>
@@ -141,7 +141,7 @@ const ForgotPasswordPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/admin')}
-                className="w-full text-gray-600 hover:text-gray-800 text-sm"
+                className="w-full text-zinc-300 hover:text-white text-sm"
               >
                 Voltar para login
               </button>
@@ -187,21 +187,21 @@ const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-surface-raised p-8 rounded-2xl border border-line shadow-xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Esqueci minha senha</h1>
-          <p className="text-gray-600">Digite seu email para receber um link de redefinição</p>
+          <h1 className="text-3xl font-bold gold-text mb-2">Esqueci minha senha</h1>
+          <p className="text-zinc-300">Digite seu email para receber um link de redefinição</p>
         </div>
 
         {requestSuccess ? (
           <div className="text-center space-y-4">
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+            <div className="bg-emerald-950/50 border border-emerald-800 text-emerald-300 px-4 py-3 rounded-lg">
               Se o email existir em nosso sistema, você receberá um link para redefinir sua senha.
             </div>
             <button
               onClick={() => navigate('/admin')}
-              className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
+              className="w-full bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
             >
               Voltar para login
             </button>
@@ -209,7 +209,7 @@ const ForgotPasswordPage: React.FC = () => {
         ) : (
           <form onSubmit={handleRequestReset} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-200 mb-2">
                 Email
               </label>
               <input
@@ -217,7 +217,7 @@ const ForgotPasswordPage: React.FC = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
+                className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"
                 placeholder="Digite seu email"
                 required
                 autoFocus
@@ -225,7 +225,7 @@ const ForgotPasswordPage: React.FC = () => {
             </div>
 
             {requestError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
                 {requestError}
               </div>
             )}
@@ -233,7 +233,7 @@ const ForgotPasswordPage: React.FC = () => {
             <button
               type="submit"
               disabled={isRequesting}
-              className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isRequesting ? (
                 <>
@@ -251,7 +251,7 @@ const ForgotPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/admin')}
-              className="w-full text-gray-600 hover:text-gray-800 text-sm"
+              className="w-full text-zinc-300 hover:text-white text-sm"
             >
               Voltar para login
             </button>

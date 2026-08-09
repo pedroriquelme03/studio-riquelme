@@ -52,19 +52,19 @@ const Calendar: React.FC<{
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg border border-gray-300 shadow-sm">
+    <div className="bg-surface-raised p-4 rounded-lg border border-line shadow-sm">
       <div className="flex justify-between items-center mb-4">
-        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 text-gray-700"><ChevronLeftIcon className="w-5 h-5" /></button>
-        <h3 className="font-bold text-lg text-gray-900">{currentMonth.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
+        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-surface-muted text-zinc-200"><ChevronLeftIcon className="w-5 h-5" /></button>
+        <h3 className="font-bold text-lg text-white">{currentMonth.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
         <button
           onClick={() => changeMonth(1)}
           disabled={!!maxDate && new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1) > new Date(maxDate.getFullYear(), maxDate.getMonth(), 1)}
-          className="p-2 rounded-full hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 rounded-full hover:bg-surface-muted text-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronRightIcon className="w-5 h-5" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-600 mb-2 font-semibold">
+      <div className="grid grid-cols-7 gap-1 text-center text-sm text-zinc-300 mb-2 font-semibold">
         {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => <div key={d}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -79,10 +79,10 @@ const Calendar: React.FC<{
               }}
               disabled={disabled}
               className={`w-10 h-10 rounded-full transition-colors duration-200
-                ${disabled ? 'text-gray-300 cursor-not-allowed opacity-50' : 'hover:bg-pink-600 hover:text-white'}
-                ${d.getMonth() !== currentMonth.getMonth() ? 'text-gray-400' : 'text-gray-900'}
-                ${isToday(d) && !isSelected(d) && !disabled ? 'border-2 border-pink-600' : ''}
-                ${isSelected(d) ? 'bg-pink-600 text-white font-bold' : ''}
+                ${disabled ? 'text-zinc-500 cursor-not-allowed opacity-50' : 'hover:bg-gold'}
+                ${d.getMonth() !== currentMonth.getMonth() ? 'text-zinc-400' : 'text-white'}
+                ${isToday(d) && !isSelected(d) && !disabled ? 'border-2 border-gold' : ''}
+                ${isSelected(d) ? 'bg-gold font-bold' : ''}
               `}
             >
               {d.getDate()}
@@ -296,8 +296,8 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Escolha a Data e Hora</h2>
+    <div className="max-w-4xl mx-auto bg-surface-raised p-6 md:p-8 rounded-2xl border border-line shadow-xl">
+      <h2 className="text-2xl font-bold gold-text mb-6">Escolha a Data e Hora</h2>
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <Calendar 
@@ -308,7 +308,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
           />
         </div>
         <div className="max-h-[400px] overflow-y-auto pr-2">
-            <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
+            <h3 className="font-bold text-lg mb-4 text-white">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
             {!dayWindow.enabled ? (
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm">
                     ⚠️ Este dia da semana não está disponível para agendamentos. Por favor, selecione outro dia.
@@ -318,14 +318,14 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
                     {Object.entries(availableSlots).map(([period, slots]) => (
                         Array.isArray(slots) && slots.length > 0 && (
                             <div key={period} className="mb-4">
-                                <h4 className="font-semibold text-pink-600 mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
+                                <h4 className="font-semibold text-gold mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                                     {slots.map(time => (
                                         <button 
                                             key={time} 
                                             onClick={() => setSelectedTime(time)}
-                                            className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
-                                                ${selectedTime === time ? 'bg-pink-600 text-white border-pink-600 font-bold' : 'bg-gray-50 border-gray-300 hover:border-pink-600'}
+                                            className={`p-2 rounded-lg transition-colors duration-200 border-2 text-white
+                                                ${selectedTime === time ? 'bg-gold text-white border-gold font-bold' : 'bg-surface-overlay border-line hover:border-gold'}
                                             `}
                                         >
                                             {time}
@@ -336,7 +336,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
                         )
                     ))}
                     {Object.values(availableSlots).every(slots => !Array.isArray(slots) || slots.length === 0) && (
-                        <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded-lg text-sm">
+                        <div className="bg-surface-overlay border border-line text-zinc-200 px-4 py-3 rounded-lg text-sm">
                             ⚠️ Não há horários disponíveis neste dia.
                         </div>
                     )}
@@ -344,12 +344,12 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
             )}
         </div>
       </div>
-      <div className="flex justify-between mt-8 border-t border-gray-300 pt-6">
-        <button onClick={onBack} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors">Voltar</button>
+      <div className="flex justify-between mt-8 border-t border-line pt-6">
+        <button onClick={onBack} className="bg-surface-muted hover:bg-surface-muted text-white font-bold py-3 px-6 rounded-lg transition-colors">Voltar</button>
         <button 
             onClick={handleNext}
             disabled={!selectedTime}
-            className="bg-pink-600 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
+            className="bg-gold hover:bg-gold text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-surface-muted disabled:cursor-not-allowed disabled:text-zinc-400 shadow-md"
         >
             Próximo
         </button>

@@ -63,17 +63,17 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
   return (
     <div className="max-w-2xl mx-auto text-center">
       <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">Agendamento Confirmado!</h2>
-      <p className="text-gray-700 mb-8">Obrigado, {client.name}. Seu horário está reservado.</p>
+      <h2 className="text-3xl font-bold gold-text mb-2">Agendamento Confirmado!</h2>
+      <p className="text-zinc-200 mb-8">Obrigado, {client.name}. Seu horário está reservado.</p>
 
-      <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl text-left space-y-6">
-        <h3 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3">Resumo do Agendamento</h3>
+      <div className="bg-surface-raised p-6 md:p-8 rounded-2xl border border-line shadow-xl text-left space-y-6">
+        <h3 className="text-xl font-bold text-white border-b border-line pb-3">Resumo do Agendamento</h3>
         
         <div>
-          <h4 className="font-semibold text-pink-600 mb-2">Serviços</h4>
+          <h4 className="font-semibold text-gold mb-2">Serviços</h4>
           <ul className="space-y-1">
             {services.map(s => (
-              <li key={s.id} className="flex justify-between text-gray-700">
+              <li key={s.id} className="flex justify-between text-zinc-200">
                 <span>{s.name}</span>
                 <span>R${s.price.toFixed(2)}</span>
               </li>
@@ -81,33 +81,33 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
           </ul>
         </div>
         
-        <div className="grid sm:grid-cols-2 gap-4 border-t border-gray-300 pt-4">
+        <div className="grid sm:grid-cols-2 gap-4 border-t border-line pt-4">
             <div className="flex items-center">
-                <CalendarIcon className="w-5 h-5 mr-3 text-pink-600"/>
+                <CalendarIcon className="w-5 h-5 mr-3 text-gold"/>
                 <div>
-                    <span className="text-sm text-gray-600">Data</span>
-                    <p className="font-semibold text-gray-900">{date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <span className="text-sm text-zinc-300">Data</span>
+                    <p className="font-semibold text-white">{date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                 </div>
             </div>
             <div className="flex items-center">
-                <ClockIcon className="w-5 h-5 mr-3 text-pink-600"/>
+                <ClockIcon className="w-5 h-5 mr-3 text-gold"/>
                 <div>
-                    <span className="text-sm text-gray-600">Hora</span>
-                    <p className="font-semibold text-gray-900">{time}</p>
+                    <span className="text-sm text-zinc-300">Hora</span>
+                    <p className="font-semibold text-white">{time}</p>
                 </div>
             </div>
              <div className="flex items-center">
-                <UserIcon className="w-5 h-5 mr-3 text-pink-600"/>
+                <UserIcon className="w-5 h-5 mr-3 text-gold"/>
                 <div>
-                    <span className="text-sm text-gray-600">Cliente</span>
-                    <p className="font-semibold text-gray-900">{client.name}</p>
+                    <span className="text-sm text-zinc-300">Cliente</span>
+                    <p className="font-semibold text-white">{client.name}</p>
                 </div>
             </div>
              <div className="flex items-center">
-                <DollarSignIcon className="w-5 h-5 mr-3 text-pink-600"/>
+                <DollarSignIcon className="w-5 h-5 mr-3 text-gold"/>
                 <div>
-                    <span className="text-sm text-gray-600">Total</span>
-                    <p className="font-semibold text-gray-900">R${totalPrice.toFixed(2)}</p>
+                    <span className="text-sm text-zinc-300">Total</span>
+                    <p className="font-semibold text-white">R${totalPrice.toFixed(2)}</p>
                 </div>
             </div>
         </div>
@@ -116,9 +116,9 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       </div>
 
       {/* CTA: Criar conta para histórico */}
-      <div className="mt-6 bg-white p-6 rounded-2xl border border-gray-300 shadow-xl text-left">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Quer acompanhar seu histórico de atendimentos?</h3>
-        <p className="text-gray-700 mb-4">
+      <div className="mt-6 bg-surface-raised p-6 rounded-2xl border border-line shadow-xl text-left">
+        <h3 className="text-lg font-semibold text-white mb-2">Quer acompanhar seu histórico de atendimentos?</h3>
+        <p className="text-zinc-200 mb-4">
           Crie sua conta com seu WhatsApp e tenha acesso aos seus agendamentos.
         </p>
         <button
@@ -131,7 +131,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
 
       <button
         onClick={onNewBooking}
-        className="mt-8 bg-pink-600 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 shadow-md"
+        className="mt-8 bg-gold hover:bg-gold text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 shadow-md"
       >
         Agendar outro horário
       </button>
@@ -139,7 +139,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       <div className="mt-3 text-center">
         <a
           href="/login-cliente"
-          className="inline-flex items-center justify-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 px-6 rounded-lg transition-colors"
+          className="inline-flex items-center justify-center border border-line bg-surface-raised hover:bg-surface-overlay text-white font-semibold py-3 px-6 rounded-lg transition-colors"
         >
           Acessar minha conta
         </a>
@@ -148,12 +148,12 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       {/* Modal de criação de conta via WhatsApp */}
       {isCreateOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
+          <div className="w-full max-w-md bg-surface-raised rounded-2xl border border-line shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xl font-bold text-gray-900">Criar conta com WhatsApp</h4>
+              <h4 className="text-xl font-bold text-white">Criar conta com WhatsApp</h4>
               <button
                 onClick={() => { setIsCreateOpen(false); setFeedback(null); }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-zinc-400 hover:text-zinc-200"
                 aria-label="Fechar"
               >
                 ✕
@@ -162,42 +162,42 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
 
             <form onSubmit={handleCreateAccount} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Nome</label>
                 <input
                   type="text"
                   value={client.name}
                   readOnly
-                  className="w-full bg-gray-100 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  className="w-full bg-surface-muted border border-line rounded-lg p-3 text-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">WhatsApp</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
                   placeholder="(99) 99999-9999"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email (opcional)</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Email (opcional)</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
                   placeholder="seuemail@exemplo.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Senha</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
                   placeholder="Crie uma senha (mín. 8 caracteres)"
                   minLength={8}
                   required
@@ -205,7 +205,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
               </div>
 
               {feedback && (
-                <div className="bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-surface-overlay border border-line text-white px-4 py-3 rounded-lg text-sm">
                   {feedback}
                 </div>
               )}
@@ -214,7 +214,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                 <button
                   type="button"
                   onClick={() => { setIsCreateOpen(false); setFeedback(null); setCreated(false); }}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 bg-white hover:bg-gray-50"
+                  className="px-4 py-2 rounded-lg border border-line text-white bg-surface-raised hover:bg-surface-overlay"
                 >
                   Fechar
                 </button>
@@ -222,7 +222,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700 disabled:opacity-50"
+                    className="px-4 py-2 rounded-lg bg-gold text-white font-semibold hover:brightness-110 disabled:opacity-50"
                   >
                     {isSubmitting ? 'Criando...' : 'Criar conta'}
                   </button>

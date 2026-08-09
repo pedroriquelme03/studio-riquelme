@@ -4,24 +4,24 @@ import { Link } from 'react-router-dom';
 const ULTIMA_ATUALIZACAO = '06 de maio de 2026';
 
 const PoliticaPrivacidadePage: React.FC = () => (
-  <article className="max-w-3xl mx-auto text-gray-800">
-    <p className="text-sm text-gray-500 mb-2">
-      <Link to="/" className="text-pink-600 hover:text-pink-700">
+  <article className="max-w-3xl mx-auto text-white">
+    <p className="text-sm text-zinc-400 mb-2">
+      <Link to="/" className="text-gold hover:text-gold-light">
         Voltar ao início
       </Link>
       <span aria-hidden className="mx-2">
         /
       </span>
-      <Link to="/termos-de-servicos" className="text-pink-600 hover:text-pink-700">
+      <Link to="/termos-de-servicos" className="text-gold hover:text-gold-light">
         Termos de Serviço
       </Link>
     </p>
-    <h1 className="text-3xl font-bold text-gray-900 mb-2">Política de Privacidade</h1>
-    <p className="text-sm text-gray-600 mb-8">Última atualização: {ULTIMA_ATUALIZACAO}</p>
+    <h1 className="text-3xl font-bold gold-text mb-2">Política de Privacidade</h1>
+    <p className="text-sm text-zinc-300 mb-8">Última atualização: {ULTIMA_ATUALIZACAO}</p>
 
     <div className="space-y-6 text-[15px] leading-relaxed">
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">1. Controlador dos dados</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">1. Controlador dos dados</h2>
         <p>
           O presente site de agendamento online está vinculado ao estabelecimento <strong>Studio Riquelme</strong>.
           Esta Política descreve como tratamos dados pessoais quando você utiliza este sistema (agendamento
@@ -34,7 +34,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">2. Que dados tratamos</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">2. Que dados tratamos</h2>
         <p className="mb-2">Dependendo do uso da plataforma, podemos tratar:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>
@@ -55,7 +55,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">3. Para que usamos seus dados</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">3. Para que usamos seus dados</h2>
         <ul className="list-disc pl-6 space-y-2">
           <li>Viabilizar a marcação, alteração ou cancelamento de horários conforme disponibilidade.</li>
           <li>
@@ -69,7 +69,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">4. Como compartilhamos dados</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">4. Como compartilhamos dados</h2>
         <p className="mb-2">
           Para operação do sistema utilizamos prestadores tecnológicos, que tratam dados em nome ou em
           apoio ao estabelecimento, sempre limitados ao necessário:
@@ -96,7 +96,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">5. Base legal (LGPD — Lei 13.709/2018)</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">5. Base legal (LGPD — Lei 13.709/2018)</h2>
         <p className="mb-2">
           Tratamos dados com base aplicável conforme cada situação, em especial execução de procedimentos
           relacionados a serviços agendados, legítimo interesse onde cabível para funcionamento seguro da
@@ -107,7 +107,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">6. Cookies, armazenamento local e sessão</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">6. Cookies, armazenamento local e sessão</h2>
         <p>
           A aplicação pode utilizar armazenamento local no navegador estritamente necessário ao funcionamento,
           inclusive para manutenção de sessão em áreas restritas quando existirem. Recomenda-se consultar os
@@ -116,7 +116,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">7. Prazos de conservação</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">7. Prazos de conservação</h2>
         <p>
           Mantemos os dados pelo período necessário para prestação dos serviços contratados, cumprimento de
           obrigações legais quando aplicável, resolução de disputas e histórico operacional compatível com a
@@ -125,7 +125,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">8. Seus direitos</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">8. Seus direitos</h2>
         <p className="mb-2">
           Nos termos da legislação aplicável, você pode solicitar informações sobre o tratamento, acesso,
           correção ou atualização de dados inexatos, limitação quando cabível e outras garantias conforme a
@@ -139,7 +139,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">9. Segurança</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">9. Segurança</h2>
         <p>
           Adotamos medidas razoáveis de segurança no limite técnico e organizacional típico de um sistema como
           este (controle de acesso administrativo, ambiente hospedado, comunicações configuradas pela
@@ -148,7 +148,7 @@ const PoliticaPrivacidadePage: React.FC = () => (
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">10. Transferência internacional</h2>
+        <h2 className="text-xl font-semibold text-white mb-2">10. Transferência internacional</h2>
         <p>
           Alguns prestadores tecnológicos podem processar dados em servidores fora do Brasil. Quando esse for
           o caso, aplicam-se garantias compatíveis com a legislação aplicável conforme configurado pela

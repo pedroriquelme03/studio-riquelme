@@ -32,16 +32,16 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-surface-raised p-8 rounded-2xl border border-line shadow-xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Painel Admin</h1>
-          <p className="text-gray-600">Digite sua senha para acessar</p>
+          <h1 className="text-3xl font-bold gold-text mb-2">Painel Admin</h1>
+          <p className="text-zinc-300">Digite sua senha para acessar</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="username" className="block text-sm font-medium text-zinc-200 mb-2">
               Usuário
             </label>
             <input
@@ -49,14 +49,14 @@ const LoginPage: React.FC = () => {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
+              className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"
               placeholder="Digite seu usuário"
               required
               autoFocus
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-zinc-200 mb-2">
               Senha
             </label>
             <input
@@ -64,14 +64,14 @@ const LoginPage: React.FC = () => {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"
+              className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"
               placeholder="Digite sua senha"
               required
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -99,7 +99,7 @@ const LoginPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/admin/forgot-password')}
-            className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+            className="text-sm text-gold hover:text-gold-light font-medium"
           >
             Esqueci minha senha
           </button>

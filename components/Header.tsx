@@ -30,7 +30,7 @@ const Header: React.FC = () => {
     }
   };
   return (
-    <header className="bg-white/90 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-300 shadow-sm">
+    <header className="bg-surface-raised/90 backdrop-blur-sm sticky top-0 z-50 border-b border-line shadow-sm">
       <div className="container mx-auto flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <Link to="/" title="Início" className="inline-block">
@@ -44,9 +44,10 @@ const Header: React.FC = () => {
               }}
             />
           </Link>
-          <h1 className="text-base md:text-lg font-bold tracking-wider text-gray-900 leading-tight">
-            Agendamento Online <br />
-            Studio Riquelme
+          <h1 className="text-base md:text-lg font-bold tracking-wider leading-tight">
+            <span className="text-white">Agendamento Online</span>
+            <br />
+            <span className="gold-text">Studio Riquelme</span>
           </h1>
         </div>
 
@@ -56,7 +57,7 @@ const Header: React.FC = () => {
               type="button"
               aria-label="Notificações"
               title="Notificações"
-              className="inline-flex items-center justify-center text-gray-900 hover:text-pink-600 transition-colors"
+              className="inline-flex items-center justify-center text-white hover:text-gold transition-colors"
               onClick={() => { setShowNotif(true); loadNotifications(); }}
             >
               <BellIcon className="w-6 h-6" />
@@ -64,7 +65,7 @@ const Header: React.FC = () => {
           ) : (
             <Link
               to="/login-cliente"
-              className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-600 transition-colors"
+              className="inline-flex items-center gap-2 text-white hover:text-gold transition-colors"
               title="Acessar meus agendamentos"
             >
               <UserIcon className="w-6 h-6" />
@@ -77,49 +78,49 @@ const Header: React.FC = () => {
       {isAuthenticated && showNotif && (
         <div className="fixed inset-0 z-50 flex items-start justify-end p-4">
           <div className="absolute inset-0 bg-black/30" onClick={() => setShowNotif(false)} />
-          <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-4">
+          <div className="relative w-full max-w-md bg-surface-raised rounded-2xl border border-line shadow-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold text-gray-900">Notificações (últimas 24h)</h3>
+              <h3 className="text-lg font-bold text-white">Notificações (últimas 24h)</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={loadNotifications}
-                  className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900"
+                  className="text-sm px-3 py-1 border border-line rounded hover:bg-surface-overlay text-white"
                   disabled={notifLoading}
                 >
                   {notifLoading ? 'Atualizando...' : 'Atualizar'}
                 </button>
-                <button onClick={() => setShowNotif(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+                <button onClick={() => setShowNotif(false)} className="text-zinc-400 hover:text-zinc-200">✕</button>
               </div>
             </div>
             <div className="max-h-[70vh] overflow-y-auto">
               {!notifLoading && notifItems.length === 0 && (
-                <div className="text-gray-600 text-sm">Sem notificações recentes.</div>
+                <div className="text-zinc-300 text-sm">Sem notificações recentes.</div>
               )}
-              <ul className="divide-y divide-gray-200">
+              <ul className="divide-y divide-line">
                 {notifItems.map((n, idx) => (
                   <li key={n.id || idx} className="py-2 text-sm">
                     {n.type === 'booking' && (
                       <div className="flex items-center justify-between">
-                        <div className="text-gray-800">
+                        <div className="text-white">
                           <span className="font-semibold">Novo agendamento</span> — {n.client_name || 'Cliente'} em {new Date(n.date).toLocaleDateString('pt-BR')} às {String(n.time || '').slice(0,5)}
                         </div>
-                        <div className="text-xs text-gray-500">{new Date(n.at).toLocaleString('pt-BR')}</div>
+                        <div className="text-xs text-zinc-400">{new Date(n.at).toLocaleString('pt-BR')}</div>
                       </div>
                     )}
                     {n.type === 'cancellation' && (
                       <div className="flex items-center justify-between">
-                        <div className="text-gray-800">
-                          <span className="font-semibold text-red-700">Cancelamento</span> — {n.client_name || 'Cliente'} ( {new Date(n.date).toLocaleDateString('pt-BR')} às {String(n.time || '').slice(0,5)} )
+                        <div className="text-white">
+                          <span className="font-semibold text-red-300">Cancelamento</span> — {n.client_name || 'Cliente'} ( {new Date(n.date).toLocaleDateString('pt-BR')} às {String(n.time || '').slice(0,5)} )
                         </div>
-                        <div className="text-xs text-gray-500">{new Date(n.at).toLocaleString('pt-BR')}</div>
+                        <div className="text-xs text-zinc-400">{new Date(n.at).toLocaleString('pt-BR')}</div>
                       </div>
                     )}
                     {n.type === 'reschedule_request' && (
                       <div className="flex items-center justify-between">
-                        <div className="text-gray-800">
+                        <div className="text-white">
                           <span className="font-semibold">Solicitação de troca</span> — para {new Date(n.requested_date).toLocaleDateString('pt-BR')} às {String(n.requested_time || '').slice(0,5)} ({n.status === 'pending' ? 'Pendente' : n.status === 'approved' ? 'Aprovada' : 'Negada'})
                         </div>
-                        <div className="text-xs text-gray-500">{new Date(n.at).toLocaleString('pt-BR')}</div>
+                        <div className="text-xs text-zinc-400">{new Date(n.at).toLocaleString('pt-BR')}</div>
                       </div>
                     )}
                   </li>

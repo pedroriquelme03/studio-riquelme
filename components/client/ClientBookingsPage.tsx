@@ -113,17 +113,17 @@ const ClientBookingsPage: React.FC = () => {
 
   if (!phone) {
     return (
-      <div className="max-w-lg mx-auto text-center bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
-        <p className="text-gray-700 mb-4">Você precisa entrar para ver seus agendamentos.</p>
-        <a href="/login-cliente" className="text-pink-600 font-semibold hover:underline">Ir para login</a>
+      <div className="max-w-lg mx-auto text-center bg-surface-raised p-8 rounded-2xl border border-line shadow-xl">
+        <p className="text-zinc-200 mb-4">Você precisa entrar para ver seus agendamentos.</p>
+        <a href="/login-cliente" className="text-gold font-semibold hover:underline">Ir para login</a>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
+    <div className="max-w-3xl mx-auto bg-surface-raised p-6 md:p-8 rounded-2xl border border-line shadow-xl">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Meus agendamentos</h2>
+        <h2 className="text-2xl font-bold gold-text">Meus agendamentos</h2>
         <button
           onClick={async () => {
             // O cookie de sessão é HttpOnly: só a API consegue removê-lo.
@@ -135,37 +135,37 @@ const ClientBookingsPage: React.FC = () => {
             }).catch(() => {});
             handleExpiredSession();
           }}
-          className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50"
+          className="px-3 py-1.5 rounded-lg border border-line text-white hover:bg-surface-overlay"
         >
           Sair
         </button>
       </div>
-      <p className="text-gray-600 mb-6">Conectado pelo WhatsApp <span className="font-semibold">{phone}</span></p>
+      <p className="text-zinc-300 mb-6">Conectado pelo WhatsApp <span className="font-semibold">{phone}</span></p>
 
-      {loading && <div className="text-gray-700">Carregando...</div>}
+      {loading && <div className="text-zinc-200">Carregando...</div>}
       {error && <div className="text-red-600">{error}</div>}
 
       {!loading && !error && rows.length === 0 && (
-        <div className="text-gray-700">Nenhum agendamento encontrado.</div>
+        <div className="text-zinc-200">Nenhum agendamento encontrado.</div>
       )}
 
       <div className="space-y-3">
         {rows.map((r) => (
-          <div key={r.booking_id} className="border border-gray-300 rounded-lg p-4">
+          <div key={r.booking_id} className="border border-line rounded-lg p-4">
             <div className="flex items-center justify-between">
-              <div className="font-semibold text-gray-900">
+              <div className="font-semibold text-white">
                 {parseLocalYMD(r.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.time?.slice(0,5)}
               </div>
               <div className="flex items-center gap-2">
                 {cancellations[r.booking_id] && (
-                  <span className="text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 text-xs font-semibold">
+                  <span className="text-red-300 bg-red-950/50 border border-red-800 rounded px-2 py-1 text-xs font-semibold">
                     Cancelado
                   </span>
                 )}
-                <div className="text-pink-600 font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
+                <div className="text-gold font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
               </div>
             </div>
-            <div className="text-gray-700 mt-2">
+            <div className="text-zinc-200 mt-2">
             {(r.services || []).map(s => {
               const qty = Number(s.quantity || 1);
               const dur = Number(s.duration_minutes || 0) * qty;
@@ -173,7 +173,7 @@ const ClientBookingsPage: React.FC = () => {
             }).join(', ')}
             </div>
           {cancellations[r.booking_id] && (
-            <div className="mt-2 text-sm text-gray-700">
+            <div className="mt-2 text-sm text-zinc-200">
               {cancellations[r.booking_id].by === 'admin'
                 ? `Cancelado pelo profissional em ${new Date(cancellations[r.booking_id].at).toLocaleString('pt-BR')}`
                 : `Cancelado por você em ${new Date(cancellations[r.booking_id].at).toLocaleString('pt-BR')}`}
@@ -183,7 +183,7 @@ const ClientBookingsPage: React.FC = () => {
               {!cancellations[r.booking_id] && (
                 <>
                   <button
-                    className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
+                    className="px-3 py-2 rounded-lg border border-line text-white hover:bg-surface-overlay"
                     onClick={() => {
                       setRescheduleId(r.booking_id);
                       setNewDate(r.date);
@@ -193,7 +193,7 @@ const ClientBookingsPage: React.FC = () => {
                     Solicitar troca
                   </button>
                   <button
-                    className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
+                    className="px-3 py-2 rounded-lg border border-red-800 text-red-300 hover:bg-red-950/40"
                     onClick={async () => {
                       if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
                       try {
@@ -230,12 +230,12 @@ const ClientBookingsPage: React.FC = () => {
               return (
                 <div className="mt-2 text-sm space-y-2">
                   {current.status === 'pending' && (
-                    <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    <div className="text-amber-300 bg-amber-950/40 border border-amber-800 rounded px-2 py-1">
                       Solicitação enviada para {parseLocalYMD(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)} — Aguardando aprovação
                     </div>
                   )}
                   {current.status === 'approved' && (
-                    <div className="text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+                    <div className="text-emerald-300 bg-emerald-950/50 border border-emerald-800 rounded px-2 py-1">
                       {(current.response_note || '').toLowerCase().includes('ajustado pelo profissional')
                         ? (
                           <>O profissional alterou seu horário para {parseLocalYMD(current.requested_date).toLocaleDateString('pt-BR')} às {current.requested_time?.slice(0,5)}.</>
@@ -246,11 +246,11 @@ const ClientBookingsPage: React.FC = () => {
                     </div>
                   )}
                   {current.status === 'denied' && (
-                    <div className="text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                    <div className="text-red-300 bg-red-950/50 border border-red-800 rounded px-2 py-1">
                       Solicitação negada.
                     </div>
                   )}
-                  <details className="text-gray-700">
+                  <details className="text-zinc-200">
                     <summary className="cursor-pointer select-none">Histórico de solicitações</summary>
                     <ul className="mt-1 space-y-1">
                       {arr.map((q, idx) => (
@@ -273,42 +273,42 @@ const ClientBookingsPage: React.FC = () => {
 
       {rescheduleId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
+          <div className="w-full max-w-md bg-surface-raised rounded-2xl border border-line shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xl font-bold text-gray-900">Trocar horário</h4>
+              <h4 className="text-xl font-bold text-white">Trocar horário</h4>
               <button
                 onClick={() => setRescheduleId(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-zinc-400 hover:text-zinc-200"
               >✕</button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nova data</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Nova data</label>
                 <input
                   type="date"
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Novo horário</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Novo horário</label>
                 <input
                   type="time"
                   value={newTime}
                   onChange={(e) => setNewTime(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                  className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
                 />
               </div>
               <div className="flex items-center justify-end gap-2">
                 <button
-                  className="px-4 py-2 rounded-lg border border-gray-300"
+                  className="px-4 py-2 rounded-lg border border-line"
                   onClick={() => setRescheduleId(null)}
                 >
                   Fechar
                 </button>
                 <button
-                  className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700"
+                  className="px-4 py-2 rounded-lg bg-gold text-white font-semibold hover:brightness-110"
                   onClick={async () => {
                     try {
                       const res = await fetch('/api/reschedule-requests', {
@@ -347,7 +347,7 @@ const ClientBookingsPage: React.FC = () => {
       <div className="mt-8 text-center">
         <a
           href="/"
-          className="inline-flex items-center justify-center bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
+          className="inline-flex items-center justify-center bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
         >
           Fazer novo agendamento
         </a>

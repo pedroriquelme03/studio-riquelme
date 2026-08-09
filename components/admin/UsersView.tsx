@@ -87,47 +87,47 @@ const UsersView: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-300 shadow-sm">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Usuários do Painel</h2>
+    <div className="bg-surface-raised p-6 rounded-xl border border-line shadow-sm">
+      <h2 className="text-2xl font-bold gold-text mb-6">Usuários do Painel</h2>
 
       <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2 mb-8">
         <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+          <label className="block text-sm font-medium text-zinc-200 mb-1">Usuário</label>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+            className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
             placeholder="ex.: gerente01"
             required
           />
         </div>
         <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+          <label className="block text-sm font-medium text-zinc-200 mb-1">Nome</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+            className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
             placeholder="Nome completo"
             required
           />
         </div>
         <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email (opcional)</label>
+          <label className="block text-sm font-medium text-zinc-200 mb-1">Email (opcional)</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+            className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
             placeholder="email@exemplo.com"
           />
         </div>
         <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+          <label className="block text-sm font-medium text-zinc-200 mb-1">Senha</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+            className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
             placeholder="Mínimo 8 caracteres"
             required
             minLength={8}
@@ -137,54 +137,54 @@ const UsersView: React.FC = () => {
           <button
             type="submit"
             disabled={creating}
-            className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {creating ? 'Criando...' : 'Criar usuário'}
           </button>
-          {createdMsg && <div className="text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{createdMsg}</div>}
-          {error && <div className="text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+          {createdMsg && <div className="text-emerald-300 bg-emerald-950/50 border border-emerald-800 rounded-lg px-3 py-2">{createdMsg}</div>}
+          {error && <div className="text-red-300 bg-red-950/50 border border-red-800 rounded-lg px-3 py-2">{error}</div>}
         </div>
       </form>
 
       <div className="space-y-2">
-        <div className="text-sm text-gray-600 mb-2">Lista de usuários</div>
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="text-sm text-zinc-300 mb-2">Lista de usuários</div>
+        <div className="overflow-x-auto border border-line rounded-lg">
+          <table className="min-w-full divide-y divide-line">
+            <thead className="bg-surface-overlay">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ativo</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último login</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Usuário</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Nome</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Ativo</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Último login</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-surface-raised divide-y divide-line">
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-sm text-gray-500">
+                  <td colSpan={5} className="px-4 py-4 text-sm text-zinc-400">
                     Nenhum usuário encontrado.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-sm text-gray-500">
+                  <td colSpan={5} className="px-4 py-4 text-sm text-zinc-400">
                     Carregando...
                   </td>
                 </tr>
               )}
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{r.username}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{r.name}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{r.email || '-'}</td>
+                  <td className="px-4 py-2 text-sm text-white">{r.username}</td>
+                  <td className="px-4 py-2 text-sm text-white">{r.name}</td>
+                  <td className="px-4 py-2 text-sm text-white">{r.email || '-'}</td>
                   <td className="px-4 py-2 text-sm">
-                    <span className={`px-2 py-1 rounded text-xs ${r.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`px-2 py-1 rounded text-xs ${r.is_active ? 'bg-green-100 text-green-800' : 'bg-surface-muted text-zinc-300'}`}>
                       {r.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-700">
+                  <td className="px-4 py-2 text-sm text-zinc-200">
                     {r.last_login ? new Date(r.last_login).toLocaleString('pt-BR') : '-'}
                   </td>
                 </tr>

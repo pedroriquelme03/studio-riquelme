@@ -37,7 +37,7 @@ const Footer: React.FC = () => {
   const hasAddress = true;
 
   return (
-    <footer className="py-[50px] border-t border-gray-300 mt-auto">
+    <footer className="py-[50px] border-t border-line mt-auto">
       <div className="container mx-auto px-4">
         {(hasWhatsApp1 || hasWhatsApp2 || hasAddress) && (
           <div className="flex flex-col items-center gap-4 mb-8">
@@ -46,14 +46,14 @@ const Footer: React.FC = () => {
                 href={`https://wa.me/${whatsAppNumber(contact.contact1_phone)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 text-gray-700 hover:text-pink-600 transition-colors"
+                className="inline-flex items-center gap-3 text-zinc-200 hover:text-gold transition-colors"
               >
-                <span className="text-pink-600 flex-shrink-0 flex items-center justify-center" aria-hidden>
+                <span className="text-gold flex-shrink-0 flex items-center justify-center" aria-hidden>
                   <WhatsAppIcon className="w-6 h-6" />
                 </span>
                 <span className="flex flex-col items-start">
                   <span className="font-medium">{contact.contact1_name || 'WhatsApp'}</span>
-                  <span className="text-gray-600 text-sm mt-0.5">{contact.contact1_phone}</span>
+                  <span className="text-zinc-300 text-sm mt-0.5">{contact.contact1_phone}</span>
                 </span>
               </a>
             )}
@@ -62,14 +62,14 @@ const Footer: React.FC = () => {
                 href={`https://wa.me/${whatsAppNumber(contact.contact2_phone)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 text-gray-700 hover:text-pink-600 transition-colors"
+                className="inline-flex items-center gap-3 text-zinc-200 hover:text-gold transition-colors"
               >
-                <span className="text-pink-600 flex-shrink-0 flex items-center justify-center" aria-hidden>
+                <span className="text-gold flex-shrink-0 flex items-center justify-center" aria-hidden>
                   <WhatsAppIcon className="w-6 h-6" />
                 </span>
                 <span className="flex flex-col items-start">
                   <span className="font-medium">{contact.contact2_name || 'WhatsApp'}</span>
-                  <span className="text-gray-600 text-sm mt-0.5">{contact.contact2_phone}</span>
+                  <span className="text-zinc-300 text-sm mt-0.5">{contact.contact2_phone}</span>
                 </span>
               </a>
             )}
@@ -78,34 +78,34 @@ const Footer: React.FC = () => {
                 href={addressMapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 text-gray-700 hover:text-pink-600 transition-colors"
+                className="inline-flex items-center gap-3 text-zinc-200 hover:text-gold transition-colors"
               >
-                <span className="text-pink-600 flex-shrink-0">
+                <span className="text-gold flex-shrink-0">
                   <LocationIcon className="w-6 h-6" />
                 </span>
-                <span className="text-gray-700">{addressText}</span>
+                <span className="text-zinc-200">{addressText}</span>
               </a>
             )}
           </div>
         )}
-        <nav className="text-center text-xs text-gray-600 mb-3" aria-label="Documentos jurídicos">
-          <Link to="/politica-de-privacidade" className="text-gray-600 hover:text-pink-600 underline underline-offset-2">
+        <nav className="text-center text-xs text-zinc-300 mb-3" aria-label="Documentos jurídicos">
+          <Link to="/politica-de-privacidade" className="text-zinc-300 hover:text-gold underline underline-offset-2">
             Política de Privacidade
           </Link>
-          <span className="mx-2 text-gray-400" aria-hidden>
+          <span className="mx-2 text-zinc-400" aria-hidden>
             ·
           </span>
-          <Link to="/termos-de-servicos" className="text-gray-600 hover:text-pink-600 underline underline-offset-2">
+          <Link to="/termos-de-servicos" className="text-zinc-300 hover:text-gold underline underline-offset-2">
             Termos de Serviço
           </Link>
         </nav>
-        <p className="text-center text-xs text-gray-600">
+        <p className="text-center text-xs text-zinc-300">
           Desenvolvido por{' '}
           <a
             href="https://pedroriquelme.com.br"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-pink-600 hover:text-pink-700 underline transition-colors"
+            className="text-gold hover:text-gold-light underline transition-colors"
           >
             Pedro Riquelme
           </a>

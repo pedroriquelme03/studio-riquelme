@@ -98,11 +98,11 @@ const ServicesView: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Gerenciar Serviços</h2>
+      <h2 className="text-2xl font-bold gold-text text-center mb-6">Gerenciar Serviços</h2>
       <div className="flex justify-center items-center mb-6">
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center space-x-2 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          className="flex items-center space-x-2 bg-gold hover:brightness-110 text-white font-bold py-2 px-4 rounded-lg transition-colors"
         >
           <PlusCircleIcon className="w-5 h-5" />
           <span>Novo Serviço</span>
@@ -111,9 +111,9 @@ const ServicesView: React.FC = () => {
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
       {/* Tabela desktop */}
-      <div className="hidden md:block bg-white border border-gray-300 rounded-lg overflow-hidden">
+      <div className="hidden md:block bg-surface-raised border border-line rounded-lg overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-gray-100/50">
+          <thead className="bg-surface-muted/50">
             <tr>
               <th className="p-4 font-semibold">Serviço</th>
               <th className="p-4 font-semibold">Profissional</th>
@@ -122,26 +122,26 @@ const ServicesView: React.FC = () => {
               <th className="p-4 font-semibold text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-line">
             {services.map(service => (
-              <tr key={service.id} className="hover:bg-gray-100/40">
+              <tr key={service.id} className="hover:bg-surface-muted/40">
                 <td className="p-4">
                     <p className="font-bold">{service.name}</p>
-                    <p className="text-sm text-gray-600 max-w-md">{service.description}</p>
+                    <p className="text-sm text-zinc-300 max-w-md">{service.description}</p>
                 </td>
                 <td className="p-4">
                   <span className="text-gray-200">{service.responsibleProfessionalName || '—'}</span>
                 </td>
                 <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><ClockIcon className="w-4 h-4 mr-1.5 text-pink-600"/> {service.duration} min</span>
+                    <span className="flex items-center justify-center"><ClockIcon className="w-4 h-4 mr-1.5 text-gold"/> {service.duration} min</span>
                 </td>
                 <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-pink-600"/> R${service.price.toFixed(2)}</span>
+                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold"/> R${service.price.toFixed(2)}</span>
                 </td>
                 <td className="p-4 text-right">
                     <div className="inline-flex space-x-3">
-                        <button onClick={() => handleOpenModal(service)} className="text-gray-700 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
-                        <button onClick={() => handleDeleteService(service.id)} className="text-gray-700 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleOpenModal(service)} className="text-zinc-200 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
+                        <button onClick={() => handleDeleteService(service.id)} className="text-zinc-200 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
                     </div>
                 </td>
               </tr>
@@ -153,23 +153,23 @@ const ServicesView: React.FC = () => {
       {/* Cards mobile */}
       <div className="md:hidden grid gap-3">
         {services.map(service => (
-          <div key={service.id} className="bg-white border border-gray-300 rounded-lg p-4">
+          <div key={service.id} className="bg-surface-raised border border-line rounded-lg p-4">
             <div className="flex justify-between items-start gap-3">
               <div className="min-w-0">
-                <p className="font-bold text-gray-900 truncate">{service.name}</p>
-                <p className="text-sm text-gray-600">{service.description}</p>
-                <p className="text-gray-700 text-sm mt-1">
+                <p className="font-bold text-white truncate">{service.name}</p>
+                <p className="text-sm text-zinc-300">{service.description}</p>
+                <p className="text-zinc-200 text-sm mt-1">
                   {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
                 </p>
               </div>
               <div className="inline-flex space-x-3">
-                <button onClick={() => handleOpenModal(service)} className="text-gray-700 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
-                <button onClick={() => handleDeleteService(service.id)} className="text-gray-700 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
+                <button onClick={() => handleOpenModal(service)} className="text-zinc-200 hover:text-blue-400"><PencilIcon className="w-5 h-5"/></button>
+                <button onClick={() => handleDeleteService(service.id)} className="text-zinc-200 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
               </div>
             </div>
-            <div className="flex justify-between text-sm text-gray-700 mt-3">
-              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-pink-600"/> {service.duration} min</span>
-              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-pink-600"/> R${service.price.toFixed(2)}</span>
+            <div className="flex justify-between text-sm text-zinc-200 mt-3">
+              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-gold"/> {service.duration} min</span>
+              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold"/> R${service.price.toFixed(2)}</span>
             </div>
           </div>
         ))}

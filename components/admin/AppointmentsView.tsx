@@ -320,66 +320,66 @@ const AppointmentsView: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Agendamentos</h2>
+      <h2 className="text-2xl font-bold gold-text text-center mb-6">Agendamentos</h2>
       <div className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Profissional</label>
+            <label className="block text-sm text-zinc-300 mb-1">Profissional</label>
             <select
               value={professionalId}
               onChange={e => setProfessionalId(e.target.value)}
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
             >
               <option value="">Todos</option>
               {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Serviço</label>
+            <label className="block text-sm text-zinc-300 mb-1">Serviço</label>
             <select
               value={serviceId}
               onChange={e => setServiceId(e.target.value)}
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
             >
               <option value="">Todos</option>
               {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Cliente</label>
+            <label className="block text-sm text-zinc-300 mb-1">Cliente</label>
             <input
               value={clientQuery}
               onChange={e => setClientQuery(e.target.value)}
               placeholder="Nome, e-mail ou telefone"
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Horário exato</label>
+            <label className="block text-sm text-zinc-300 mb-1">Horário exato</label>
             <input
               type="time"
               value={time}
               onChange={e => { setTime(e.target.value); }}
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+              className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">De</label>
+              <label className="block text-sm text-zinc-300 mb-1">De</label>
               <input
                 type="time"
                 value={timeFrom}
                 onChange={e => { setTimeFrom(e.target.value); if (time) setTime(''); }}
-                className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+                className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Até</label>
+              <label className="block text-sm text-zinc-300 mb-1">Até</label>
               <input
                 type="time"
                 value={timeTo}
                 onChange={e => { setTimeTo(e.target.value); if (time) setTime(''); }}
-                className="w-full bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+                className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
               />
             </div>
           </div>
@@ -393,7 +393,7 @@ const AppointmentsView: React.FC = () => {
                 setTimeFrom('');
                 setTimeTo('');
               }}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded transition-colors"
+              className="bg-surface-muted hover:bg-surface-muted text-white font-semibold px-4 py-2 rounded transition-colors"
             >
               Limpar filtros
             </button>
@@ -404,28 +404,28 @@ const AppointmentsView: React.FC = () => {
       {error && <div className="text-red-400 mb-4">{error}</div>}
 
       {/* Cancelamentos feitos pelos clientes */}
-      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
+      <div className="mb-6 bg-surface-raised border border-line rounded-lg p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Cancelamentos dos clientes</h3>
-          <button onClick={load} className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900">
+          <h3 className="text-lg font-semibold text-white">Cancelamentos dos clientes</h3>
+          <button onClick={load} className="text-sm px-3 py-1 border border-line rounded hover:bg-surface-overlay text-white">
             Atualizar
           </button>
         </div>
         {cancellations.length === 0 ? (
-          <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
+          <div className="text-zinc-300 text-sm mt-2">Nenhum cancelamento recente.</div>
         ) : (
           <>
           <div className="relative">
-            <ul className="mt-2 divide-y divide-gray-200 pb-12">
+            <ul className="mt-2 divide-y divide-line pb-12">
               {cancellations.slice(0, Math.min(visibleClientCount, cancellations.length)).map(c => (
-                <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
+                <li key={c.id} className="py-2 text-sm text-white flex items-center justify-between">
                   <div>
                     <div className="font-medium">{c.client_name || 'Cliente'}</div>
-                    <div className="text-gray-600">{c.client_phone || '-'}</div>
+                    <div className="text-zinc-300">{c.client_phone || '-'}</div>
                   </div>
                   <div className="text-right">
                     <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
-                    <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
+                    <div className="text-xs text-zinc-400">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
                   </div>
                 </li>
               ))}
@@ -473,7 +473,7 @@ const AppointmentsView: React.FC = () => {
                         setClientCancLoadingMore(false);
                       }
                     }}
-                    className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm disabled:opacity-50"
+                    className="px-3 py-1.5 border border-line bg-surface-raised hover:bg-surface-overlay text-white rounded text-sm disabled:opacity-50"
                   >
                     {clientCancLoadingMore ? 'Carregando...' : 'Ver mais'}
                   </button>
@@ -486,7 +486,7 @@ const AppointmentsView: React.FC = () => {
             <div className="mt-2 flex justify-center">
               <button
                 onClick={() => setVisibleClientCount(3)}
-                className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm"
+                className="px-3 py-1.5 border border-line bg-surface-raised hover:bg-surface-overlay text-white rounded text-sm"
               >
                 Fechar
               </button>
@@ -497,28 +497,28 @@ const AppointmentsView: React.FC = () => {
       </div>
 
       {/* Cancelamentos feitos pelo admin */}
-      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
+      <div className="mb-6 bg-surface-raised border border-line rounded-lg p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Cancelamentos feitos pelo painel (admin)</h3>
-          <button onClick={load} className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-900">
+          <h3 className="text-lg font-semibold text-white">Cancelamentos feitos pelo painel (admin)</h3>
+          <button onClick={load} className="text-sm px-3 py-1 border border-line rounded hover:bg-surface-overlay text-white">
             Atualizar
           </button>
         </div>
         {adminCancellations.length === 0 ? (
-          <div className="text-gray-600 text-sm mt-2">Nenhum cancelamento recente.</div>
+          <div className="text-zinc-300 text-sm mt-2">Nenhum cancelamento recente.</div>
         ) : (
           <>
           <div className="relative">
-            <ul className="mt-2 divide-y divide-gray-200 pb-12">
+            <ul className="mt-2 divide-y divide-line pb-12">
               {adminCancellations.slice(0, Math.min(visibleAdminCount, adminCancellations.length)).map(c => (
-                <li key={c.id} className="py-2 text-sm text-gray-800 flex items-center justify-between">
+                <li key={c.id} className="py-2 text-sm text-white flex items-center justify-between">
                   <div>
                     <div className="font-medium">{c.client_name || 'Cliente'}</div>
-                    <div className="text-gray-600">{c.client_phone || '-'}</div>
+                    <div className="text-zinc-300">{c.client_phone || '-'}</div>
                   </div>
                   <div className="text-right">
                     <div>{new Date(c.booking_date).toLocaleDateString('pt-BR')} às {String(c.booking_time || '').slice(0,5)}</div>
-                    <div className="text-xs text-gray-500">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
+                    <div className="text-xs text-zinc-400">Cancelado em {new Date(c.at).toLocaleString('pt-BR')}</div>
                   </div>
                 </li>
               ))}
@@ -564,7 +564,7 @@ const AppointmentsView: React.FC = () => {
                         setAdminCancLoadingMore(false);
                       }
                     }}
-                    className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm disabled:opacity-50"
+                    className="px-3 py-1.5 border border-line bg-surface-raised hover:bg-surface-overlay text-white rounded text-sm disabled:opacity-50"
                   >
                     {adminCancLoadingMore ? 'Carregando...' : 'Ver mais'}
                   </button>
@@ -577,7 +577,7 @@ const AppointmentsView: React.FC = () => {
             <div className="mt-2 flex justify-center">
               <button
                 onClick={() => setVisibleAdminCount(3)}
-                className="px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900 rounded text-sm"
+                className="px-3 py-1.5 border border-line bg-surface-raised hover:bg-surface-overlay text-white rounded text-sm"
               >
                 Fechar
               </button>
@@ -587,10 +587,10 @@ const AppointmentsView: React.FC = () => {
         )}
       </div>
 
-      {loading && <div className="text-gray-700">Carregando...</div>}
+      {loading && <div className="text-zinc-200">Carregando...</div>}
 
       {!loading && grouped.length === 0 && (
-        <div className="text-gray-600">Nenhum agendamento encontrado com os filtros selecionados.</div>
+        <div className="text-zinc-300">Nenhum agendamento encontrado com os filtros selecionados.</div>
       )}
 
       <div className="space-y-6">
@@ -601,20 +601,20 @@ const AppointmentsView: React.FC = () => {
           
           return (
           <div key={date}>
-            <h3 className="text-pink-600 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
+            <h3 className="text-gold font-bold text-lg mb-3 pb-2 border-b-2 border-line">
               {dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
             <div className="space-y-2">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
-                <div key={b.booking_id} className="bg-white px-4 py-4 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-200">
+                <div key={b.booking_id} className="bg-surface-raised px-4 py-4 rounded-lg border border-line hover:border-gold transition-colors duration-200">
                   {/* Linha 1: hora + cliente/serviços à esquerda, preço à direita */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="text-pink-600 font-bold text-lg tabular-nums flex-shrink-0">{b.time.slice(0,5)}</div>
+                      <div className="text-gold font-bold text-lg tabular-nums flex-shrink-0">{b.time.slice(0,5)}</div>
                       <div className="min-w-0">
-                        <div className="text-gray-900 font-semibold break-words">{b.client_name}</div>
+                        <div className="text-white font-semibold break-words">{b.client_name}</div>
                         {b.client_phone && (
-                          <div className="text-gray-600 text-sm flex items-center gap-1.5 mt-0.5">
+                          <div className="text-zinc-300 text-sm flex items-center gap-1.5 mt-0.5">
                             <span>{b.client_phone}</span>
                             <a
                               href={`https://wa.me/${whatsAppNumber(b.client_phone)}`}
@@ -627,10 +627,10 @@ const AppointmentsView: React.FC = () => {
                             </a>
                           </div>
                         )}
-                        <div className="text-gray-600 text-sm break-words">{(b.services || []).map(s => s.name).join(', ')}</div>
+                        <div className="text-zinc-300 text-sm break-words">{(b.services || []).map(s => s.name).join(', ')}</div>
                       </div>
                     </div>
-                    <div className="text-pink-600 font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>
+                    <div className="text-gold font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>
                   </div>
 
                   {/* Linha 2: botões alinhados à esquerda */}
@@ -638,7 +638,7 @@ const AppointmentsView: React.FC = () => {
                     <button
                       onClick={() => confirmBooking(b.booking_id)}
                       disabled={actionLoadingId === b.booking_id}
-                      className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
+                      className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
                       title="Confirmar agendamento"
                     >
                       {actionLoadingId === b.booking_id ? '...' : 'Confirmar'}
@@ -653,7 +653,7 @@ const AppointmentsView: React.FC = () => {
                     <button
                       onClick={() => cancelBooking(b.booking_id)}
                       disabled={actionLoadingId === b.booking_id}
-                      className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white text-sm font-semibold rounded"
                       title="Cancelar"
                     >
                       {actionLoadingId === b.booking_id ? '...' : 'Cancelar'}
@@ -665,7 +665,7 @@ const AppointmentsView: React.FC = () => {
                         {(() => {
                           const req = (requestsMap[b.booking_id] || []).find(x => x.status === 'pending')!;
                           return (
-                            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            <div className="text-xs text-amber-300 bg-amber-950/40 border border-amber-800 rounded px-2 py-1">
                               Solicitação de troca: {new Date(req.requested_date).toLocaleDateString('pt-BR')} às {req.requested_time.slice(0,5)}
                             </div>
                           );
@@ -680,9 +680,9 @@ const AppointmentsView: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-500">Sem solicitações pendentes</div>
+                      <div className="text-xs text-zinc-400">Sem solicitações pendentes</div>
                     )}
-                    <details className="mt-1 text-gray-700">
+                    <details className="mt-1 text-zinc-200">
                       <summary className="cursor-pointer select-none text-xs">Histórico de solicitações</summary>
                       <ul className="mt-1 space-y-1">
                         {(requestsMap[b.booking_id] || []).map((q, idx) => (
@@ -707,23 +707,23 @@ const AppointmentsView: React.FC = () => {
 
       {editId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
+          <div className="w-full max-w-md bg-surface-raised rounded-2xl border border-line shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xl font-bold text-gray-900">Alterar horário</h4>
-              <button onClick={() => setEditId(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <h4 className="text-xl font-bold text-white">Alterar horário</h4>
+              <button onClick={() => setEditId(null)} className="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nova data</label>
-                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900" />
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Nova data</label>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Novo horário</label>
-                <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900" />
+                <label className="block text-sm font-medium text-zinc-200 mb-1">Novo horário</label>
+                <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white" />
               </div>
               <div className="flex items-center justify-end gap-2">
-                <button className="px-4 py-2 rounded-lg border border-gray-300" onClick={() => setEditId(null)}>Fechar</button>
-                <button className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700" onClick={saveEdit}>Salvar</button>
+                <button className="px-4 py-2 rounded-lg border border-line" onClick={() => setEditId(null)}>Fechar</button>
+                <button className="px-4 py-2 rounded-lg bg-gold text-white font-semibold hover:brightness-110" onClick={saveEdit}>Salvar</button>
               </div>
             </div>
           </div>

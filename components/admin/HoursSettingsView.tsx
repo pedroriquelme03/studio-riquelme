@@ -277,30 +277,30 @@ const HoursSettingsView: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="text-gray-700">Carregando...</div>;
+  if (loading) return <div className="text-zinc-200">Carregando...</div>;
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-300 shadow-sm">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Controle de Horários</h2>
+    <div className="bg-surface-raised p-6 rounded-xl border border-line shadow-sm">
+      <h2 className="text-2xl font-bold gold-text mb-6">Controle de Horários</h2>
 
-      {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
-      {message && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{message}</div>}
+      {error && <div className="mb-4 bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {message && <div className="mb-4 bg-emerald-950/50 border border-emerald-800 text-emerald-300 px-4 py-3 rounded-lg text-sm">{message}</div>}
 
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-zinc-200 mb-2">
           Selecionar Profissional
         </label>
         <select
           value={selectedProfessionalId || ''}
           onChange={(e) => setSelectedProfessionalId(e.target.value || null)}
-          className="bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900 w-full md:w-auto min-w-[250px]"
+          className="bg-surface-overlay border border-line rounded px-3 py-2 text-white w-full md:w-auto min-w-[250px]"
         >
           <option value="">Horários Globais (todos os profissionais)</option>
           {professionals.map(prof => (
             <option key={prof.id} value={prof.id}>{prof.name}</option>
           ))}
         </select>
-        <p className="text-xs text-gray-600 mt-2">
+        <p className="text-xs text-zinc-300 mt-2">
           {selectedProfessionalId 
             ? `Configurando horários para: ${professionals.find(p => p.id === selectedProfessionalId)?.name || 'Profissional'}`
             : 'Configurando horários globais (aplicados quando o serviço não tem profissional específico)'}
@@ -308,7 +308,7 @@ const HoursSettingsView: React.FC = () => {
       </div>
 
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Janela por dia da semana</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">Janela por dia da semana</h3>
         {/* Duas colunas só a partir de xl: abaixo disso a coluna não comporta
             rótulo + checkbox + dois campos de hora na mesma linha.
             `min-w-0` é obrigatório: sem ele o item de grid não encolhe abaixo do
@@ -317,10 +317,10 @@ const HoursSettingsView: React.FC = () => {
           {hours.map((h, idx) => (
             <div
               key={h.weekday}
-              className="min-w-0 border border-gray-300 rounded-lg p-3 flex flex-wrap items-center gap-x-3 gap-y-2"
+              className="min-w-0 border border-line rounded-lg p-3 flex flex-wrap items-center gap-x-3 gap-y-2"
             >
-              <div className="text-gray-800 font-medium w-24 shrink-0">{WEEKDAYS[h.weekday]}</div>
-              <label className="flex items-center gap-2 text-gray-800 shrink-0">
+              <div className="text-white font-medium w-24 shrink-0">{WEEKDAYS[h.weekday]}</div>
+              <label className="flex items-center gap-2 text-white shrink-0">
                 <input
                   type="checkbox"
                   checked={h.enabled}
@@ -340,14 +340,14 @@ const HoursSettingsView: React.FC = () => {
                   type="time"
                   value={normalizeTime(h.open_time)}
                   onChange={(e) => setHours(prev => prev.map((x, i) => i === idx ? { ...x, open_time: e.target.value } : x))}
-                  className="flex-1 min-w-0 max-w-[8rem] bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+                  className="flex-1 min-w-0 max-w-[8rem] bg-surface-overlay border border-line rounded px-2 py-1 text-white"
                 />
-                <span className="text-gray-700 shrink-0">às</span>
+                <span className="text-zinc-200 shrink-0">às</span>
                 <input
                   type="time"
                   value={normalizeTime(h.close_time)}
                   onChange={(e) => setHours(prev => prev.map((x, i) => i === idx ? { ...x, close_time: e.target.value } : x))}
-                  className="flex-1 min-w-0 max-w-[8rem] bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+                  className="flex-1 min-w-0 max-w-[8rem] bg-surface-overlay border border-line rounded px-2 py-1 text-white"
                 />
               </div>
             </div>
@@ -357,23 +357,23 @@ const HoursSettingsView: React.FC = () => {
           <button
             onClick={saveHours}
             disabled={saving}
-            className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+            className="bg-gold hover:brightness-110 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
           >
             {saving ? 'Salvando...' : 'Salvar horários'}
           </button>
         </div>
       </div>
 
-      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-3">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Limite de mês para agendamentos</h3>
+      <div className="mb-6 bg-surface-raised border border-line rounded-lg p-3">
+        <h3 className="text-lg font-semibold text-white mb-2">Limite de mês para agendamentos</h3>
         <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-3">
           <label className="block w-full sm:w-auto">
-            <span className="block text-sm text-gray-700 mb-1">Mês limite</span>
+            <span className="block text-sm text-zinc-200 mb-1">Mês limite</span>
             <input
               type="month"
               value={limitMonth}
               onChange={(e) => setLimitMonth(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+              className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white"
             />
           </label>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -387,65 +387,65 @@ const HoursSettingsView: React.FC = () => {
             {limitMonth && (
               <button
                 onClick={() => setLimitMonth('')}
-                className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-900 rounded"
+                className="w-full sm:w-auto px-4 py-2 bg-surface-muted text-white rounded"
               >
                 Limpar
               </button>
             )}
           </div>
         </div>
-        <p className="text-xs text-gray-600 mt-2">O calendário do cliente não permitirá agendamentos após o mês selecionado.</p>
+        <p className="text-xs text-zinc-300 mt-2">O calendário do cliente não permitirá agendamentos após o mês selecionado.</p>
       </div>
 
-      <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Horário especial por dia ou período</h3>
-        <p className="text-sm text-gray-600 mb-4">
+      <div className="mb-6 bg-surface-raised border border-line rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-white mb-2">Horário especial por dia ou período</h3>
+        <p className="text-sm text-zinc-300 mb-4">
           Defina um horário de funcionamento diferente para uma data específica ou um intervalo (ex.: feriado, dia de folga, horário reduzido).
         </p>
         <form onSubmit={addSpecialDateHours} className="flex flex-col gap-3 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Data inicial</label>
+              <label className="block text-sm text-zinc-200 mb-1">Data inicial</label>
               <input
                 type="date"
                 value={specialDateFrom}
                 onChange={(e) => setSpecialDateFrom(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+                className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Data final (opcional)</label>
+              <label className="block text-sm text-zinc-200 mb-1">Data final (opcional)</label>
               <input
                 type="date"
                 value={specialDateTo}
                 onChange={(e) => setSpecialDateTo(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+                className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white"
                 min={specialDateFrom}
               />
-              <p className="text-xs text-gray-500 mt-0.5">Deixe em branco para um único dia</p>
+              <p className="text-xs text-zinc-400 mt-0.5">Deixe em branco para um único dia</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Abertura</label>
+              <label className="block text-sm text-zinc-200 mb-1">Abertura</label>
               <input
                 type="time"
                 value={specialOpen}
                 onChange={(e) => setSpecialOpen(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+                className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Fechamento</label>
+              <label className="block text-sm text-zinc-200 mb-1">Fechamento</label>
               <input
                 type="time"
                 value={specialClose}
                 onChange={(e) => setSpecialClose(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900"
+                className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white"
               />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <label className="inline-flex items-center gap-2 text-gray-700">
+            <label className="inline-flex items-center gap-2 text-zinc-200">
               <input
                 type="checkbox"
                 checked={specialEnabled}
@@ -456,37 +456,37 @@ const HoursSettingsView: React.FC = () => {
             <button
               type="submit"
               disabled={specialSaving}
-              className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50"
+              className="bg-gold hover:brightness-110 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50"
             >
               {specialSaving ? 'Salvando...' : 'Adicionar horário especial'}
             </button>
           </div>
         </form>
-        <div className="border border-gray-200 rounded-lg overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="border border-line rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-line">
+            <thead className="bg-surface-overlay">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Abertura</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fechamento</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase">Data</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase">Abertura</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase">Fechamento</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase">Status</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-surface-raised divide-y divide-line">
               {specialHours.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-sm text-gray-500">Nenhum horário especial definido.</td>
+                  <td colSpan={5} className="px-4 py-4 text-sm text-zinc-400">Nenhum horário especial definido.</td>
                 </tr>
               )}
               {specialHours.map((s) => (
                 <tr key={s.id}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{s.date}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{normalizeTime(s.open_time)}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{normalizeTime(s.close_time)}</td>
+                  <td className="px-4 py-2 text-sm text-white">{s.date}</td>
+                  <td className="px-4 py-2 text-sm text-white">{normalizeTime(s.open_time)}</td>
+                  <td className="px-4 py-2 text-sm text-white">{normalizeTime(s.close_time)}</td>
                   <td className="px-4 py-2 text-sm">{s.enabled ? <span className="text-green-600">Ativo</span> : <span className="text-red-600">Fechado</span>}</td>
                   <td className="px-4 py-2 text-right">
-                    <button type="button" onClick={() => removeSpecialDateHour(s.id)} className="text-red-600 hover:text-red-700 text-sm">Remover</button>
+                    <button type="button" onClick={() => removeSpecialDateHour(s.id)} className="text-red-600 hover:text-red-300 text-sm">Remover</button>
                   </td>
                 </tr>
               ))}
@@ -496,46 +496,46 @@ const HoursSettingsView: React.FC = () => {
       </div>
 
       <div className="mt-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Adicionar horário manual</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">Adicionar horário manual</h3>
         <form onSubmit={addManualSlot} className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Data</label>
-            <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} className="bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900" required />
+            <label className="block text-sm text-zinc-200 mb-1">Data</label>
+            <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} className="bg-surface-overlay border border-line rounded px-3 py-2 text-white" required />
           </div>
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Hora</label>
-            <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} className="bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900" required />
+            <label className="block text-sm text-zinc-200 mb-1">Hora</label>
+            <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} className="bg-surface-overlay border border-line rounded px-3 py-2 text-white" required />
           </div>
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm text-gray-700 mb-1">Observação (opcional)</label>
-            <input value={slotNote} onChange={(e) => setSlotNote(e.target.value)} placeholder="ex.: horário extra" className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-900" />
+            <label className="block text-sm text-zinc-200 mb-1">Observação (opcional)</label>
+            <input value={slotNote} onChange={(e) => setSlotNote(e.target.value)} placeholder="ex.: horário extra" className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white" />
           </div>
           <button type="submit" className="bg-gray-900 hover:bg-black text-white font-semibold py-2 px-4 rounded-lg">Adicionar</button>
         </form>
 
-        <div className="mt-4 border border-gray-200 rounded-lg overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="mt-4 border border-line rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-line">
+            <thead className="bg-surface-overlay">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obs</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Data</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Hora</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Obs</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-surface-raised divide-y divide-line">
               {slots.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-4 text-sm text-gray-500">Nenhum horário manual adicionado.</td>
+                  <td colSpan={4} className="px-4 py-4 text-sm text-zinc-400">Nenhum horário manual adicionado.</td>
                 </tr>
               )}
               {slots.map(s => (
                 <tr key={s.id}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{s.date}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{normalizeTime(s.time)}</td>
-                  <td className="px-4 py-2 text-sm text-gray-700">{s.note || '-'}</td>
+                  <td className="px-4 py-2 text-sm text-white">{s.date}</td>
+                  <td className="px-4 py-2 text-sm text-white">{normalizeTime(s.time)}</td>
+                  <td className="px-4 py-2 text-sm text-zinc-200">{s.note || '-'}</td>
                   <td className="px-4 py-2 text-right">
-                    <button onClick={() => removeSlot(s.id)} className="text-red-600 hover:text-red-700 text-sm">Remover</button>
+                    <button onClick={() => removeSlot(s.id)} className="text-red-600 hover:text-red-300 text-sm">Remover</button>
                   </td>
                 </tr>
               ))}

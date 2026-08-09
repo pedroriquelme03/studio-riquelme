@@ -23,8 +23,8 @@ function applyPhoneMask(value: string): string {
 
 const MIN_PASSWORD = 8;
 
-const inputClass = 'w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900';
-const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
+const inputClass = 'w-full bg-surface-overlay border border-line rounded-lg p-3 text-white';
+const labelClass = 'block text-sm font-medium text-zinc-200 mb-1';
 
 async function postClientAuth(payload: Record<string, unknown>) {
   const res = await fetch('/api/client-auth', {
@@ -177,9 +177,9 @@ const ClientLoginPage: React.FC = () => {
     : 'Entrar';
 
   return (
-    <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
-      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">{title}</h2>
-      <p className="text-gray-600 text-center mb-6">{subtitle}</p>
+    <div className="max-w-md mx-auto bg-surface-raised p-8 rounded-2xl border border-line shadow-xl">
+      <h2 className="text-2xl font-bold gold-text text-center mb-6">{title}</h2>
+      <p className="text-zinc-300 text-center mb-6">{subtitle}</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {mode === 'register' && (
@@ -260,12 +260,12 @@ const ClientLoginPage: React.FC = () => {
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
         {successMessage && (
-          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-emerald-950/50 border border-emerald-800 text-emerald-300 px-4 py-3 rounded-lg text-sm">
             {successMessage}
           </div>
         )}
@@ -273,7 +273,7 @@ const ClientLoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {buttonLabel}
         </button>
@@ -286,7 +286,7 @@ const ClientLoginPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => goTo('forgot_request')}
-                className="block w-full text-gray-600 hover:text-gray-800 text-sm font-medium"
+                className="block w-full text-zinc-300 hover:text-white text-sm font-medium"
               >
                 Não recebeu? Enviar outro código
               </button>
@@ -294,7 +294,7 @@ const ClientLoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => goTo('login')}
-              className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
+              className="block w-full text-gold hover:text-gold-light text-sm font-medium"
             >
               Voltar ao login
             </button>
@@ -304,14 +304,14 @@ const ClientLoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => goTo(mode === 'register' ? 'login' : 'register')}
-              className="block w-full text-pink-600 hover:text-pink-700 text-sm font-medium"
+              className="block w-full text-gold hover:text-gold-light text-sm font-medium"
             >
               {mode === 'register' ? 'Já tem uma conta? Entrar' : 'Não tem uma conta? Criar conta'}
             </button>
             <button
               type="button"
               onClick={() => goTo('forgot_request')}
-              className="block w-full text-gray-600 hover:text-gray-800 text-sm font-medium"
+              className="block w-full text-zinc-300 hover:text-white text-sm font-medium"
             >
               Esqueci a senha
             </button>

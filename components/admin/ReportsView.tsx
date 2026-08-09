@@ -159,15 +159,15 @@ const ReportsView: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Relatórios</h2>
+      <h2 className="text-2xl font-bold gold-text text-center mb-6">Relatórios</h2>
       <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-3 mb-6">
-        <div className="inline-flex rounded overflow-hidden border border-gray-300">
-          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Mês</button>
-          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Semana</button>
-          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Dia</button>
+        <div className="inline-flex rounded overflow-hidden border border-line">
+          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-gold text-white':'bg-surface-raised text-zinc-200'}`}>Mês</button>
+          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-gold text-white':'bg-surface-raised text-zinc-200'}`}>Semana</button>
+          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-gold text-white':'bg-surface-raised text-zinc-200'}`}>Dia</button>
         </div>
         <div className="inline-flex items-center gap-2">
-          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-gray-200 text-gray-900 rounded">Hoje</button>
+          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-surface-muted text-white rounded">Hoje</button>
           <button
             onClick={() => {
               const d = new Date(currentDate);
@@ -176,9 +176,9 @@ const ReportsView: React.FC = () => {
               else d.setMonth(d.getMonth() - 1);
               setCurrentDate(d);
             }}
-            className="px-3 py-2 bg-white text-gray-900 rounded border border-gray-300"
+            className="px-3 py-2 bg-surface-raised text-white rounded border border-line"
           >◀</button>
-          <div className="text-gray-700 font-semibold min-w-[140px] text-center">
+          <div className="text-zinc-200 font-semibold min-w-[140px] text-center">
             {view === 'day' && currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             {view === 'week' && `${startOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${endOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
             {view === 'month' && currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
@@ -191,27 +191,27 @@ const ReportsView: React.FC = () => {
               else d.setMonth(d.getMonth() + 1);
               setCurrentDate(d);
             }}
-            className="px-3 py-2 bg-white text-gray-900 rounded border border-gray-300"
+            className="px-3 py-2 bg-surface-raised text-white rounded border border-line"
           >▶</button>
         </div>
-        <div className="border border-gray-300 rounded p-2 bg-white">
+        <div className="border border-line rounded p-2 bg-surface-raised">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">De</label>
+              <label className="block text-xs text-zinc-300 mb-1">De</label>
               <input
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+                className="w-full bg-surface-overlay border border-line rounded px-2 py-1 text-white"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Até</label>
+              <label className="block text-xs text-zinc-300 mb-1">Até</label>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-gray-900"
+                className="w-full bg-surface-overlay border border-line rounded px-2 py-1 text-white"
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ const ReportsView: React.FC = () => {
             <button
               onClick={load}
               disabled={!customFrom || !customTo}
-              className="px-3 py-2 bg-pink-600 disabled:bg-gray-400 text-white rounded"
+              className="px-3 py-2 bg-gold disabled:bg-zinc-600 text-white rounded"
               title="Aplicar período personalizado"
             >
               Aplicar
@@ -227,7 +227,7 @@ const ReportsView: React.FC = () => {
             {(customFrom || customTo) && (
               <button
                 onClick={() => { setCustomFrom(''); setCustomTo(''); load(); }}
-                className="px-3 py-2 bg-gray-200 text-gray-900 rounded"
+                className="px-3 py-2 bg-surface-muted text-white rounded"
                 title="Limpar período"
               >
                 Limpar
@@ -238,33 +238,33 @@ const ReportsView: React.FC = () => {
       </div>
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
-      {loading && <div className="text-gray-700">Carregando...</div>}
+      {loading && <div className="text-zinc-200">Carregando...</div>}
 
       {!loading && (
         <div className="grid gap-6">
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-300 rounded-lg p-4">
-              <h3 className="text-gray-900 font-semibold mb-3">Agendamentos por dia</h3>
+            <div className="bg-surface-raised border border-line rounded-lg p-4">
+              <h3 className="text-white font-semibold mb-3">Agendamentos por dia</h3>
               <Bar
                 data={{
                   labels: byDay.labels,
-                  datasets: [{ label: 'Agendamentos', data: byDay.count, backgroundColor: 'rgba(245, 158, 11, 0.5)', borderColor: '#f59e0b' }]
+                  datasets: [{ label: 'Agendamentos', data: byDay.count, backgroundColor: 'rgba(212, 175, 55, 0.45)', borderColor: '#d4af37' }]
                 }}
                 options={{ responsive: true, plugins: { legend: { display: false } } }}
               />
             </div>
-            <div className="bg-white border border-gray-300 rounded-lg p-4">
-              <h3 className="text-gray-900 font-semibold mb-3">Receita por dia (R$)</h3>
+            <div className="bg-surface-raised border border-line rounded-lg p-4">
+              <h3 className="text-white font-semibold mb-3">Receita por dia (R$)</h3>
               <Line
                 data={{
                   labels: byDay.labels,
-                  datasets: [{ label: 'Receita', data: byDay.revenue, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.2)' }]
+                  datasets: [{ label: 'Receita', data: byDay.revenue, borderColor: '#d4af37', backgroundColor: 'rgba(212, 175, 55, 0.2)' }]
                 }}
                 options={{ responsive: true, plugins: { legend: { display: false } } }}
               />
             </div>
-            <div className="bg-white border border-gray-300 rounded-lg p-4 md:col-span-2">
-              <h3 className="text-gray-900 font-semibold mb-3">Cancelamentos por dia</h3>
+            <div className="bg-surface-raised border border-line rounded-lg p-4 md:col-span-2">
+              <h3 className="text-white font-semibold mb-3">Cancelamentos por dia</h3>
               <Bar
                 data={{
                   labels: cancellationsByDay.labels,
@@ -280,13 +280,13 @@ const ReportsView: React.FC = () => {
                 }}
               />
             </div>
-            <div className="bg-white border border-gray-300 rounded-lg p-4">
-              <h3 className="text-gray-900 font-semibold mb-3">Serviços mais agendados</h3>
+            <div className="bg-surface-raised border border-line rounded-lg p-4">
+              <h3 className="text-white font-semibold mb-3">Serviços mais agendados</h3>
               <div className="h-64">
                 <Doughnut
                   data={{
                     labels: byService.labels,
-                    datasets: [{ data: byService.data, backgroundColor: ['#f59e0b','#84cc16','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ef4444'] }]
+                    datasets: [{ data: byService.data, backgroundColor: ['#d4af37','#f3e3a1','#a8892a','#c9a84c','#8a7430','#e8d48b','#b89b3d','#6e5c22'] }]
                   }}
                   options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
                 />
@@ -294,13 +294,13 @@ const ReportsView: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">
-              <div className="text-gray-600 text-sm">Agendamentos</div>
-              <div className="text-2xl font-bold text-gray-900">{totals.count}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
+              <div className="text-zinc-300 text-sm">Agendamentos</div>
+              <div className="text-2xl font-bold gold-text">{totals.count}</div>
             </div>
-            <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">
-              <div className="text-gray-600 text-sm">Receita (R$)</div>
-              <div className="text-2xl font-bold text-pink-600">{totals.revenue.toFixed(2)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
+              <div className="text-zinc-300 text-sm">Receita (R$)</div>
+              <div className="text-2xl font-bold text-gold">{totals.revenue.toFixed(2)}</div>
             </div>
           </div>
         </div>

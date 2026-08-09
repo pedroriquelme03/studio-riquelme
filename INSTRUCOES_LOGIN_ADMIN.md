@@ -2,11 +2,11 @@
 
 ## 1. Criar a Tabela no Supabase
 
-Execute o script SQL `admin-schema.sql` no Supabase:
+Execute o script SQL `sql/admin-schema.sql` no Supabase:
 
 1. Acesse o Supabase Dashboard
 2. Vá em "SQL Editor"
-3. Cole o conteúdo do arquivo `admin-schema.sql`
+3. Cole o conteúdo do arquivo `sql/admin-schema.sql`
 4. Execute o script
 
 ## 2. Criar o Primeiro Admin

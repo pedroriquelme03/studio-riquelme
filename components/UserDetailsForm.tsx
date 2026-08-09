@@ -154,16 +154,16 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Seus Dados</h2>
+    <div className="max-w-2xl mx-auto bg-surface-raised p-6 md:p-8 rounded-2xl border border-line shadow-xl">
+      <h2 className="text-2xl font-bold gold-text mb-6">Seus Dados</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" />
+          <label htmlFor="name" className="block text-sm font-medium text-zinc-200 mb-1">Nome Completo</label>
+          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold" />
           {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
         </div>
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone (WhatsApp)</label>
+          <label htmlFor="phone" className="block text-sm font-medium text-zinc-200 mb-1">Telefone (WhatsApp)</label>
           <input 
             type="tel" 
             id="phone" 
@@ -173,19 +173,19 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             onKeyDown={handlePhoneKeyDown}
             placeholder="(45) 99155-5297"
             maxLength={15}
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600" 
+            className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold" 
           />
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </div>
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>
-          <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-pink-600 focus:border-pink-600"></textarea>
+          <label htmlFor="notes" className="block text-sm font-medium text-zinc-200 mb-1">Observações (opcional)</label>
+          <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"></textarea>
         </div>
-        <div className="flex flex-col gap-3 mt-8 border-t border-gray-300 pt-6">
+        <div className="flex flex-col gap-3 mt-8 border-t border-line pt-6">
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-gold hover:brightness-110 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>
@@ -203,7 +203,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             type="button" 
             onClick={onBack} 
             disabled={isSubmitting}
-            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-surface-muted hover:bg-surface-muted text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Voltar
           </button>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Service, Booking, Client } from './types';
 import Header from './components/Header';
 import StepIndicator from './components/StepIndicator';
@@ -20,6 +20,8 @@ import TermosServicosPage from './components/legal/TermosServicosPage';
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
 const App: React.FC = () => {
+  const location = useLocation();
+  const isAdminShell = location.pathname === '/admin';
   const [step, setStep] = useState<Step>('services');
   const [booking, setBooking] = useState<Partial<Booking>>({
     services: [],
@@ -184,9 +186,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans flex flex-col">
-      <Header />
-      <main className="container mx-auto p-4 md:p-8 flex-grow">
+    <div className="min-h-screen bg-surface text-white font-sans flex flex-col">
+      {!isAdminShell && <Header />}
+      <main
+        className={
+          isAdminShell
+            ? 'flex-grow w-full min-h-screen p-0 m-0'
+            : 'container mx-auto p-4 md:p-8 flex-grow'
+        }
+      >
         <Routes>
           <Route 
             path="/admin" 
@@ -216,7 +224,7 @@ const App: React.FC = () => {
           />
         </Routes>
       </main>
-      <Footer />
+      {!isAdminShell && <Footer />}
     </div>
   );
 };

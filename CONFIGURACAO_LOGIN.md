@@ -48,7 +48,7 @@ O sistema possui **dois tipos de login**:
 
 ### **Passo 1: Criar Tabela de Admins**
 
-No **Supabase SQL Editor**, execute o script `admin-schema.sql`:
+No **Supabase SQL Editor**, execute o script `sql/admin-schema.sql`:
 
 ```sql
 -- Criar tabela de administradores
@@ -574,7 +574,7 @@ WHERE c.phone = '55 11 99999-9999';
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `admin-schema.sql` | Esquema da tabela de admins |
+| `sql/admin-schema.sql` | Esquema da tabela de admins |
 | `criar-funcao-hash-senha.sql` | Função para hash SHA-256 |
 | `adicionar-campo-role.sql` | Adicionar coluna role |
 | `criar-novo-usuario.sql` | Template para criar usuários |

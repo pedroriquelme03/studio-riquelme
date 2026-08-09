@@ -1,0 +1,74 @@
+:root {
+  --bg: #0b0b0b;
+  --bg-raised: #141414;
+  --bg-overlay: #1c1c1c;
+  --bg-muted: #242424;
+  --border: #2e2e2e;
+  --text: #f5f5f5;
+  --text-muted: #c4c4c4;
+  --gold-light: #f3e3a1;
+  --gold: #d4af37;
+  --gold-dark: #a8892a;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Textos em destaque: dourado com leve gradiente */
+.gold-text {
+  background-image: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 48%, var(--gold-dark) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Botões e fundos dourados */
+.bg-gold,
+.btn-gold {
+  background-color: var(--gold) !important;
+  background-image: linear-gradient(135deg, #e2c35a 0%, var(--gold) 45%, var(--gold-dark) 100%) !important;
+  color: #111 !important;
+}
+
+.bg-gold:hover,
+.btn-gold:hover {
+  filter: brightness(1.06);
+}
+
+.border-gold {
+  border-color: var(--gold) !important;
+}
+
+.shadow-gold {
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.18);
+}
+
+/* Scrollbar no tema escuro */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
+}
+
+input,
+textarea,
+select {
+  color-scheme: dark;
+}
+
+/* Placeholders mais legíveis no escuro */
+input::placeholder,
+textarea::placeholder {
+  color: #8a8a8a;
+}

@@ -432,7 +432,7 @@ const AppointmentsView: React.FC = () => {
             </ul>
             {(cancellations.length > visibleClientCount || clientCancHasMore) && (
               <div className="absolute inset-x-0 bottom-0 pb-2 pt-8 pointer-events-none">
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface-raised via-surface-raised/90 to-surface-raised/0" />
                 <div className="relative flex justify-center pointer-events-auto pb-2">
                   <button
                     disabled={clientCancLoadingMore}
@@ -525,7 +525,7 @@ const AppointmentsView: React.FC = () => {
             </ul>
             {(adminCancellations.length > visibleAdminCount || adminCancHasMore) && (
               <div className="absolute inset-x-0 bottom-0 pb-2 pt-8 pointer-events-none">
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface-raised via-surface-raised/90 to-surface-raised/0" />
                 <div className="relative flex justify-center pointer-events-auto pb-2">
                   <button
                     disabled={adminCancLoadingMore}

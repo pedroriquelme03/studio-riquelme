@@ -25,6 +25,7 @@ import {
 	tokenHash,
 	verifyPassword,
 } from './_lib/session.js';
+import { sendWhatsAppText, waMessages } from './_lib/whatsapp.js';
 
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
@@ -64,50 +65,16 @@ function issueClientSession(res: any, clientId: string, phone: string) {
 	appendCookie(res, buildSessionCookie(CLIENT_COOKIE, token, maxAge));
 }
 
-/** Envia o código pela Edge Function de WhatsApp já existente. */
+/** Envia o código de acesso (OTP) pela Evolution API. */
 async function sendOtpViaWhatsApp(name: string, phone: string, code: string): Promise<boolean> {
-	const template = (process.env.WHATSAPP_CLIENT_OTP_TEMPLATE || '').trim();
-	if (!template) {
-		console.error('[client-auth] WHATSAPP_CLIENT_OTP_TEMPLATE não configurado — código não enviado.');
-		return false;
+	const result = await sendWhatsAppText(
+		phone,
+		waMessages.loginCode({ nome: name, codigo: code, minutos: OTP_TTL_MINUTES }),
+	);
+	if (!result.ok) {
+		console.error('[client-auth] Falha ao enviar OTP via Evolution:', result.error);
 	}
-
-	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-	if (!supabaseUrl || !serviceKey) return false;
-
-	const now = new Date();
-	const pad = (n: number) => String(n).padStart(2, '0');
-
-	try {
-		const response = await fetch(
-			`${supabaseUrl.replace(/\/+$/, '')}/functions/v1/send-whatsapp-confirmation`,
-			{
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${serviceKey}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					nome: name,
-					telefone: phone,
-					data: `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`,
-					hora: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-					template_name: template,
-					// {{1}} nome, {{2}} código, {{3}} validade em minutos
-					template_params: [name, code, String(OTP_TTL_MINUTES)],
-				}),
-			},
-		);
-		if (!response.ok) {
-			console.error('[client-auth] Falha ao enviar OTP:', response.status, await response.text().catch(() => ''));
-			return false;
-		}
-		return true;
-	} catch (err: any) {
-		console.error('[client-auth] Erro ao enviar OTP:', err?.message || err);
-		return false;
-	}
+	return result.ok;
 }
 
 export default async function handler(req: any, res: any) {

@@ -1,54 +1,7 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { getSession, requireAdmin } from './_lib/session.js';
-
-async function triggerWhatsAppConfirmation(payload: {
-	nome: string;
-	telefone: string;
-	data: string; // dd/mm/yyyy
-	hora: string; // HH:MM
-	template_name?: string;
-	template_params?: string[];
-}): Promise<void> {
-	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-	if (!supabaseUrl || !serviceKey) {
-		console.log('[whatsapp] SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — envio ignorado.');
-		return;
-	}
-
-	const endpoint = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/send-whatsapp-confirmation`;
-	try {
-		const response = await fetch(endpoint, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${serviceKey}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(payload),
-		});
-
-		if (!response.ok) {
-			const text = await response.text().catch(() => '');
-			console.error(`[whatsapp] Edge Function falhou (${response.status}):`, text);
-		} else {
-			console.log(`[whatsapp] Confirmação enviada para ${payload.telefone}`);
-		}
-	} catch (err: any) {
-		console.error('[whatsapp] Erro ao chamar Edge Function:', err?.message || err);
-	}
-}
-
-function formatDateToPtBr(input: string): string {
-	const [year, month, day] = String(input).split('-');
-	if (!year || !month || !day) return input;
-	return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
-}
-
-function formatTimeToHHMM(input: string): string {
-	const str = String(input || '');
-	return str.length >= 5 ? str.slice(0, 5) : str;
-}
+import { sendWhatsAppText, waMessages, formatDateToPtBr, formatTimeToHHMM } from './_lib/whatsapp.js';
 
 export default async function handler(req: any, res: any) {
 	const sendJson = (status: number, body: object) => {
@@ -431,9 +384,9 @@ export default async function handler(req: any, res: any) {
 				}
 			}
 
-			// ── Disparar WhatsApp no momento da criação ────────────────────────
+			// ── Disparar WhatsApp no momento da criação/solicitação ────────────
 			try {
-				// Buscar nome dos serviços para preencher placeholder no template.
+				// Nome dos serviços para compor a mensagem.
 				const { data: serviceRows } = await supabase
 					.from('services')
 					.select('id, name')
@@ -441,60 +394,33 @@ export default async function handler(req: any, res: any) {
 				const serviceMap = new Map<number, string>(
 					(serviceRows || []).map((r: any) => [Number(r.id), String(r.name || '').trim()]),
 				);
-				const serviceNames = services
+				const serviceLabel = services
 					.map(s => serviceMap.get(Number(s.id)))
 					.filter((name): name is string => Boolean(name))
-					.join(', ');
-				const serviceLabel = serviceNames || 'serviço selecionado';
+					.join(', ') || 'serviço selecionado';
+				const dataBr = formatDateToPtBr(date);
+				const horaBr = formatTimeToHHMM(time);
 				const finalProfessionalId = professionalId || inferredProfessionalId;
 
-				// Disparo não-bloqueante de WhatsApp no momento da solicitação/criação
-				// Configure o template em WHATSAPP_BOOKING_CREATED_TEMPLATE.
-				const bookingCreatedTemplate = (process.env.WHATSAPP_BOOKING_CREATED_TEMPLATE || 'hello_world').trim();
-				triggerWhatsAppConfirmation({
-					nome: clientPayload.name!,
-					telefone: clientPayload.phone!,
-					data: formatDateToPtBr(date),
-					hora: formatTimeToHHMM(time),
-					template_name: bookingCreatedTemplate,
-					// Ordem esperada no template de solicitação:
-					// {{1}} nome, {{2}} nome do serviço, {{3}} data e hora
-					template_params: [
-						clientPayload.name!,
-						serviceLabel,
-						`${formatDateToPtBr(date)} às ${formatTimeToHHMM(time)}`,
-					],
-				}).catch(() => {/* silencioso */ });
+				// Cliente: aviso de solicitação recebida (não-bloqueante).
+				sendWhatsAppText(
+					clientPayload.phone!,
+					waMessages.bookingRequestClient({ nome: clientPayload.name!, servico: serviceLabel, data: dataBr, hora: horaBr }),
+				).catch(() => {/* silencioso */ });
 
-				// Disparo opcional para profissional responsável pelo agendamento.
-				// Configure WHATSAPP_PROFESSIONAL_BOOKING_REQUEST_TEMPLATE para ativar.
-				const professionalTemplate = (process.env.WHATSAPP_PROFESSIONAL_BOOKING_REQUEST_TEMPLATE || '').trim();
-				if (professionalTemplate && finalProfessionalId) {
+				// Profissional responsável: aviso de nova solicitação.
+				if (finalProfessionalId) {
 					const { data: profData } = await supabase
 						.from('professionals')
 						.select('name, phone')
 						.eq('id', finalProfessionalId)
 						.single();
-
 					const professionalPhone = String(profData?.phone || '').trim();
-					const professionalName = String(profData?.name || 'Profissional').trim();
 					if (professionalPhone) {
-						triggerWhatsAppConfirmation({
-							// "nome" é obrigatório na function; aqui usamos o nome do profissional como referência.
-							nome: professionalName,
-							telefone: professionalPhone,
-							data: formatDateToPtBr(date),
-							hora: formatTimeToHHMM(time),
-							template_name: professionalTemplate,
-							// Ordem sugerida para template do profissional:
-							// {{1}} profissional, {{2}} cliente, {{3}} serviço, {{4}} data e hora
-							template_params: [
-								professionalName,
-								clientPayload.name!,
-								serviceLabel,
-								`${formatDateToPtBr(date)} às ${formatTimeToHHMM(time)}`,
-							],
-						}).catch(() => {/* silencioso */ });
+						sendWhatsAppText(
+							professionalPhone,
+							waMessages.bookingRequestProfessional({ cliente: clientPayload.name!, servico: serviceLabel, data: dataBr, hora: horaBr }),
+						).catch(() => {/* silencioso */ });
 					} else {
 						console.warn('[whatsapp] Profissional sem telefone; notificação ao profissional ignorada.');
 					}
@@ -622,15 +548,22 @@ export default async function handler(req: any, res: any) {
 			if (status === 'confirmed' || status === 'confirmado') {
 				try {
 					const bd = bookingData as any;
-					const bookingConfirmedTemplate = (process.env.WHATSAPP_BOOKING_CONFIRMED_TEMPLATE || 'agendamento_confirmado').trim();
-					triggerWhatsAppConfirmation({
-						nome: bd.clients?.name || 'Cliente',
-						telefone: bd.clients?.phone || '',
-						data: formatDateToPtBr(bd.date),
-						hora: formatTimeToHHMM(bd.time),
-						template_name: bookingConfirmedTemplate,
-						template_params: [bd.clients?.name || 'Cliente', formatDateToPtBr(bd.date), formatTimeToHHMM(bd.time)],
-					}).catch(() => { /* silencioso */ });
+					const clientPhone = String(bd?.clients?.phone || '').trim();
+					const serviceLabel = ((bd?.booking_services || []) as any[])
+						.map((bs: any) => String(bs?.services?.name || '').trim())
+						.filter(Boolean)
+						.join(', ') || 'serviço selecionado';
+					if (clientPhone) {
+						sendWhatsAppText(
+							clientPhone,
+							waMessages.bookingConfirmed({
+								nome: bd?.clients?.name || 'Cliente',
+								servico: serviceLabel,
+								data: formatDateToPtBr(bd.date),
+								hora: formatTimeToHHMM(bd.time),
+							}),
+						).catch(() => { /* silencioso */ });
+					}
 				} catch (waErr) {
 					console.error('[whatsapp] Erro ao preparar payload de confirmação:', waErr);
 				}
@@ -653,32 +586,24 @@ export default async function handler(req: any, res: any) {
 					// Notificar cliente quando o cancelamento for feito pelo profissional/admin.
 					try {
 						if (cancelledBy === 'admin' || cancelledBy === 'professional') {
-							const clientCancelledTemplate = (process.env.WHATSAPP_CLIENT_BOOKING_CANCELLED_TEMPLATE || '').trim();
-							if (clientCancelledTemplate) {
-								const bd = bookingData as any;
-								const clientName = String(bd?.clients?.name || 'Cliente').trim();
-								const clientPhone = String(bd?.clients?.phone || '').trim();
-								const serviceLabel = ((bd?.booking_services || []) as any[])
-									.map((bs: any) => String(bs?.services?.name || '').trim())
-									.filter(Boolean)
-									.join(', ') || 'serviço selecionado';
+							const bd = bookingData as any;
+							const clientName = String(bd?.clients?.name || 'Cliente').trim();
+							const clientPhone = String(bd?.clients?.phone || '').trim();
+							const serviceLabel = ((bd?.booking_services || []) as any[])
+								.map((bs: any) => String(bs?.services?.name || '').trim())
+								.filter(Boolean)
+								.join(', ') || 'serviço selecionado';
 
-								if (clientPhone) {
-									triggerWhatsAppConfirmation({
+							if (clientPhone) {
+								sendWhatsAppText(
+									clientPhone,
+									waMessages.bookingCancelledClient({
 										nome: clientName,
-										telefone: clientPhone,
+										servico: serviceLabel,
 										data: formatDateToPtBr(String(bd?.date || '')),
 										hora: formatTimeToHHMM(String(bd?.time || '')),
-										template_name: clientCancelledTemplate,
-										// Ordem sugerida para template de cancelamento ao cliente:
-										// {{1}} cliente, {{2}} serviço, {{3}} data e hora
-										template_params: [
-											clientName,
-											serviceLabel,
-											`${formatDateToPtBr(String(bd?.date || ''))} às ${formatTimeToHHMM(String(bd?.time || ''))}`,
-										],
-									}).catch(() => { /* silencioso */ });
-								}
+									}),
+								).catch(() => { /* silencioso */ });
 							}
 						}
 					} catch (notifyErr: any) {
@@ -688,34 +613,24 @@ export default async function handler(req: any, res: any) {
 					// Notificar profissional quando o cancelamento for feito pelo cliente.
 					try {
 						if (cancelledBy === 'client') {
-							const professionalCancelledTemplate = (process.env.WHATSAPP_PROFESSIONAL_CLIENT_CANCELLED_TEMPLATE || '').trim();
-							if (professionalCancelledTemplate) {
-								const bd = bookingData as any;
-								const professionalName = String(bd?.professionals?.name || 'Profissional').trim();
-								const professionalPhone = String(bd?.professionals?.phone || '').trim();
-								const clientName = String(bd?.clients?.name || 'Cliente').trim();
-								const serviceLabel = ((bd?.booking_services || []) as any[])
-									.map((bs: any) => String(bs?.services?.name || '').trim())
-									.filter(Boolean)
-									.join(', ') || 'serviço selecionado';
+							const bd = bookingData as any;
+							const professionalPhone = String(bd?.professionals?.phone || '').trim();
+							const clientName = String(bd?.clients?.name || 'Cliente').trim();
+							const serviceLabel = ((bd?.booking_services || []) as any[])
+								.map((bs: any) => String(bs?.services?.name || '').trim())
+								.filter(Boolean)
+								.join(', ') || 'serviço selecionado';
 
-								if (professionalPhone) {
-									triggerWhatsAppConfirmation({
-										nome: professionalName,
-										telefone: professionalPhone,
+							if (professionalPhone) {
+								sendWhatsAppText(
+									professionalPhone,
+									waMessages.bookingCancelledProfessional({
+										cliente: clientName,
+										servico: serviceLabel,
 										data: formatDateToPtBr(String(bd?.date || '')),
 										hora: formatTimeToHHMM(String(bd?.time || '')),
-										template_name: professionalCancelledTemplate,
-										// Ordem sugerida para template ao profissional:
-										// {{1}} profissional, {{2}} cliente, {{3}} serviço, {{4}} data e hora
-										template_params: [
-											professionalName,
-											clientName,
-											serviceLabel,
-											`${formatDateToPtBr(String(bd?.date || ''))} às ${formatTimeToHHMM(String(bd?.time || ''))}`,
-										],
-									}).catch(() => { /* silencioso */ });
-								}
+									}),
+								).catch(() => { /* silencioso */ });
 							}
 						}
 					} catch (notifyErr: any) {

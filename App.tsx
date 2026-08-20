@@ -16,12 +16,15 @@ import ClientLoginPage from './components/client/ClientLoginPage';
 import ClientBookingsPage from './components/client/ClientBookingsPage';
 import PoliticaPrivacidadePage from './components/legal/PoliticaPrivacidadePage';
 import TermosServicosPage from './components/legal/TermosServicosPage';
+import BioPage from './components/bio/BioPage';
 
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
 const App: React.FC = () => {
   const location = useLocation();
+  // Telas de layout próprio (sem Header/Footer do site): painel admin e página /bio.
   const isAdminShell = location.pathname === '/admin';
+  const isBareShell = isAdminShell || location.pathname === '/bio';
   const [step, setStep] = useState<Step>('services');
   const [booking, setBooking] = useState<Partial<Booking>>({
     services: [],
@@ -187,10 +190,10 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface text-white font-sans flex flex-col">
-      {!isAdminShell && <Header />}
+      {!isBareShell && <Header />}
       <main
         className={
-          isAdminShell
+          isBareShell
             ? 'flex-grow w-full min-h-screen p-0 m-0'
             : 'container mx-auto p-4 md:p-8 flex-grow'
         }
@@ -211,6 +214,7 @@ const App: React.FC = () => {
           <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
           <Route path="/termos-de-servicos" element={<TermosServicosPage />} />
+          <Route path="/bio" element={<BioPage />} />
           <Route
             path="/"
             element={
@@ -224,7 +228,7 @@ const App: React.FC = () => {
           />
         </Routes>
       </main>
-      {!isAdminShell && <Footer />}
+      {!isBareShell && <Footer />}
     </div>
   );
 };

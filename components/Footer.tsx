@@ -32,9 +32,11 @@ const Footer: React.FC = () => {
 
   const hasWhatsApp1 = contact && (contact.contact1_name.trim() || contact.contact1_phone.trim());
   const hasWhatsApp2 = contact && (contact.contact2_name.trim() || contact.contact2_phone.trim());
-  const addressText = 'R. dos Golfinhos, 1166 - Parque Ouro Verde';
-  const addressMapUrl = 'https://maps.app.goo.gl/aazdYzCi2zsD8xK48';
-  const hasAddress = true;
+  const addressText = (contact?.address || '').trim();
+  const addressMapUrl = addressText
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText)}`
+    : '';
+  const hasAddress = Boolean(addressText);
 
   return (
     <footer className="py-[50px] border-t border-line mt-auto">

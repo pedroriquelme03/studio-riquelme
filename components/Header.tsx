@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 // Importar a imagem como módulo
-const iconPath = '/icone-rosa.png';
+const iconPath = '/icone-dourado.png';
 
 const Header: React.FC = () => {
   const { isAuthenticated } = useAuth();

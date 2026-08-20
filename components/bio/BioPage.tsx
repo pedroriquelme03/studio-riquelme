@@ -40,7 +40,7 @@ const iconFor = (icon: string) => {
   }
 };
 
-const logoPath = '/icone-rosa.png';
+const logoPath = '/icone-dourado.png';
 
 const BioPage: React.FC = () => {
   const [data, setData] = useState<BioData | null>(null);

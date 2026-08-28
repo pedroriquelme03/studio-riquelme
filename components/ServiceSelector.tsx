@@ -152,6 +152,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     planName?: string;
     requiresAuth?: boolean;
   } | null>(null);
+  const [hasMonthlyPlans, setHasMonthlyPlans] = useState(false);
 
   // Buscar profissionais ao carregar
   useEffect(() => {
@@ -172,6 +173,20 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
       }
     };
     fetchProfessionals();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/services?monthly_plans=1');
+        const data = await res.json().catch(() => null);
+        if (res.ok && Array.isArray(data?.plans)) {
+          setHasMonthlyPlans(data.plans.length > 0);
+        }
+      } catch {
+        setHasMonthlyPlans(false);
+      }
+    })();
   }, []);
 
   // Filtrar serviços por profissional e termo de busca
@@ -266,7 +281,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     <div className="space-y-6 pb-20">
       <BookingCartPanel items={cartItems} onRemove={onRemoveCartItem} onFinalize={onFinalizeCart} />
 
-      <MonthlyPlansPromoCard />
+      {hasMonthlyPlans && <MonthlyPlansPromoCard />}
 
       {selectedService && planBenefit?.available && (
         <div className="bg-green-500/10 border border-green-500/40 rounded-lg p-4 text-sm text-green-100">

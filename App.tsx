@@ -132,7 +132,20 @@ const App: React.FC = () => {
 
         ]);
 
-        const [svcData, profData] = await Promise.all([svcRes.json(), profRes.json()]);
+        const parseJson = async (res: Response) => {
+          const text = await res.text();
+          try {
+            return text ? JSON.parse(text) : {};
+          } catch {
+            throw new Error(
+              res.ok
+                ? 'Resposta inválida do servidor'
+                : text.slice(0, 120) || `Erro HTTP ${res.status}`,
+            );
+          }
+        };
+
+        const [svcData, profData] = await Promise.all([parseJson(svcRes), parseJson(profRes)]);
 
         if (!svcRes.ok) throw new Error(svcData?.error || 'Erro ao carregar serviços');
 

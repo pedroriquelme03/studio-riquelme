@@ -5,6 +5,19 @@ export function toMinutes(time: string): number {
 	return (h || 0) * 60 + (m || 0);
 }
 
+export function fromMinutes(total: number): string {
+	const h = Math.floor(total / 60);
+	const m = total % 60;
+	return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function getSlotStep(serviceDuration: number): number {
+	const duration = Math.max(30, serviceDuration || 30);
+	if (duration % 30 === 0) return 30;
+	if (duration % 15 === 0) return 15;
+	return duration;
+}
+
 export function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {
 	return startA < endB && endA > startB;
 }

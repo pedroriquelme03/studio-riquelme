@@ -1,7 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Service } from '../types';
+import { Service, BookingCartItem } from '../types';
+import { formatServicePriceLabel } from '../lib/priceVariations';
 import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon, UserIcon } from './icons';
+import BookingCartPanel from './BookingCartPanel';
+import MonthlyPlansPromoCard from './MonthlyPlansPromoCard';
 
 interface Professional {
   id: string;
@@ -13,11 +16,17 @@ interface Professional {
 
 interface ServiceSelectorProps {
   services: Service[];
-  selectedServices: Service[];
-  onSelectServices: (services: Service[]) => void;
+  selectedService: Service | null;
+  onSelectService: (service: Service | null) => void;
+  selectedProfessionalId: string | null;
+  onProfessionalChange: (professionalId: string | null) => void;
   onNext: () => void;
-  totalDuration: number;
-  totalPrice: number;
+  cartItems: BookingCartItem[];
+  onRemoveCartItem: (id: string) => void;
+  cartTotalPrice: number;
+  onFinalizeCart?: () => void;
+  usePlanBenefit?: boolean;
+  onUsePlanBenefitChange?: (value: boolean) => void;
 }
 
 const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: () => void; }> = ({ service, isSelected, onToggle }) => (
@@ -36,7 +45,7 @@ const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: (
           </p>
           <div className="flex items-center space-x-4 mt-3 text-zinc-200 text-sm">
             <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-gold" /> {service.duration} min</span>
-            <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold" /> R${service.price.toFixed(2)}</span>
+            <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold" /> {formatServicePriceLabel(service)}</span>
           </div>
         </div>
         {isSelected ? (
@@ -50,53 +59,44 @@ const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: (
 
 
 const BookingSummary: React.FC<{
-  selectedServices: Service[];
-  totalDuration: number;
-  totalPrice: number;
+  selectedService: Service | null;
+  cartTotalPrice: number;
   onNext: () => void;
-}> = ({ selectedServices, totalDuration, totalPrice, onNext }) => (
+  canProceed: boolean;
+}> = ({ selectedService, cartTotalPrice, onNext, canProceed }) => (
     <div className="sticky top-24 bg-surface-raised p-6 rounded-lg border border-line shadow-xl">
-        <h2 className="text-xl font-bold text-white border-b border-line pb-3 mb-4">Resumo do Agendamento</h2>
-        {selectedServices.length === 0 ? (
-          <p className="text-zinc-300">Selecione um serviço para começar.</p>
+        <h2 className="text-xl font-bold text-white border-b border-line pb-3 mb-4">Item atual</h2>
+        {!selectedService ? (
+          <p className="text-zinc-300">Selecione um serviço para continuar.</p>
         ) : (
-          <ul className="space-y-2 mb-4">
-            {selectedServices.map(s => (
-              <li key={s.id} className="flex justify-between text-zinc-200">
-                <span>{s.name}</span>
-                <span>R${s.price.toFixed(2)}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2 mb-4 text-zinc-200">
+            <p className="font-medium text-white">{selectedService.name}</p>
+            <p className="text-sm">{selectedService.duration} min · {formatServicePriceLabel(selectedService)}</p>
+          </div>
         )}
-        <div className="border-t border-line pt-4 mt-4 space-y-3">
-          <div className="flex justify-between font-semibold text-white">
-            <span>Tempo total:</span>
-            <span>{totalDuration} min</span>
+        {cartTotalPrice > 0 && (
+          <div className="border-t border-line pt-3 mb-4 text-sm text-zinc-400">
+            Carrinho: <span className="text-gold font-semibold">R$ {cartTotalPrice.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between font-bold text-lg text-gold">
-            <span>Valor total:</span>
-            <span>R${totalPrice.toFixed(2)}</span>
-          </div>
-        </div>
+        )}
         <button
           onClick={onNext}
-          disabled={selectedServices.length === 0}
-          className="w-full bg-gold text-white font-bold py-3 px-4 rounded-lg mt-6 transition-all duration-300 hover:bg-gold disabled:bg-surface-muted disabled:cursor-not-allowed disabled:text-zinc-400 shadow-md"
+          disabled={!canProceed}
+          className="w-full bg-gold text-white font-bold py-3 px-4 rounded-lg mt-2 transition-all duration-300 hover:bg-gold disabled:bg-surface-muted disabled:cursor-not-allowed disabled:text-zinc-400 shadow-md"
         >
-          Próximo
+          Escolher data e hora
         </button>
     </div>
 );
 
-// Rodapé fixo resumido
 const FixedFooter: React.FC<{
-  selectedServices: Service[];
-  totalPrice: number;
+  selectedService: Service | null;
+  cartTotalPrice: number;
   onNext: () => void;
   isVisible: boolean;
-}> = ({ selectedServices, totalPrice, onNext, isVisible }) => {
-  if (selectedServices.length === 0) return null;
+  canProceed: boolean;
+}> = ({ selectedService, cartTotalPrice, onNext, isVisible, canProceed }) => {
+  if (!selectedService && cartTotalPrice <= 0) return null;
 
   return (
     <div
@@ -107,20 +107,18 @@ const FixedFooter: React.FC<{
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 text-sm text-zinc-300">
-              <span className="font-medium">
-                {selectedServices.length === 1 
-                  ? selectedServices[0].name 
-                  : `${selectedServices.length} serviços selecionados`}
-              </span>
+            <div className="text-sm text-zinc-300">
+              {selectedService ? selectedService.name : 'Selecione um serviço'}
+              {cartTotalPrice > 0 && ` · Carrinho R$ ${cartTotalPrice.toFixed(2)}`}
             </div>
-            <div className="text-lg font-bold text-gold">
-              R$ {totalPrice.toFixed(2)}
-            </div>
+            {selectedService && (
+              <div className="text-lg font-bold text-gold">{formatServicePriceLabel(selectedService)}</div>
+            )}
           </div>
           <button
             onClick={onNext}
-            className="bg-gold hover:bg-gold text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-300 shadow-md whitespace-nowrap"
+            disabled={!canProceed}
+            className="bg-gold hover:bg-gold text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-300 shadow-md whitespace-nowrap disabled:opacity-50"
           >
             Próximo
           </button>
@@ -132,17 +130,28 @@ const FixedFooter: React.FC<{
 
 const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   services,
-  selectedServices,
-  onSelectServices,
+  selectedService,
+  onSelectService,
+  selectedProfessionalId,
+  onProfessionalChange,
   onNext,
-  totalDuration,
-  totalPrice
+  cartItems,
+  onRemoveCartItem,
+  cartTotalPrice,
+  onFinalizeCart,
+  usePlanBenefit = false,
+  onUsePlanBenefitChange,
 }) => {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(null);
   const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
   const [loadingProfessionals, setLoadingProfessionals] = useState<boolean>(false);
   const [showFixedFooter, setShowFixedFooter] = useState<boolean>(true);
+  const [planBenefit, setPlanBenefit] = useState<{
+    available: boolean;
+    remaining: number;
+    planName?: string;
+    requiresAuth?: boolean;
+  } | null>(null);
 
   // Buscar profissionais ao carregar
   useEffect(() => {
@@ -182,61 +191,100 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     });
   }, [services, selectedProfessionalId, serviceSearchQuery]);
 
-  // Limpar serviços selecionados quando mudar o profissional
+  // Limpar serviço selecionado se não pertencer ao profissional filtrado
   useEffect(() => {
-    if (selectedProfessionalId && selectedServices.length > 0) {
-      // Remover serviços que não pertencem ao profissional selecionado
-      const validServices = selectedServices.filter(s => 
-        s.responsibleProfessionalId === selectedProfessionalId
-      );
-      if (validServices.length !== selectedServices.length) {
-        onSelectServices(validServices);
-      }
+    if (selectedProfessionalId && selectedService
+      && selectedService.responsibleProfessionalId
+      && selectedService.responsibleProfessionalId !== selectedProfessionalId) {
+      onSelectService(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProfessionalId]);
 
+  useEffect(() => {
+    onUsePlanBenefitChange?.(false);
+    if (!selectedService) {
+      setPlanBenefit(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch(`/api/client-auth?plan_benefit=1&service_id=${selectedService.id}`, {
+          credentials: 'same-origin',
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setPlanBenefit({
+            available: Boolean(data.available),
+            remaining: Number(data.remaining || 0),
+            planName: data.planName,
+            requiresAuth: Boolean(data.requiresAuth),
+          });
+        } else {
+          setPlanBenefit(null);
+        }
+      } catch {
+        setPlanBenefit(null);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedService?.id]);
+
   const toggleService = (service: Service) => {
-    const isSelected = selectedServices.some(s => s.id === service.id);
-    if (isSelected) {
-      onSelectServices(selectedServices.filter(s => s.id !== service.id));
+    if (selectedService?.id === service.id) {
+      onSelectService(null);
     } else {
-      onSelectServices([...selectedServices, service]);
+      onSelectService(service);
     }
   };
 
   const handleProfessionalChange = (professionalId: string) => {
-    if (professionalId === '') {
-      setSelectedProfessionalId(null);
-    } else {
-      setSelectedProfessionalId(professionalId);
-    }
-    // Limpar seleção de serviços ao mudar profissional
-    onSelectServices([]);
+    onProfessionalChange(professionalId === '' ? null : professionalId);
+    onSelectService(null);
   };
 
   const selectedProfessional = professionals.find(p => p.id === selectedProfessionalId);
 
-  // Detectar scroll para mostrar/esconder o rodapé fixo
+  const canProceed = !!selectedService && (
+    !!selectedService.responsibleProfessionalId || !!selectedProfessionalId
+  );
+
   useEffect(() => {
     const handleScroll = () => {
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      
-      // Se estiver perto do final (100px de margem), esconder o rodapé
       const isNearBottom = scrollTop + windowHeight >= documentHeight - 100;
       setShowFixedFooter(!isNearBottom);
     };
-
     window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Verificar posição inicial
-
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
     <div className="space-y-6 pb-20">
+      <BookingCartPanel items={cartItems} onRemove={onRemoveCartItem} onFinalize={onFinalizeCart} />
+
+      <MonthlyPlansPromoCard />
+
+      {selectedService && planBenefit?.available && (
+        <div className="bg-green-500/10 border border-green-500/40 rounded-lg p-4 text-sm text-green-100">
+          <p className="font-semibold text-green-200">Incluso no seu plano</p>
+          <p className="mt-1">
+            Você ainda possui {planBenefit.remaining} utilização{planBenefit.remaining === 1 ? '' : 'ões'} disponível{planBenefit.remaining === 1 ? '' : 'is'} neste mês para {selectedService.name}.
+          </p>
+          <label className="mt-3 flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={usePlanBenefit}
+              onChange={(e) => onUsePlanBenefitChange?.(e.target.checked)}
+            />
+            <span>Usar benefício do plano neste agendamento (sem cobrança adicional)</span>
+          </label>
+        </div>
+      )}
+
       {/* Seletor de Profissional */}
       <div className="bg-surface-raised p-4 rounded-lg border border-line shadow-sm">
         <label htmlFor="professional-select" className="block text-sm font-medium text-zinc-200 mb-2">
@@ -332,7 +380,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
               <ServiceItem 
                 key={service.id}
                 service={service}
-                isSelected={selectedServices.some(s => s.id === service.id)}
+                isSelected={selectedService?.id === service.id}
                 onToggle={() => toggleService(service)}
               />
             ))
@@ -340,20 +388,20 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
         </div>
         <div className="lg:col-span-1">
           <BookingSummary 
-            selectedServices={selectedServices}
-            totalDuration={totalDuration}
-            totalPrice={totalPrice}
+            selectedService={selectedService}
+            cartTotalPrice={cartTotalPrice}
             onNext={onNext}
+            canProceed={canProceed}
           />
         </div>
       </div>
 
-      {/* Rodapé Fixo */}
       <FixedFooter
-        selectedServices={selectedServices}
-        totalPrice={totalPrice}
+        selectedService={selectedService}
+        cartTotalPrice={cartTotalPrice}
         onNext={onNext}
-        isVisible={showFixedFooter && selectedServices.length > 0}
+        isVisible={showFixedFooter && (!!selectedService || cartTotalPrice > 0)}
+        canProceed={canProceed}
       />
     </div>
   );

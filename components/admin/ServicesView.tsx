@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Service } from '../../types';
+import { formatServicePriceLabel } from '../../lib/priceVariations';
 import { ClockIcon, DollarSignIcon, PencilIcon, PlusCircleIcon, TrashIcon } from '../icons';
 import ServiceModal from './ServiceModal';
 
@@ -37,6 +38,17 @@ const ServicesView: React.FC = () => {
     setEditingService(null);
   };
 
+  const servicePayload = (service: Service) => ({
+    name: service.name,
+    price: service.price,
+    duration: service.duration,
+    description: service.description,
+    responsibleProfessionalId: service.responsibleProfessionalId ?? null,
+    priceVariationEnabled: service.priceVariationEnabled ?? false,
+    priceVariationType: service.priceVariationType ?? null,
+    priceVariants: service.priceVariants ?? [],
+  });
+
   const handleSaveService = async (service: Service) => {
     try {
       setLoading(true);
@@ -47,11 +59,7 @@ const ServicesView: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingService.id,
-            name: service.name,
-            price: service.price,
-            duration: service.duration,
-            description: service.description,
-            responsibleProfessionalId: service.responsibleProfessionalId ?? null,
+            ...servicePayload(service),
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -60,13 +68,7 @@ const ServicesView: React.FC = () => {
         const res = await fetch('/api/services', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: service.name,
-            price: service.price,
-            duration: service.duration,
-            description: service.description,
-            responsibleProfessionalId: service.responsibleProfessionalId ?? null,
-          }),
+          body: JSON.stringify(servicePayload(service)),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || 'Erro ao criar serviço');
@@ -136,7 +138,7 @@ const ServicesView: React.FC = () => {
                     <span className="flex items-center justify-center"><ClockIcon className="w-4 h-4 mr-1.5 text-gold"/> {service.duration} min</span>
                 </td>
                 <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold"/> R${service.price.toFixed(2)}</span>
+                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold"/> {formatServicePriceLabel(service)}</span>
                 </td>
                 <td className="p-4 text-right">
                     <div className="inline-flex space-x-3">
@@ -169,7 +171,7 @@ const ServicesView: React.FC = () => {
             </div>
             <div className="flex justify-between text-sm text-zinc-200 mt-3">
               <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-gold"/> {service.duration} min</span>
-              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold"/> R${service.price.toFixed(2)}</span>
+              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-gold"/> {formatServicePriceLabel(service)}</span>
             </div>
           </div>
         ))}

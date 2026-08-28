@@ -75,6 +75,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
           compact={isMobile}
         />
         <NavItem
+          label="Promoções"
+          icon={<ScissorsIcon className="w-6 h-6" />}
+          isActive={activeView === 'promotions'}
+          onClick={() => setActiveView('promotions')}
+          compact={isMobile}
+        />
+        <NavItem
+          label="Planos Mensais"
+          icon={<ScissorsIcon className="w-6 h-6" />}
+          isActive={activeView === 'monthly_plans'}
+          onClick={() => setActiveView('monthly_plans')}
+          compact={isMobile}
+        />
+        <NavItem
           label="Profissionais"
           icon={<UserIcon className="w-6 h-6" />}
           isActive={activeView === 'professionals'}

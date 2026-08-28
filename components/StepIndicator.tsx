@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface StepIndicatorProps {
-  currentStep: 'services' | 'datetime' | 'details';
+  currentStep: 'services' | 'variation' | 'datetime' | 'details';
 }
 
 const steps = [
@@ -12,7 +12,9 @@ const steps = [
 ];
 
 const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
-  const currentStepIndex = steps.findIndex(step => step.id === currentStep);
+  const currentStepIndex = currentStep === 'variation'
+    ? 0
+    : steps.findIndex(step => step.id === currentStep);
 
   return (
     <div className="w-full max-w-2xl mx-auto">

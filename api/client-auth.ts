@@ -24,8 +24,15 @@ import {
 	hashPassword,
 	tokenHash,
 	verifyPassword,
+	requireClient,
 } from './_lib/session.js';
 import { sendWhatsAppText, waMessages } from './_lib/whatsapp.js';
+import {
+	getMyPlanResponse,
+	subscribeToPlan,
+	cancelClientSubscription,
+	getPlanBenefitForService,
+} from './_lib/client-subscriptions.js';
 
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
@@ -81,6 +88,36 @@ export default async function handler(req: any, res: any) {
 	try {
 		// ── Sessão atual ───────────────────────────────────────────────────
 		if (req.method === 'GET') {
+			const url = new URL(req?.url || '/', 'http://localhost');
+			const supabase = getSupabaseServer();
+
+			if (url.searchParams.get('my_plan') === '1') {
+				const session = getSession(req, 'client');
+				if (!session || session.role !== 'client') {
+					return res.status(401).json({ ok: false, error: 'Não autenticado' });
+				}
+				try {
+					const payload = await getMyPlanResponse(supabase, String(session.sub));
+					return res.status(200).json(payload);
+				} catch (e: any) {
+					return res.status(500).json({ ok: false, error: e?.message || 'Erro ao carregar plano' });
+				}
+			}
+
+			const serviceId = Number(url.searchParams.get('service_id') || '0');
+			if (url.searchParams.get('plan_benefit') === '1' && serviceId) {
+				const session = getSession(req, 'client');
+				if (!session || session.role !== 'client') {
+					return res.status(200).json({ ok: true, available: false, requiresAuth: true });
+				}
+				try {
+					const payload = await getPlanBenefitForService(supabase, String(session.sub), serviceId);
+					return res.status(200).json(payload);
+				} catch (e: any) {
+					return res.status(500).json({ ok: false, error: e?.message || 'Erro ao verificar benefício' });
+				}
+			}
+
 			const session = getSession(req, 'client');
 			if (!session || session.role !== 'client') {
 				return res.status(200).json({ ok: true, authenticated: false, phone: null });
@@ -103,6 +140,8 @@ export default async function handler(req: any, res: any) {
 			'request_reset',
 			'reset_with_code',
 			'logout',
+			'subscribe_plan',
+			'cancel_subscription',
 		];
 		if (!validActions.includes(action)) {
 			return res.status(400).json({ ok: false, error: 'Ação inválida' });
@@ -111,6 +150,31 @@ export default async function handler(req: any, res: any) {
 		if (action === 'logout') {
 			appendCookie(res, buildClearCookie(CLIENT_COOKIE));
 			return res.status(200).json({ ok: true });
+		}
+
+		if (action === 'subscribe_plan' || action === 'cancel_subscription') {
+			if (!requireClient(req, res)) return;
+			const session = getSession(req, 'client')!;
+			const clientId = String(session.sub);
+			const supabase = getSupabaseServer();
+
+			if (action === 'subscribe_plan') {
+				const planId = String(body?.plan_id || body?.planId || '');
+				if (!planId) return res.status(400).json({ ok: false, error: 'plan_id é obrigatório' });
+				try {
+					const result = await subscribeToPlan(supabase, clientId, planId);
+					return res.status(200).json(result);
+				} catch (e: any) {
+					return res.status(e?.status || 500).json({ ok: false, error: e?.message || 'Erro ao iniciar assinatura' });
+				}
+			}
+
+			try {
+				const result = await cancelClientSubscription(supabase, clientId);
+				return res.status(200).json(result);
+			} catch (e: any) {
+				return res.status(e?.status || 500).json({ ok: false, error: e?.message || 'Erro ao cancelar assinatura' });
+			}
 		}
 
 		if (!process.env.SESSION_SECRET) {

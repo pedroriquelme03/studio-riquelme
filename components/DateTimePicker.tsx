@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { buildAvailableTimeSlots } from '../lib/timeSlots';
 
 interface DateTimePickerProps {
   onBack: () => void;
   onDateTimeSelect: (date: Date, time: string) => void;
   serviceDuration: number;
-  professionalId?: string | null; // ID do profissional responsável pelo serviço
+  professionalId?: string | null;
+  /** Itens do carrinho que bloqueiam horários do mesmo profissional nesta seleção. */
+  heldCartItems?: Array<{ date: string; time: string; duration: number; professionalId: string | null }>;
 }
 
 const Calendar: React.FC<{ 
@@ -94,76 +97,11 @@ const Calendar: React.FC<{
   );
 };
 
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map((v) => Number(v));
-  return h * 60 + (m || 0);
-}
-
-function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {
-  return startA < endB && endA > startB;
-}
-
-type DayWindow = { open: string; close: string; enabled: boolean };
-
-const buildAvailableTimeSlots = (serviceDuration: number, window: DayWindow, bookings: Array<{ time: string; duration: number }>, selectedDate: Date) => {
-  const defaultWindow: DayWindow = { open: '09:00', close: '20:00', enabled: true };
-  const w = window?.enabled ? window : defaultWindow;
-  const openMin = toMinutes(w.open.slice(0,5));
-  const closeMin = toMinutes(w.close.slice(0,5));
-
-  // Passo base de 30 minutos para ofertar slots padronizados
-  const step = 30;
-
-  // Bloqueios existentes (bookings) convertidos em minutos
-  const blocks = (bookings || []).map(b => {
-    const start = toMinutes((b.time || '00:00').slice(0,5));
-    const end = start + Number(b.duration || 0);
-    return { start, end };
-  });
-
-  const slots: string[] = [];
-  const now = new Date();
-  const isToday = selectedDate.toDateString() === now.toDateString();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-
-  for (let t = openMin; t + serviceDuration <= closeMin; t += step) {
-    // Se é hoje, não permitir horários passados
-    if (isToday && t <= nowMin) continue;
-
-    const slotStart = t;
-    const slotEnd = t + serviceDuration;
-
-    // Checar sobreposição com qualquer reserva
-    const clashes = blocks.some(b => overlaps(slotStart, slotEnd, b.start, b.end));
-    if (clashes) continue;
-
-    const hh = String(Math.floor(t / 60)).padStart(2, '0');
-    const mm = String(t % 60).padStart(2, '0');
-    slots.push(`${hh}:${mm}`);
-  }
-
-  // Separar por períodos (respeitando janelas reais)
-  const morning = slots.filter(time => {
-    const hour = parseInt(time.split(':')[0]);
-    return hour >= parseInt(w.open) && hour < Math.min(12, parseInt(w.close));
-  });
-  const afternoon = slots.filter(time => {
-    const hour = parseInt(time.split(':')[0]);
-    return hour >= Math.max(12, parseInt(w.open)) && hour < Math.min(18, parseInt(w.close));
-  });
-  const evening = slots.filter(time => {
-    const hour = parseInt(time.split(':')[0]);
-    return hour >= Math.max(18, parseInt(w.open)) && hour < parseInt(w.close);
-  });
-
-  return { morning, afternoon, evening };
-};
-
-const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration, professionalId }) => {
+const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration, professionalId, heldCartItems = [] }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [maxDate, setMaxDate] = useState<Date | null>(null);
-  const [dayWindow, setDayWindow] = useState<DayWindow>({ open: '09:00', close: '20:00', enabled: true });
+  const [dayWindow, setDayWindow] = useState<{ open: string; close: string; enabled: boolean }>({ open: '09:00', close: '20:00', enabled: true });
   const [bookedBlocks, setBookedBlocks] = useState<Array<{ time: string; duration: number }>>([]);
   const [businessHours, setBusinessHours] = useState<Array<{ weekday: number; enabled: boolean; open_time: string; close_time: string }>>([]);
   const [specialDateHours, setSpecialDateHours] = useState<Array<{ date: string; open_time: string; close_time: string; enabled: boolean; professional_id: string | null }>>([]);
@@ -257,11 +195,24 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         const data = await res.json();
         if (res.ok) {
           const rows = Array.isArray(data?.bookings) ? data.bookings : [];
-          // Filtrar apenas agendamentos do profissional se houver
-          const filteredRows = professionalId 
+          const filteredRows = professionalId
             ? rows.filter((b: any) => b.professional_id === professionalId)
             : rows;
-          setBookedBlocks(filteredRows.map((b: any) => ({ time: String(b.time || '00:00:00'), duration: Number(b.total_duration_minutes || 0) })));
+          const apiBlocks = filteredRows.map((b: any) => ({
+            time: String(b.time || '00:00:00'),
+            duration: Number(b.total_duration_minutes) > 0 ? Number(b.total_duration_minutes) : 30,
+          }));
+          const heldBlocks = heldCartItems
+            .filter((h) => h.date === yyyyMMdd)
+            .filter((h) => {
+              if (!professionalId) return true;
+              return !h.professionalId || h.professionalId === professionalId;
+            })
+            .map((h) => ({
+              time: h.time.length === 5 ? `${h.time}:00` : h.time,
+              duration: h.duration,
+            }));
+          setBookedBlocks([...apiBlocks, ...heldBlocks]);
         } else {
           setBookedBlocks([]);
         }
@@ -269,7 +220,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         setBookedBlocks([]);
       }
     })();
-  }, [selectedDate, professionalId]);
+  }, [selectedDate, professionalId, heldCartItems]);
 
   const availableSlots = useMemo(() => buildAvailableTimeSlots(serviceDuration, dayWindow, bookedBlocks, selectedDate), [serviceDuration, dayWindow, bookedBlocks, selectedDate]);
   

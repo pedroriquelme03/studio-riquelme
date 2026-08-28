@@ -122,9 +122,13 @@ const ClientBookingsPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto bg-surface-raised p-6 md:p-8 rounded-2xl border border-line shadow-xl">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h2 className="text-2xl font-bold gold-text">Meus agendamentos</h2>
-        <button
+        <div className="flex items-center gap-2">
+          <a href="/meu-plano" className="px-3 py-1.5 rounded-lg border border-gold/50 text-gold text-sm hover:bg-gold/10">
+            Meu Plano
+          </a>
+          <button
           onClick={async () => {
             // O cookie de sessão é HttpOnly: só a API consegue removê-lo.
             await fetch('/api/client-auth', {
@@ -139,6 +143,7 @@ const ClientBookingsPage: React.FC = () => {
         >
           Sair
         </button>
+        </div>
       </div>
       <p className="text-zinc-300 mb-6">Conectado pelo WhatsApp <span className="font-semibold">{phone}</span></p>
 

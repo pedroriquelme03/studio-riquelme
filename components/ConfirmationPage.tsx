@@ -10,9 +10,19 @@ interface ConfirmationPageProps {
 }
 
 const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooking }) => {
-  const { services, date, time, client } = booking;
-  const totalDuration = services.reduce((total, s) => total + s.duration, 0);
-  const totalPrice = services.reduce((total, s) => total + s.price, 0);
+  const { services, date, time, client, promotion, bookingMode, cartItems } = booking;
+  const isPromotion = bookingMode === 'promotion' && promotion;
+  const items = (cartItems && cartItems.length > 0) ? cartItems : null;
+  const totalDuration = isPromotion
+    ? promotion.items.reduce((t, i) => t + (i.serviceDuration || 30), 0) + promotion.gapMinutes * Math.max(promotion.items.length - 1, 0)
+    : items
+      ? items.reduce((t, i) => t + i.service.duration, 0)
+      : services.reduce((total, s) => total + s.duration, 0);
+  const totalPrice = isPromotion
+    ? promotion.totalPrice
+    : items
+      ? items.reduce((t, i) => t + i.service.price, 0)
+      : services.reduce((total, s) => total + s.price, 0);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [email, setEmail] = useState(client.email || '');
@@ -70,17 +80,52 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         <h3 className="text-xl font-bold text-white border-b border-line pb-3">Resumo do Agendamento</h3>
         
         <div>
-          <h4 className="font-semibold text-gold mb-2">Serviços</h4>
-          <ul className="space-y-1">
-            {services.map(s => (
-              <li key={s.id} className="flex justify-between text-zinc-200">
-                <span>{s.name}</span>
-                <span>R${s.price.toFixed(2)}</span>
-              </li>
-            ))}
-          </ul>
+          <h4 className="font-semibold text-gold mb-2">{isPromotion ? 'Promoção' : 'Serviços'}</h4>
+          {isPromotion ? (
+            <div>
+              <p className="text-white font-medium">{promotion.name}</p>
+              <ol className="mt-2 space-y-1 list-decimal list-inside text-zinc-200 text-sm">
+                {promotion.items.map((item) => (
+                  <li key={item.sortOrder}>
+                    {item.serviceName} — {item.professionalName} (R$ {((promotion.totalPrice * item.pricePercent) / 100).toFixed(2)})
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : items ? (
+            <ul className="space-y-3">
+              {items.map((item) => (
+                <li key={item.id} className="flex justify-between gap-3 text-zinc-200 text-sm border-b border-line/50 pb-2">
+                  <div>
+                    <span className="text-white font-medium">{item.service.name}</span>
+                    {item.priceSelection && (
+                      <p className="text-zinc-500 text-xs">Tamanho: {item.priceSelection.label}</p>
+                    )}
+                    {item.usePlanBenefit && (
+                      <p className="text-green-400 text-xs">Incluso no plano mensal</p>
+                    )}
+                    <p className="text-zinc-400 text-xs mt-0.5">
+                      {item.date.toLocaleDateString('pt-BR')} às {item.time}
+                      {item.professionalName ? ` · ${item.professionalName}` : ''}
+                    </p>
+                  </div>
+                  <span>R${item.service.price.toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="space-y-1">
+              {services.map(s => (
+                <li key={s.id} className="flex justify-between text-zinc-200">
+                  <span>{s.name}</span>
+                  <span>R${s.price.toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        
+
+        {!isPromotion && !items && (
         <div className="grid sm:grid-cols-2 gap-4 border-t border-line pt-4">
             <div className="flex items-center">
                 <CalendarIcon className="w-5 h-5 mr-3 text-gold"/>
@@ -96,6 +141,10 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                     <p className="font-semibold text-white">{time}</p>
                 </div>
             </div>
+        </div>
+        )}
+
+        <div className="grid sm:grid-cols-2 gap-4 border-t border-line pt-4">
              <div className="flex items-center">
                 <UserIcon className="w-5 h-5 mr-3 text-gold"/>
                 <div>

@@ -2,6 +2,103 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
 import { getSession, requireAdmin, requireClient } from './_lib/session.js';
 import { sendWhatsAppText, waMessages, formatDateToPtBr, formatTimeToHHMM } from './_lib/whatsapp.js';
+import { assertBookingSlotAvailable, getBookingDurationForId } from './_lib/booking-conflicts.js';
+import {
+	buildPromotionSegments,
+	getPromotionGroupBookingIds,
+	loadPromotionWithItems,
+	validatePromotionSequence,
+} from './_lib/promotions.js';
+
+async function validatePromotionReschedule(
+	supabase: any,
+	bookingId: string,
+	date: string,
+	time: string,
+	excludeBookingIds: string[] = [],
+): Promise<boolean> {
+	const { groupId, bookingIds } = await getPromotionGroupBookingIds(supabase, bookingId);
+	if (!groupId) return false;
+
+	const { data: leadBooking } = await supabase
+		.from('bookings')
+		.select('promotion_id')
+		.eq('id', bookingId)
+		.single();
+	const promotionId = (leadBooking as any)?.promotion_id;
+	if (!promotionId) throw new Error('Promoção não encontrada no agendamento');
+
+	const promotion = await loadPromotionWithItems(supabase, String(promotionId));
+	if (!promotion) throw new Error('Promoção não encontrada');
+
+	const normalizedTime = time.length === 5 ? `${time}:00` : time;
+	const segments = buildPromotionSegments(
+		promotion.items || [],
+		Number(promotion.total_price),
+		Number(promotion.gap_minutes || 0),
+		normalizedTime,
+	);
+	const exclude = excludeBookingIds.length ? excludeBookingIds : bookingIds;
+	const conflict = await validatePromotionSequence(supabase, date, segments, exclude);
+	if (conflict) {
+		const err = new Error(conflict);
+		(err as any).code = 'SLOT_UNAVAILABLE';
+		throw err;
+	}
+	return true;
+}
+
+async function applyPromotionReschedule(
+	supabase: any,
+	bookingId: string,
+	date: string,
+	time: string,
+): Promise<boolean> {
+	const { groupId } = await getPromotionGroupBookingIds(supabase, bookingId);
+	if (!groupId) return false;
+
+	const { data: leadBooking } = await supabase
+		.from('bookings')
+		.select('promotion_id')
+		.eq('id', bookingId)
+		.single();
+	const promotionId = (leadBooking as any)?.promotion_id;
+	if (!promotionId) throw new Error('Promoção não encontrada no agendamento');
+
+	const promotion = await loadPromotionWithItems(supabase, String(promotionId));
+	if (!promotion) throw new Error('Promoção não encontrada');
+
+	const normalizedTime = time.length === 5 ? `${time}:00` : time;
+	const segments = buildPromotionSegments(
+		promotion.items || [],
+		Number(promotion.total_price),
+		Number(promotion.gap_minutes || 0),
+		normalizedTime,
+	);
+	const { bookingIds } = await getPromotionGroupBookingIds(supabase, bookingId);
+	const conflict = await validatePromotionSequence(supabase, date, segments, bookingIds);
+	if (conflict) {
+		const err = new Error(conflict);
+		(err as any).code = 'SLOT_UNAVAILABLE';
+		throw err;
+	}
+
+	const { data: groupBookings } = await supabase
+		.from('bookings')
+		.select('id, segment_order')
+		.eq('promotion_group_id', groupId);
+
+	for (const segment of segments) {
+		const row = (groupBookings || []).find((b: any) => Number(b.segment_order) === segment.sortOrder);
+		if (!row) continue;
+		const { error } = await supabase
+			.from('bookings')
+			.update({ date, time: segment.time, updated_at: new Date().toISOString() })
+			.eq('id', row.id);
+		if (error) throw new Error(error.message);
+	}
+	return true;
+}
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -150,12 +247,32 @@ export default async function handler(req: any, res: any) {
 				return res.status(403).json({ ok: false, error: 'Não autorizado' });
 			}
 
+			const normalizedTime = requested_time.length === 5 ? `${requested_time}:00` : requested_time;
+			try {
+				const isPromotion = await validatePromotionReschedule(supabase, booking_id, requested_date, normalizedTime);
+				if (!isPromotion) {
+					const { durationMinutes, professionalId } = await getBookingDurationForId(supabase, booking_id);
+					await assertBookingSlotAvailable(supabase, {
+						date: requested_date,
+						time: normalizedTime,
+						professionalId,
+						durationMinutes,
+						excludeBookingId: booking_id,
+					});
+				}
+			} catch (slotErr: any) {
+				if (slotErr?.code === 'SLOT_UNAVAILABLE') {
+					return res.status(409).json({ ok: false, code: 'SLOT_UNAVAILABLE', error: slotErr.message });
+				}
+				throw slotErr;
+			}
+
 			const { error: insErr } = await supabase
 				.from('reschedule_requests')
 				.insert({
 					booking_id,
 					requested_date,
-					requested_time: requested_time.length === 5 ? `${requested_time}:00` : requested_time,
+					requested_time: normalizedTime,
 					status: 'pending',
 					note: note || null,
 				});
@@ -234,12 +351,34 @@ export default async function handler(req: any, res: any) {
 			if (reqRow.status !== 'pending') return res.status(400).json({ ok: false, error: 'Solicitação já processada' });
 
 			if (action === 'approve') {
-				// Atualiza o agendamento
-				const { error: upErr } = await supabase
-					.from('bookings')
-					.update({ date: reqRow.requested_date, time: reqRow.requested_time, updated_at: new Date().toISOString() })
-					.eq('id', reqRow.booking_id);
-				if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+				try {
+					const isPromotion = await applyPromotionReschedule(
+						supabase,
+						reqRow.booking_id,
+						String(reqRow.requested_date),
+						String(reqRow.requested_time),
+					);
+					if (!isPromotion) {
+						const { durationMinutes, professionalId } = await getBookingDurationForId(supabase, reqRow.booking_id);
+						await assertBookingSlotAvailable(supabase, {
+							date: String(reqRow.requested_date),
+							time: String(reqRow.requested_time),
+							professionalId,
+							durationMinutes,
+							excludeBookingId: reqRow.booking_id,
+						});
+						const { error: upErr } = await supabase
+							.from('bookings')
+							.update({ date: reqRow.requested_date, time: reqRow.requested_time, updated_at: new Date().toISOString() })
+							.eq('id', reqRow.booking_id);
+						if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+					}
+				} catch (slotErr: any) {
+					if (slotErr?.code === 'SLOT_UNAVAILABLE') {
+						return res.status(409).json({ ok: false, code: 'SLOT_UNAVAILABLE', error: slotErr.message });
+					}
+					throw slotErr;
+				}
 
 				// Marca solicitação como aprovada
 				const { error: rsErr } = await supabase

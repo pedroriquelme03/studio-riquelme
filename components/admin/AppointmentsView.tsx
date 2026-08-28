@@ -21,7 +21,13 @@ type BookingRow = {
     price: number;
     duration_minutes: number;
     quantity: number;
+    variant_label?: string | null;
   }>;
+}
+
+function formatBookingServiceLabel(service: BookingRow['services'][number]): string {
+  if (service.variant_label) return `${service.name} (${service.variant_label})`;
+  return service.name;
 }
 
 async function parseJsonResponse(res: Response): Promise<any> {
@@ -627,7 +633,7 @@ const AppointmentsView: React.FC = () => {
                             </a>
                           </div>
                         )}
-                        <div className="text-zinc-300 text-sm break-words">{(b.services || []).map(s => s.name).join(', ')}</div>
+                        <div className="text-zinc-300 text-sm break-words">{(b.services || []).map(formatBookingServiceLabel).join(', ')}</div>
                       </div>
                     </div>
                     <div className="text-gold font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>

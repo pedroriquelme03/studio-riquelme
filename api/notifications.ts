@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/session.js';
+import { verifyAbacatePayWebhook, processAbacatePayWebhook } from './_lib/subscription-webhooks.js';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -14,18 +15,47 @@ function getSupabaseServer() {
 	return createSupabaseClient(supabaseUrl, supabaseKey);
 }
 
+async function readRawBody(req: any): Promise<string> {
+	if (typeof req.body === 'string') return req.body;
+	if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
+	if (req.body && typeof req.body === 'object') return JSON.stringify(req.body);
+	return '';
+}
+
 export default async function handler(req: any, res: any) {
 	try {
+		const url = new URL(req?.url || '/', 'http://localhost');
+
+		if (req.method === 'POST' && url.searchParams.get('provider') === 'abacatepay') {
+			const rawBody = await readRawBody(req);
+			if (!verifyAbacatePayWebhook(req, rawBody)) {
+				return res.status(401).json({ ok: false, error: 'Webhook não autorizado' });
+			}
+			let payload: any;
+			try {
+				payload = JSON.parse(rawBody);
+			} catch {
+				return res.status(400).json({ ok: false, error: 'JSON inválido' });
+			}
+
+			const supabase = getSupabaseServer();
+			try {
+				const result = await processAbacatePayWebhook(supabase, payload);
+				return res.status(200).json({ ok: true, ...result });
+			} catch (e: any) {
+				console.error('[abacatepay-webhook]', e?.message || e);
+				return res.status(500).json({ ok: false, error: 'Falha ao processar webhook' });
+			}
+		}
+
 		if (req.method !== 'GET') {
-			res.setHeader('Allow', 'GET');
+			res.setHeader('Allow', 'GET, POST');
 			return res.status(405).json({ ok: false, error: 'Método não permitido' });
 		}
 
-		// Feed do painel: agrega nome e telefone de todos os clientes recentes.
 		if (!requireAdmin(req, res)) return;
 
 		const supabase = getSupabaseServer();
-		const url = new URL(req?.url || '/', 'http://localhost');
 		const sinceParam = url.searchParams.get('since') || '';
 		let since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 		if (sinceParam) {
@@ -33,7 +63,6 @@ export default async function handler(req: any, res: any) {
 			if (!isNaN(d.getTime())) since = d.toISOString();
 		}
 
-		// Buscar criações de bookings nas últimas 24h
 		const bookingsQ = supabase
 			.from('bookings')
 			.select(`id, date, time, created_at, clients:client_id ( id, name, phone )`)
@@ -41,7 +70,6 @@ export default async function handler(req: any, res: any) {
 			.order('created_at', { ascending: false })
 			.limit(50);
 
-		// Buscar cancelamentos feitos por clientes nas últimas 24h
 		const cancelsQ = supabase
 			.from('booking_cancellations')
 			.select(`id, created_at, cancelled_by, bookings:booking_id ( id, date, time, clients:client_id ( id, name, phone ) )`)
@@ -50,7 +78,6 @@ export default async function handler(req: any, res: any) {
 			.order('created_at', { ascending: false })
 			.limit(50);
 
-		// Buscar solicitações de troca criadas nas últimas 24h
 		const reschedQ = supabase
 			.from('reschedule_requests')
 			.select('id, requested_date, requested_time, status, created_at, booking_id')
@@ -99,7 +126,6 @@ export default async function handler(req: any, res: any) {
 			});
 		});
 
-		// Ordenar por data desc e devolver
 		items.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
 		return res.status(200).json({ ok: true, items });
@@ -107,4 +133,3 @@ export default async function handler(req: any, res: any) {
 		return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 	}
 }
-

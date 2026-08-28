@@ -328,54 +328,50 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
       </div>
 
       {/* Pesquisa de serviços */}
-      <div className="bg-surface-raised p-4 rounded-lg border border-line shadow-sm">
-        <label htmlFor="service-search" className="block text-sm font-medium text-zinc-200 mb-2">
-          Pesquisar Serviços
-        </label>
-        <div className="relative">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none"
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+      <div className="relative">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          id="service-search"
+          type="search"
+          value={serviceSearchQuery}
+          onChange={(e) => setServiceSearchQuery(e.target.value)}
+          placeholder="Buscar por nome, descrição ou profissional..."
+          aria-label="Buscar serviços"
+          className="w-full bg-surface-overlay border border-line rounded-lg py-3 pl-10 pr-10 text-white focus:ring-gold focus:border-gold"
+        />
+        {serviceSearchQuery && (
+          <button
+            type="button"
+            onClick={() => setServiceSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300"
+            aria-label="Limpar pesquisa"
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            id="service-search"
-            type="search"
-            value={serviceSearchQuery}
-            onChange={(e) => setServiceSearchQuery(e.target.value)}
-            placeholder="Buscar por nome, descrição ou profissional..."
-            className="w-full bg-surface-overlay border border-line rounded-lg py-3 pl-10 pr-10 text-white focus:ring-gold focus:border-gold"
-          />
-          {serviceSearchQuery && (
-            <button
-              type="button"
-              onClick={() => setServiceSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300"
-              aria-label="Limpar pesquisa"
-            >
-              ×
-            </button>
-          )}
-        </div>
-        {serviceSearchQuery.trim() && (
-          <p className="mt-2 text-sm text-zinc-300">
-            {filteredServices.length === 0
-              ? 'Nenhum serviço encontrado.'
-              : `${filteredServices.length} serviço${filteredServices.length === 1 ? '' : 's'} encontrado${filteredServices.length === 1 ? '' : 's'}.`}
-          </p>
+            ×
+          </button>
         )}
       </div>
+      {serviceSearchQuery.trim() && (
+        <p className="text-sm text-zinc-300 -mt-2">
+          {filteredServices.length === 0
+            ? 'Nenhum serviço encontrado.'
+            : `${filteredServices.length} serviço${filteredServices.length === 1 ? '' : 's'} encontrado${filteredServices.length === 1 ? '' : 's'}.`}
+        </p>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">

@@ -10,6 +10,7 @@ type BookingRow = {
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
   source?: string | null;
+  confirmed_at?: string | null;
   professional_id: string | null;
   client_id: string;
   client_name: string;
@@ -438,6 +439,11 @@ const AppointmentsView: React.FC = () => {
                           </div>
                         )}
                         <div className="text-zinc-300 text-sm break-words">{(b.services || []).map(formatBookingServiceLabel).join(', ')}</div>
+                        {b.confirmed_at && (
+                          <span className="inline-block text-xs border rounded px-2 py-0.5 text-green-300 bg-green-950/40 border-green-800 mt-1.5 mr-1.5" title="Horário confirmado ao cliente">
+                            ✓ Confirmado
+                          </span>
+                        )}
                         <BookingSourceTag source={b.source} className="mt-1.5" />
                       </div>
                     </div>
@@ -446,6 +452,7 @@ const AppointmentsView: React.FC = () => {
 
                   {/* Linha 2: botões alinhados à esquerda */}
                   <div className="mt-3 flex items-center gap-2">
+                    {!b.confirmed_at && (
                     <button
                       onClick={() => confirmBooking(b.booking_id)}
                       disabled={actionLoadingId === b.booking_id}
@@ -454,6 +461,7 @@ const AppointmentsView: React.FC = () => {
                     >
                       {actionLoadingId === b.booking_id ? '...' : 'Confirmar'}
                     </button>
+                    )}
                     <button
                       onClick={() => openEdit(b)}
                       className="px-3 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded"

@@ -34,8 +34,9 @@ function resolveBookingSource(req: any): BookingSource {
 	return getSession(req, 'admin')?.role === 'admin' ? 'professional' : 'site';
 }
 
+/** Colunas adicionadas depois (source, confirmed_at): se o SQL ainda não foi aplicado, a API segue sem elas. */
 function isMissingSourceColumn(message: string): boolean {
-	return /\bsource\b/i.test(message || '');
+	return /\b(source|confirmed_at)\b/i.test(message || '');
 }
 
 /** Insere o agendamento; se a coluna `source` ainda não existir no banco, grava sem ela. */
@@ -44,6 +45,42 @@ async function insertBooking(supabase: any, row: Record<string, unknown>) {
 	if (!first.error || !isMissingSourceColumn(first.error.message)) return first;
 	const { source: _source, ...withoutSource } = row;
 	return supabase.from('bookings').insert(withoutSource).select('id').single();
+}
+
+/**
+ * Avisa o cliente, por WhatsApp, que o salão alterou o horário do agendamento.
+ * Nunca lança: falha de notificação não pode desfazer o reagendamento.
+ */
+async function notifyClientRescheduled(supabase: any, bookingIds: string[], date: string, time: string) {
+	try {
+		const { data } = await supabase
+			.from('bookings')
+			.select('time, clients:client_id ( name, phone ), booking_services ( services:service_id ( name ) )')
+			.in('id', bookingIds)
+			.order('time', { ascending: true });
+		const rows = (data || []) as any[];
+		const client = rows[0]?.clients;
+		const clientPhone = String(client?.phone || '').trim();
+		if (!clientPhone) return;
+
+		// Promoção: um agendamento por etapa — a mensagem lista todos os serviços da sequência.
+		const serviceLabel = rows
+			.flatMap((r) => (r.booking_services || []).map((bs: any) => String(bs?.services?.name || '').trim()))
+			.filter(Boolean)
+			.join(', ') || 'serviço selecionado';
+
+		await sendWhatsAppText(
+			clientPhone,
+			waMessages.rescheduleApprovedClient({
+				nome: String(client?.name || 'Cliente').trim(),
+				servico: serviceLabel,
+				data: formatDateToPtBr(date),
+				hora: formatTimeToHHMM(time),
+			}),
+		);
+	} catch (err: any) {
+		console.error('[whatsapp] Erro ao avisar cliente sobre alteração de horário:', err?.message || err);
+	}
 }
 
 export default async function handler(req: any, res: any) {
@@ -197,7 +234,7 @@ export default async function handler(req: any, res: any) {
           id,
           date,
           time,
-          ${withSource ? 'source,' : ''}
+          ${withSource ? 'source, confirmed_at,' : ''}
           professional_id,
           promotion_id,
           promotion_group_id,
@@ -269,6 +306,7 @@ export default async function handler(req: any, res: any) {
 					date: b.date,
 					time: b.time,
 					source: b.source || null,
+					confirmed_at: b.confirmed_at || null,
 					professional_id: b.professional_id,
 					promotion_id: b.promotion_id || null,
 					promotion_group_id: b.promotion_group_id || null,
@@ -785,6 +823,20 @@ export default async function handler(req: any, res: any) {
 				updateData.cancelled_at = new Date().toISOString();
 			}
 
+			// Confirmação: grava o momento para o painel exibir "Confirmado" e para não
+			// reenviar a mensagem ao cliente se o botão for acionado de novo.
+			const isConfirming = status === 'confirmed' || status === 'confirmado';
+			let alreadyConfirmed = false;
+			if (isConfirming) {
+				const { data: current } = await supabase
+					.from('bookings')
+					.select('confirmed_at')
+					.eq('id', bookingId)
+					.maybeSingle();
+				alreadyConfirmed = Boolean((current as any)?.confirmed_at);
+				if (!alreadyConfirmed) updateData.confirmed_at = new Date().toISOString();
+			}
+
 			const { error: updateErr } = await supabase
 				.from('bookings')
 				.update(updateData)
@@ -804,7 +856,7 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// Disparar confirmação de WhatsApp quando status for confirmado
-			if (status === 'confirmed' || status === 'confirmado') {
+			if (isConfirming && !alreadyConfirmed) {
 				try {
 					const bd = bookingData as any;
 					const clientPhone = String(bd?.clients?.phone || '').trim();
@@ -1004,6 +1056,8 @@ export default async function handler(req: any, res: any) {
 					});
 				} catch { }
 
+				await notifyClientRescheduled(supabase, groupBookingIds, date, time);
+
 				return res.status(200).json({ ok: true, message: 'Promoção reagendada com sucesso' });
 			}
 
@@ -1045,6 +1099,8 @@ export default async function handler(req: any, res: any) {
 						responded_at: new Date().toISOString(),
 					});
 			} catch { }
+
+			await notifyClientRescheduled(supabase, [bookingId], date, time);
 
 			return res.status(200).json({ ok: true, message: 'Agendamento reagendado com sucesso' });
 		} catch (err: any) {

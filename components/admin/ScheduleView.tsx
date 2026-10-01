@@ -12,6 +12,7 @@ type BookingRow = {
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
   source?: string | null;
+  confirmed_at?: string | null;
   professional_id: string | null;
   client_id: string;
   client_name: string;
@@ -157,6 +158,24 @@ const ScheduleView: React.FC = () => {
     }
   };
 
+  const confirmBooking = async (id: string) => {
+    setActionLoadingId(id);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: id, status: 'confirmed' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao confirmar agendamento');
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao confirmar agendamento');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const cancelBooking = async (id: string) => {
     if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
     setActionLoadingId(id);
@@ -272,6 +291,11 @@ const ScheduleView: React.FC = () => {
                         </a>
                       </p>
                     )}
+                    {b.confirmed_at && (
+                      <span className="inline-block text-xs border rounded px-2 py-0.5 text-green-300 bg-green-950/40 border-green-800 mt-1.5 mr-1.5" title="Horário confirmado ao cliente">
+                        ✓ Confirmado
+                      </span>
+                    )}
                     <BookingSourceTag source={b.source} className="mt-1.5" />
                   </div>
                   <div className="text-right">
@@ -286,7 +310,16 @@ const ScheduleView: React.FC = () => {
                     {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
                   </ul>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                {!b.confirmed_at && (
+                  <button
+                    onClick={() => confirmBooking(b.booking_id)}
+                    disabled={actionLoadingId === b.booking_id}
+                    className="mt-3 w-full bg-green-600 hover:bg-green-700 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded"
+                  >
+                    {actionLoadingId === b.booking_id ? '...' : 'Confirmar'}
+                  </button>
+                )}
+                <div className={`${b.confirmed_at ? 'mt-3' : 'mt-2'} grid grid-cols-2 gap-2`}>
                   <button
                     onClick={() => openEdit(b)}
                     className="bg-gray-900 hover:bg-black text-white font-semibold px-3 py-2 rounded"
@@ -432,6 +465,11 @@ const ScheduleView: React.FC = () => {
                         </a>
                       </p>
                     )}
+                    {b.confirmed_at && (
+                      <span className="inline-block text-xs border rounded px-2 py-0.5 text-green-300 bg-green-950/40 border-green-800 mt-1.5 mr-1.5" title="Horário confirmado ao cliente">
+                        ✓ Confirmado
+                      </span>
+                    )}
                     <BookingSourceTag source={b.source} className="mt-1.5" />
                   </div>
                   <div className="text-right">
@@ -446,7 +484,16 @@ const ScheduleView: React.FC = () => {
                     {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
                   </ul>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                {!b.confirmed_at && (
+                  <button
+                    onClick={() => confirmBooking(b.booking_id)}
+                    disabled={actionLoadingId === b.booking_id}
+                    className="mt-3 w-full bg-green-600 hover:bg-green-700 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded"
+                  >
+                    {actionLoadingId === b.booking_id ? '...' : 'Confirmar'}
+                  </button>
+                )}
+                <div className={`${b.confirmed_at ? 'mt-3' : 'mt-2'} grid grid-cols-2 gap-2`}>
                   <button
                     onClick={() => openEdit(b)}
                     className="bg-gray-900 hover:bg-black text-white font-semibold px-3 py-2 rounded"

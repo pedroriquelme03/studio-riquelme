@@ -424,7 +424,7 @@ async function actionContext(supabase: any, body: any) {
 	const clients = phone ? await findClients(supabase, phone) : [];
 	return {
 		now: { date: now.date, time: now.time, weekday: WEEKDAYS[now.weekday] },
-		client: clients[0] ? { name: clients[0].name } : null,
+		client: clients[0] ? { name: String(clients[0].name || '').trim() } : null,
 		upcoming_bookings: phone ? await listUpcomingBookings(supabase, phone) : [],
 		memories: phone ? await listMemories(supabase, phone) : [],
 	};
@@ -451,7 +451,7 @@ async function actionCatalog(supabase: any) {
 	).catch(() => new Map());
 
 	const professionals = (professionalsRes.data || []).filter((p: any) => p.is_active !== false);
-	const profName = new Map<string, string>(professionals.map((p: any) => [String(p.id), String(p.name)]));
+	const profName = new Map<string, string>(professionals.map((p: any) => [String(p.id), String(p.name).trim()]));
 	const settings = new Map<string, string>((settingsRes.data || []).map((r: any) => [r.key, r.value || '']));
 
 	const hoursByScope = new Map<string, string[]>();
@@ -473,14 +473,14 @@ async function actionCatalog(supabase: any) {
 				price: Number(s.price),
 				duration_minutes: Number(s.duration_minutes),
 				description: s.description || undefined,
-				professional: s.professionals?.name || null,
+				professional: s.professionals?.name?.trim() || null,
 				// Quando presente, o preço depende do tamanho do cabelo (hair_size obrigatório ao agendar).
 				hair_size_prices: sizes.length
 					? Object.fromEntries(sizes.map((v: any) => [v.variantKey, Number(v.price)]))
 					: undefined,
 			};
 		}),
-		professionals: professionals.map((p: any) => ({ id: p.id, name: p.name })),
+		professionals: professionals.map((p: any) => ({ id: p.id, name: String(p.name).trim() })),
 		business_hours: Object.fromEntries(hoursByScope),
 		address: settings.get('footer_address') || null,
 		booking_limit_month: settings.get('booking_limit_month') || null,

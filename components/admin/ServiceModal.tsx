@@ -75,6 +75,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     }
   }, [service]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     const isNumeric = ['price', 'duration'].includes(name);
@@ -123,15 +131,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-surface-raised p-8 rounded-xl border border-line shadow-2xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <h2 className="text-2xl font-bold mb-6">{service ? 'Editar Serviço' : 'Novo Serviço'}</h2>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-surface-raised p-8 rounded-xl border border-line shadow-2xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">{service ? 'Editar Serviço' : 'Novo Serviço'}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-zinc-400 hover:text-white text-xl leading-none px-2"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-zinc-500 mb-1">Nome do Serviço</label>

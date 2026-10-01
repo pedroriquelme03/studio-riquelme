@@ -11,8 +11,9 @@ import PromotionsView from './PromotionsView';
 import BioLinksView from './BioLinksView';
 import MonthlyPlansView from './MonthlyPlansView';
 import CancellationsView from './CancellationsView';
+import ClientsView from './ClientsView';
 
-export type AdminView = 'appointments' | 'cancellations' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
+export type AdminView = 'appointments' | 'cancellations' | 'clients' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
 
 const Admin: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('appointments');
@@ -23,6 +24,8 @@ const Admin: React.FC = () => {
         return <AppointmentsView />;
       case 'cancellations':
         return <CancellationsView />;
+      case 'clients':
+        return <ClientsView />;
       case 'services':
         return <ServicesView />;
       case 'promotions':

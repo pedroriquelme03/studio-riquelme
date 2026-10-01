@@ -29,6 +29,8 @@ type BookingRow = {
   }>;
 }
 
+const WEEKDAY_ABBR = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'] as const;
+
 const ScheduleView: React.FC = () => {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selected, setSelected] = useState<string>('');
@@ -401,8 +403,11 @@ const ScheduleView: React.FC = () => {
                   onClick={() => { setMonthSelectedDate(day); }}
                   title="Listar agendamentos do dia abaixo"
                 >
-                  <div className={`text-sm mb-1 flex-shrink-0 ${inMonth ? 'text-zinc-200' : 'text-zinc-400'}`}>
-                    {day.getDate().toString().padStart(2,'0')}
+                  <div className={`text-sm mb-1 flex-shrink-0 flex items-baseline gap-1.5 ${inMonth ? 'text-zinc-200' : 'text-zinc-400'}`}>
+                    <span className="tabular-nums font-medium">{day.getDate().toString().padStart(2, '0')}</span>
+                    <span className={`text-[11px] leading-none ${inMonth ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      {WEEKDAY_ABBR[day.getDay()]}
+                    </span>
                   </div>
                   <div className="min-h-0 flex-1 overflow-hidden">
                     <div className={`text-xs font-semibold ${rows.length ? 'text-gold' : 'text-zinc-400'}`}>

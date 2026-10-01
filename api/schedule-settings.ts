@@ -6,6 +6,7 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/session.js';
+import { hardenErrors } from './_lib/http.js';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -43,6 +44,7 @@ async function setSetting(supabase: any, key: string, value: string): Promise<st
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		// GET é público: o calendário e o rodapé do site dependem dele.
 		// Alterar horários, datas especiais ou contatos exige admin.

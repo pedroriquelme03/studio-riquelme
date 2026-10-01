@@ -9,6 +9,7 @@ import {
 	loadPromotionWithItems,
 	validatePromotionSequence,
 } from './_lib/promotions.js';
+import { hardenErrors } from './_lib/http.js';
 
 async function validatePromotionReschedule(
 	supabase: any,
@@ -177,6 +178,7 @@ async function refreshSchemaCacheIfNeeded(supabase: ReturnType<typeof getSupabas
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		const supabase = getSupabaseServer();
 		await refreshSchemaCacheIfNeeded(supabase);

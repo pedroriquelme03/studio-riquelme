@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import AppointmentsView from './AppointmentsView';
+import KanbanView from './KanbanView';
 import ServicesView from './ServicesView';
 import ProfessionalsView from './ProfessionalsView';
 import ScheduleView from './ScheduleView';
@@ -13,7 +14,7 @@ import MonthlyPlansView from './MonthlyPlansView';
 import CancellationsView from './CancellationsView';
 import ClientsView from './ClientsView';
 
-export type AdminView = 'appointments' | 'cancellations' | 'clients' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
+export type AdminView = 'appointments' | 'kanban' | 'cancellations' | 'clients' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
 
 const Admin: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('appointments');
@@ -22,6 +23,8 @@ const Admin: React.FC = () => {
     switch (activeView) {
       case 'appointments':
         return <AppointmentsView />;
+      case 'kanban':
+        return <KanbanView />;
       case 'cancellations':
         return <CancellationsView />;
       case 'clients':

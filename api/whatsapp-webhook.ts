@@ -19,6 +19,7 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { handleAgentRequest } from './_lib/agent-tools.js';
+import { hardenErrors } from './_lib/http.js';
 
 function getVerifyToken(): string | undefined {
 	return process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN?.trim() || undefined;
@@ -136,6 +137,7 @@ function summarizeWebhook(body: Record<string, unknown>): unknown {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	const sendJson = (status: number, body: object) => {
 		try {
 			res.status(status).json(body);

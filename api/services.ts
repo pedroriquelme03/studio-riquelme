@@ -17,6 +17,7 @@ import {
 	handleMonthlyPlanSave,
 	handleMonthlyPlanDelete,
 } from './_lib/monthly-plans-api.js';
+import { hardenErrors } from './_lib/http.js';
 
 function mapServiceRow(r: any, variants: any[] = []) {
 	return {
@@ -102,6 +103,7 @@ function mapPromotionRow(row: any) {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		// GET é público (o fluxo de agendamento lista os serviços).
 		// Qualquer escrita exige sessão de admin.

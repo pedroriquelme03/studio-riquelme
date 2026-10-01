@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarIcon, WhatsAppIcon, whatsAppNumber } from '../icons';
 import BookingSourceTag from './BookingSourceTag';
+import CardPagination from '@/components/ui/card-pagination';
 
 type Professional = { id: string; name: string; };
 type Service = { id: number; name: string; };
@@ -53,6 +54,7 @@ const AppointmentsView: React.FC = () => {
   const [professionalId, setProfessionalId] = useState<string>('');
   const [serviceId, setServiceId] = useState<string>('');
   const [clientQuery, setClientQuery] = useState<string>('');
+  const [debouncedClientQuery, setDebouncedClientQuery] = useState<string>('');
   const [time, setTime] = useState<string>(''); // HH:MM
   const [timeFrom, setTimeFrom] = useState<string>(''); // HH:MM
   const [timeTo, setTimeTo] = useState<string>(''); // HH:MM
@@ -67,11 +69,16 @@ const AppointmentsView: React.FC = () => {
   const PAGE_SIZE = 10;
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedClientQuery(clientQuery.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [clientQuery]);
+
+  useEffect(() => {
     (async () => {
       try {
         const [proRes, srvRes] = await Promise.all([
-          fetch('/api/professionals'),
-          fetch('/api/services')
+          fetch('/api/professionals', { credentials: 'same-origin' }),
+          fetch('/api/services', { credentials: 'same-origin' }),
         ]);
         if (proRes.ok) {
           const j = await parseJsonResponse(proRes).catch(() => ({}));
@@ -85,59 +92,135 @@ const AppointmentsView: React.FC = () => {
     })();
   }, []);
 
-  const load = async () => {
+  useEffect(() => {
+    const controller = new AbortController();
+    setPage(1);
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (professionalId) qs.set('professional_id', professionalId);
+        if (serviceId) qs.set('service_id', serviceId);
+        if (debouncedClientQuery) qs.set('client', debouncedClientQuery);
+        if (time) qs.set('time', time);
+        if (!time && timeFrom) qs.set('time_from', timeFrom);
+        if (!time && timeTo) qs.set('time_to', timeTo);
+        if (dateFrom) qs.set('from', dateFrom);
+        if (dateTo) qs.set('to', dateTo);
+        const url = `/api/bookings${qs.toString() ? `?${qs.toString()}` : ''}`;
+        const res = await fetch(url, {
+          credentials: 'same-origin',
+          signal: controller.signal,
+        });
+        const data = await parseJsonResponse(res);
+        if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
+        let list = (data.bookings || []) as BookingRow[];
+
+        // Filtro local de segurança: evita resultados errados por resposta atrasada/cache.
+        if (debouncedClientQuery) {
+          const normalize = (value: string) =>
+            String(value || '')
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .trim();
+          const q = normalize(debouncedClientQuery);
+          const qDigits = debouncedClientQuery.replace(/\D/g, '');
+          const qIsMostlyDigits = qDigits.length >= 3 && qDigits.length >= q.replace(/\s/g, '').length * 0.6;
+          list = list.filter((r) => {
+            const name = normalize(r.client_name || '');
+            const email = normalize(r.client_email || '');
+            const phoneDigits = String(r.client_phone || '').replace(/\D/g, '');
+            return name.includes(q) || email.includes(q) || (qIsMostlyDigits && phoneDigits.includes(qDigits));
+          });
+        }
+
+        if (controller.signal.aborted) return;
+        setBookings(list);
+        const ids = list.map((r) => r.booking_id).join(',');
+        if (ids) {
+          try {
+            const rres = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`, {
+              credentials: 'same-origin',
+              signal: controller.signal,
+            });
+            const rdata = await parseJsonResponse(rres).catch(() => ({}));
+            if (controller.signal.aborted) return;
+            if (rres.ok && Array.isArray(rdata?.requests)) {
+              const map: Record<string, Array<any>> = {};
+              for (const req of rdata.requests) {
+                const arr = map[req.booking_id] || [];
+                arr.push(req);
+                map[req.booking_id] = arr;
+              }
+              Object.keys(map).forEach((k) => map[k].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))));
+              setRequestsMap(map);
+            } else {
+              setRequestsMap({});
+            }
+          } catch (e: any) {
+            if (e?.name !== 'AbortError') setRequestsMap({});
+          }
+        } else {
+          setRequestsMap({});
+        }
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
+        setError(e.message || 'Erro ao carregar agendamentos');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [professionalId, serviceId, debouncedClientQuery, time, timeFrom, timeTo, dateFrom, dateTo]);
+
+  const reloadBookings = async () => {
+    setPage(1);
     setLoading(true);
     setError(null);
     try {
       const qs = new URLSearchParams();
       if (professionalId) qs.set('professional_id', professionalId);
       if (serviceId) qs.set('service_id', serviceId);
-      if (clientQuery) qs.set('client', clientQuery);
+      if (debouncedClientQuery) qs.set('client', debouncedClientQuery);
       if (time) qs.set('time', time);
       if (!time && timeFrom) qs.set('time_from', timeFrom);
       if (!time && timeTo) qs.set('time_to', timeTo);
       if (dateFrom) qs.set('from', dateFrom);
       if (dateTo) qs.set('to', dateTo);
-      const url = `/api/bookings${qs.toString() ? `?${qs.toString()}` : ''}`;
-      const res = await fetch(url);
+      const res = await fetch(`/api/bookings${qs.toString() ? `?${qs.toString()}` : ''}`, {
+        credentials: 'same-origin',
+      });
       const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
-      const list = (data.bookings || []) as BookingRow[];
-      setBookings(list);
-      const ids = list.map(r => r.booking_id).join(',');
-      if (ids) {
-        try {
-          const rres = await fetch(`/api/reschedule-requests?booking_ids=${encodeURIComponent(ids)}`);
-          const rdata = await parseJsonResponse(rres).catch(() => ({}));
-          if (rres.ok && Array.isArray(rdata?.requests)) {
-            const map: Record<string, Array<any>> = {};
-            for (const req of rdata.requests) {
-              const arr = map[req.booking_id] || [];
-              arr.push(req);
-              map[req.booking_id] = arr;
-            }
-            Object.keys(map).forEach(k => map[k].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))));
-            setRequestsMap(map);
-          } else {
-            setRequestsMap({});
-          }
-        } catch { setRequestsMap({}); }
-      } else {
-        setRequestsMap({});
+      let list = (data.bookings || []) as BookingRow[];
+      if (debouncedClientQuery) {
+        const normalize = (value: string) =>
+          String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+        const q = normalize(debouncedClientQuery);
+        const qDigits = debouncedClientQuery.replace(/\D/g, '');
+        const qIsMostlyDigits = qDigits.length >= 3 && qDigits.length >= q.replace(/\s/g, '').length * 0.6;
+        list = list.filter((r) => {
+          const name = normalize(r.client_name || '');
+          const email = normalize(r.client_email || '');
+          const phoneDigits = String(r.client_phone || '').replace(/\D/g, '');
+          return name.includes(q) || email.includes(q) || (qIsMostlyDigits && phoneDigits.includes(qDigits));
+        });
       }
+      setBookings(list);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || 'Erro ao carregar agendamentos');
     } finally {
       setLoading(false);
     }
   };
-
-  // Carregar agendamentos quando o componente monta e quando os filtros mudam
-  useEffect(() => {
-    setPage(1);
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo, dateFrom, dateTo]);
 
   const approve = async (bookingId: string) => {
     const req = (requestsMap[bookingId] || []).find(x => x.status === 'pending');
@@ -150,7 +233,7 @@ const AppointmentsView: React.FC = () => {
       });
       const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao aprovar solicitação');
-      await load();
+      await reloadBookings();
     } catch (e: any) {
       alert(e?.message || 'Erro ao aprovar solicitação');
     }
@@ -167,7 +250,7 @@ const AppointmentsView: React.FC = () => {
       });
       const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao negar solicitação');
-      await load();
+      await reloadBookings();
     } catch (e: any) {
       alert(e?.message || 'Erro ao negar solicitação');
     }
@@ -197,7 +280,7 @@ const AppointmentsView: React.FC = () => {
       const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao atualizar horário');
       setEditId(null);
-      await load();
+      await reloadBookings();
     } catch (e: any) {
       alert(e?.message || 'Erro ao atualizar horário');
     } finally {
@@ -216,7 +299,7 @@ const AppointmentsView: React.FC = () => {
       });
       const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
-      await load();
+      await reloadBookings();
     } catch (e: any) {
       alert(e?.message || 'Erro ao cancelar');
     } finally {
@@ -234,7 +317,7 @@ const AppointmentsView: React.FC = () => {
       });
       const data = await parseJsonResponse(res);
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao confirmar agendamento');
-      await load();
+      await reloadBookings();
     } catch (e: any) {
       alert(e?.message || 'Erro ao confirmar agendamento');
     } finally {
@@ -524,65 +607,9 @@ const AppointmentsView: React.FC = () => {
         })}
       </div>
 
-      {!loading && sortedBookings.length > 0 && totalPages > 1 && (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => goToPage(1)}
-            disabled={page <= 1}
-            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
-          >
-            «
-          </button>
-          <button
-            type="button"
-            onClick={() => goToPage(page - 1)}
-            disabled={page <= 1}
-            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
-          >
-            Anterior
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-            .reduce<(number | '…')[]>((acc, p, idx, arr) => {
-              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…');
-              acc.push(p);
-              return acc;
-            }, [])
-            .map((item, idx) =>
-              item === '…' ? (
-                <span key={`ellipsis-${idx}`} className="px-1 text-zinc-400">…</span>
-              ) : (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => goToPage(item)}
-                  className={`min-w-10 px-3 py-2 rounded border text-sm ${
-                    item === page
-                      ? 'bg-gold border-gold text-white font-semibold'
-                      : 'border-line text-white hover:bg-surface-overlay'
-                  }`}
-                >
-                  {item}
-                </button>
-              ),
-            )}
-          <button
-            type="button"
-            onClick={() => goToPage(page + 1)}
-            disabled={page >= totalPages}
-            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
-          >
-            Próxima
-          </button>
-          <button
-            type="button"
-            onClick={() => goToPage(totalPages)}
-            disabled={page >= totalPages}
-            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
-          >
-            »
-          </button>
+      {!loading && sortedBookings.length > 0 && (
+        <div className="mt-6 flex justify-center">
+          <CardPagination page={page} totalPages={totalPages} onPageChange={goToPage} />
         </div>
       )}
 

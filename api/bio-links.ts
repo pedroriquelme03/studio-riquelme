@@ -7,6 +7,7 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/session.js';
+import { hardenErrors } from './_lib/http.js';
 
 function getSupabaseServer() {
 	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -40,6 +41,7 @@ function parseBody(req: any): any {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		// GET é público (a página /bio lista os botões). Escritas exigem admin.
 		if (req.method !== 'GET' && !requireAdmin(req, res)) return;

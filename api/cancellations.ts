@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Client } from 'pg';
 import { getSession } from './_lib/session.js';
+import { hardenErrors } from './_lib/http.js';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -59,6 +60,7 @@ async function ensureSchemaIfMissing() {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		const supabase = getSupabaseServer();
 		await ensureSchemaIfMissing();

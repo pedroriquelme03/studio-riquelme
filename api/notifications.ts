@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/session.js';
 import { verifyAbacatePayWebhook, processAbacatePayWebhook } from './_lib/subscription-webhooks.js';
+import { hardenErrors } from './_lib/http.js';
 
 function getSupabaseServer() {
 	const supabaseUrl =
@@ -23,6 +24,7 @@ async function readRawBody(req: any): Promise<string> {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		const url = new URL(req?.url || '/', 'http://localhost');
 

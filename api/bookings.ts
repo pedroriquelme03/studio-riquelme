@@ -19,6 +19,20 @@ import {
 import { resolveBookingServicePrice } from './_lib/price-variations.js';
 import { reservePlanBenefit, consumePlanBenefitForBooking, releasePlanBenefitForBooking } from './_lib/monthly-plans.js';
 import { randomUUID } from 'crypto';
+import { hardenErrors } from './_lib/http.js';
+import { RATE_RULES, enforceRateLimits, getClientIp } from './_lib/rate-limit.js';
+import { checkScheduleRules, nowInSalon } from './_lib/schedule-rules.js';
+import {
+	ValidationError,
+	sanitizeNotes,
+	validateBookingServices,
+	validateDate,
+	validateOptionalEmail,
+	validatePersonName,
+	validatePhoneDigits,
+	validateTime,
+	validateUuid,
+} from './_lib/validation.js';
 
 export type BookingSource = 'whatsapp_agent' | 'site' | 'professional';
 
@@ -34,9 +48,9 @@ function resolveBookingSource(req: any): BookingSource {
 	return getSession(req, 'admin')?.role === 'admin' ? 'professional' : 'site';
 }
 
-/** Colunas adicionadas depois (source, confirmed_at): se o SQL ainda não foi aplicado, a API segue sem elas. */
+/** Colunas adicionadas depois (source, confirmed_at, completed_at): se o SQL ainda não foi aplicado, a API segue sem elas. */
 function isMissingSourceColumn(message: string): boolean {
-	return /\b(source|confirmed_at)\b/i.test(message || '');
+	return /\b(source|confirmed_at|completed_at)\b/i.test(message || '');
 }
 
 /** Insere o agendamento; se a coluna `source` ainda não existir no banco, grava sem ela. */
@@ -83,7 +97,68 @@ async function notifyClientRescheduled(supabase: any, bookingIds: string[], date
 	}
 }
 
+type BookingClientInput = {
+	name: string;
+	/** Só dígitos, já validado. */
+	phone: string;
+	/** Como veio na requisição: cadastros antigos podem ter sido gravados com máscara. */
+	rawPhone: string;
+	email?: string;
+	notes: string | null;
+};
+
+/**
+ * Localiza ou cria o cliente do agendamento (o telefone é o identificador).
+ *
+ * Um cadastro existente só é alterado por quem pode: profissional logado, o
+ * agente de WhatsApp ou o próprio cliente logado. Antes, qualquer visitante que
+ * informasse o telefone de outra pessoa trocava o nome e o e-mail dela.
+ * Para o visitante anônimo, só a observação do agendamento é gravada.
+ */
+async function resolveBookingClient(
+	supabase: any,
+	req: any,
+	source: BookingSource,
+	client: BookingClientInput,
+): Promise<{ clientId?: string; error?: string }> {
+	const { data: found } = await supabase
+		.from('clients')
+		.select('id')
+		.in('phone', Array.from(new Set([client.phone, client.rawPhone].filter(Boolean))))
+		.limit(1);
+	const existingId = found?.[0]?.id ? String(found[0].id) : null;
+
+	if (existingId) {
+		const session = getSession(req);
+		const isOwner = session?.role === 'client' && String(session.sub) === existingId;
+		const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+		if (source !== 'site' || isOwner) {
+			update.name = client.name;
+			update.notes = client.notes;
+			if (client.email) update.email = client.email;
+		} else if (client.notes) {
+			update.notes = client.notes;
+		}
+		await supabase.from('clients').update(update).eq('id', existingId);
+		return { clientId: existingId };
+	}
+
+	const { data: inserted, error } = await supabase
+		.from('clients')
+		.insert({
+			name: client.name,
+			phone: client.phone,
+			email: client.email || `whatsapp_${client.phone}@temp.local`,
+			notes: client.notes,
+		})
+		.select('id')
+		.single();
+	if (error) return { error: error.message };
+	return { clientId: String((inserted as any).id) };
+}
+
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	const sendJson = (status: number, body: object) => {
 		try {
 			res.status(status).json(body);
@@ -234,7 +309,7 @@ export default async function handler(req: any, res: any) {
           id,
           date,
           time,
-          ${withSource ? 'source, confirmed_at,' : ''}
+          ${withSource ? 'source, confirmed_at, completed_at,' : ''}
           professional_id,
           promotion_id,
           promotion_group_id,
@@ -307,6 +382,7 @@ export default async function handler(req: any, res: any) {
 					time: b.time,
 					source: b.source || null,
 					confirmed_at: b.confirmed_at || null,
+					completed_at: b.completed_at || null,
 					professional_id: b.professional_id,
 					promotion_id: b.promotion_id || null,
 					promotion_group_id: b.promotion_group_id || null,
@@ -323,23 +399,38 @@ export default async function handler(req: any, res: any) {
 				};
 			});
 
+			// O Kanban (kanban=1) e include_cancelled=1 mantêm cancelados para o admin.
+			const keepCancelledForAdmin =
+				isAdmin &&
+				(urlObj.searchParams.get('kanban') === '1' || urlObj.searchParams.get('include_cancelled') === '1');
+
 			const filtered = rows.filter((r: any) => {
 				// O cliente vê o próprio histórico, inclusive cancelados.
-				// A listagem administrativa esconde cancelados (eles têm aba própria).
-				if (isAdmin && !clientQuery && r.is_cancelled) return false;
+				// A listagem administrativa esconde cancelados (eles têm aba própria),
+				// exceto quando o Kanban pede explicitamente por eles.
+				if (isAdmin && r.is_cancelled && !keepCancelledForAdmin) return false;
 				if (serviceId && !(r.services || []).some((s: any) => String(s.id) === String(serviceId))) {
 					return false;
 				}
 				if (clientQuery) {
-					const q = clientQuery.toLowerCase();
-					const hay = `${r.client_name || ''} ${r.client_email || ''} ${r.client_phone || ''}`.toLowerCase();
-					let match = hay.includes(q);
-					const qDigits = q.replace(/\D/g, '');
-					if (!match && qDigits) {
-						const hayDigits = String(r.client_phone || '').replace(/\D/g, '');
-						match = hayDigits.includes(qDigits);
-					}
-					if (!match) return false;
+					const normalize = (value: string) =>
+						String(value || '')
+							.normalize('NFD')
+							.replace(/[\u0300-\u036f]/g, '')
+							.toLowerCase()
+							.trim();
+					const q = normalize(clientQuery);
+					if (!q) return true;
+					const name = normalize(r.client_name || '');
+					const email = normalize(r.client_email || '');
+					const phoneDigits = String(r.client_phone || '').replace(/\D/g, '');
+					const qDigits = clientQuery.replace(/\D/g, '');
+					const qIsMostlyDigits = qDigits.length >= 3 && qDigits.length >= q.replace(/\s/g, '').length * 0.6;
+
+					const nameMatch = name.includes(q);
+					const emailMatch = email.includes(q);
+					const phoneMatch = qIsMostlyDigits && phoneDigits.includes(qDigits);
+					if (!nameMatch && !emailMatch && !phoneMatch) return false;
 				}
 				return true;
 			});
@@ -366,12 +457,37 @@ export default async function handler(req: any, res: any) {
 				services?: Array<{ id: number; quantity?: number }>;
 			};
 
-			const date = body.date;
-			const timeRaw = body.time;
-			const professionalId = body.professional_id ?? null;
-			const promotionId = body.promotion_id ? String(body.promotion_id) : '';
-			const clientPayload = body.client || {};
-			const services = body.services || [];
+			// Tudo que vem do navegador é validado aqui: máscaras e limites dos
+			// campos do site podem ser removidos pelo inspecionar.
+			let date: string;
+			let timeRaw: string;
+			let professionalId: string | null;
+			let promotionId: string;
+			let clientPayload: BookingClientInput;
+			let services: Array<Record<string, any>>;
+			try {
+				if (!body.date || !body.time) throw new ValidationError('date e time são obrigatórios');
+				if (!body.client?.name || !body.client?.phone) {
+					throw new ValidationError('client.name e client.phone são obrigatórios');
+				}
+				date = validateDate(body.date);
+				timeRaw = validateTime(body.time);
+				professionalId = body.professional_id ? validateUuid(body.professional_id, 'Profissional') : null;
+				promotionId = body.promotion_id ? validateUuid(body.promotion_id, 'Promoção') : '';
+				clientPayload = {
+					name: validatePersonName(body.client.name),
+					phone: validatePhoneDigits(body.client.phone),
+					rawPhone: String(body.client.phone).trim().slice(0, 30),
+					email: validateOptionalEmail(body.client.email),
+					notes: sanitizeNotes(body.client.notes),
+				};
+				services = validateBookingServices(body.services);
+			} catch (validationErr: any) {
+				if (validationErr instanceof ValidationError) {
+					return res.status(400).json({ ok: false, code: 'INVALID_INPUT', error: validationErr.message });
+				}
+				throw validationErr;
+			}
 
 			if (!date || !timeRaw) {
 				return res.status(400).json({ ok: false, error: 'date e time são obrigatórios' });
@@ -379,7 +495,6 @@ export default async function handler(req: any, res: any) {
 			if (!clientPayload.name || !clientPayload.phone) {
 				return res.status(400).json({ ok: false, error: 'client.name e client.phone são obrigatórios' });
 			}
-			const clientEmail = clientPayload.email || `whatsapp_${clientPayload.phone.replace(/\D/g, '')}@temp.local`;
 			const time = timeRaw.length === 5 ? `${timeRaw}:00` : timeRaw;
 
 			const supabaseUrl =
@@ -400,6 +515,19 @@ export default async function handler(req: any, res: any) {
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 			const source = resolveBookingSource(req);
 
+			// Limite só para o visitante do site: o profissional logado lança vários
+			// agendamentos seguidos, e o agente já chega autenticado por chave.
+			if (source === 'site') {
+				const allowed = await enforceRateLimits(supabase, res, [
+					[`booking:ip:${getClientIp(req)}`, RATE_RULES.bookingIp],
+					[`booking:phone:${clientPayload.phone}`, RATE_RULES.bookingPhone],
+				]);
+				if (!allowed) return;
+			}
+			if (date < nowInSalon().date) {
+				return res.status(400).json({ ok: false, error: 'Não é possível agendar em uma data que já passou.' });
+			}
+
 			// ── Agendamento de promoção (sequência multi-profissional) ──────────
 			if (promotionId) {
 				const promotion = await loadPromotionWithItems(supabase, promotionId);
@@ -419,36 +547,9 @@ export default async function handler(req: any, res: any) {
 					return res.status(409).json({ ok: false, code: 'SLOT_UNAVAILABLE', error: conflict });
 				}
 
-				let clientId: string | null = null;
-				const { data: existingClient } = await supabase
-					.from('clients')
-					.select('id')
-					.eq('phone', clientPayload.phone)
-					.limit(1)
-					.single();
-				if (existingClient?.id) {
-					clientId = existingClient.id as string;
-					await supabase.from('clients').update({
-						name: clientPayload.name,
-						phone: clientPayload.phone,
-						email: clientEmail,
-						notes: clientPayload.notes ?? null,
-						updated_at: new Date().toISOString(),
-					}).eq('id', clientId);
-				} else {
-					const { data: insertedClient, error: insClientErr } = await supabase
-						.from('clients')
-						.insert({
-							name: clientPayload.name,
-							phone: clientPayload.phone,
-							email: clientEmail,
-							notes: clientPayload.notes ?? null,
-						})
-						.select('id')
-						.single();
-					if (insClientErr) return res.status(500).json({ ok: false, error: insClientErr.message });
-					clientId = (insertedClient as any).id as string;
-				}
+				const promoClient = await resolveBookingClient(supabase, req, source, clientPayload);
+				if (!promoClient.clientId) return res.status(500).json({ ok: false, error: promoClient.error });
+				const clientId = promoClient.clientId;
 
 				const groupId = randomUUID();
 				const bookingIds: string[] = [];
@@ -561,7 +662,21 @@ export default async function handler(req: any, res: any) {
 			}
 
 			const finalProfessionalId = professionalId || inferredProfessionalId;
-			const durationMinutes = await getServicesDurationMinutes(supabase, services);
+			const durationMinutes = await getServicesDurationMinutes(supabase, services as any);
+
+			// O site só oferece horários válidos, mas a API pode ser chamada direto:
+			// expediente e data são conferidos aqui. O agente já validou antes de chamar.
+			if (source !== 'whatsapp_agent') {
+				const ruleError = await checkScheduleRules(supabase, {
+					date,
+					time,
+					professionalId: finalProfessionalId,
+					durationMinutes,
+					enforceWindow: source === 'site',
+				});
+				if (ruleError) return res.status(400).json({ ok: false, code: 'OUTSIDE_SCHEDULE', error: ruleError });
+			}
+
 			try {
 				await assertBookingSlotAvailable(supabase, {
 					date,
@@ -576,43 +691,10 @@ export default async function handler(req: any, res: any) {
 				throw slotErr;
 			}
 
-			// obter ou criar cliente por telefone (agora é o identificador principal)
-			let clientId: string | null = null;
-			const { data: existingClient, error: findClientErr } = await supabase
-				.from('clients')
-				.select('id')
-				.eq('phone', clientPayload.phone)
-				.limit(1)
-				.single();
-			if (existingClient?.id) {
-				clientId = existingClient.id as unknown as string;
-				// atualizar dados básicos
-				await supabase
-					.from('clients')
-					.update({
-						name: clientPayload.name,
-						phone: clientPayload.phone,
-						email: clientEmail,
-						notes: clientPayload.notes ?? null,
-						updated_at: new Date().toISOString(),
-					})
-					.eq('id', clientId);
-			} else {
-				const { data: insertedClient, error: insClientErr } = await supabase
-					.from('clients')
-					.insert({
-						name: clientPayload.name,
-						phone: clientPayload.phone,
-						email: clientEmail,
-						notes: clientPayload.notes ?? null,
-					})
-					.select('id')
-					.single();
-				if (insClientErr) {
-					return res.status(500).json({ ok: false, error: insClientErr.message });
-				}
-				clientId = (insertedClient as any).id as string;
-			}
+			// obter ou criar cliente por telefone (é o identificador principal)
+			const bookingClient = await resolveBookingClient(supabase, req, source, clientPayload);
+			if (!bookingClient.clientId) return res.status(500).json({ ok: false, error: bookingClient.error });
+			const clientId = bookingClient.clientId;
 
 			// criar booking
 			const { data: bookingData, error: bookingErr } = await insertBooking(supabase, {

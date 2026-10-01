@@ -1,6 +1,7 @@
 // Tipagens relaxadas para evitar dependência local de @vercel/node
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { getSession, requireAdmin } from './_lib/session.js';
+import { hardenErrors } from './_lib/http.js';
 
 const EXPENSE_CATEGORIES = ['expense', 'product', 'structure', 'salary'] as const;
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
@@ -144,6 +145,7 @@ function isMissingTableError(message: string | undefined) {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		// Escrita é sempre do painel. O GET é público, mas email e telefone da
 		// equipe só saem para admin — o site precisa apenas de id/nome/ativo.

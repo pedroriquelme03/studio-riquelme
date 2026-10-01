@@ -9,6 +9,17 @@
   --gold-light: #f3e3a1;
   --gold: #d4af37;
   --gold-dark: #a8892a;
+
+  /* Tokens usados pelo Kanban (components/ui/KanbanCardMovement.tsx).
+     Ficam em :root porque o menu "Mover" é renderizado em portal no <body>. */
+  --color-bg-secondary: var(--bg-raised);
+  --color-surface: var(--bg-overlay);
+  --color-border: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--gold);
+  --color-warning: #f59e0b;
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.5);
 }
 
 html,

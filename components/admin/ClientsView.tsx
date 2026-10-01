@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { WhatsAppIcon, whatsAppNumber } from '../icons';
+import CardPagination from '@/components/ui/card-pagination';
 
 type ClientRow = {
   id: string;
@@ -65,6 +66,8 @@ const ClientsView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientRow | null>(null);
@@ -117,11 +120,29 @@ const ClientsView: React.FC = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      setPage(1);
       loadClients(search);
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  const totalPages = Math.max(1, Math.ceil(clients.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageClients = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return clients.slice(start, start + PAGE_SIZE);
+  }, [clients, page, PAGE_SIZE]);
+
+  const goToPage = (next: number) => {
+    const clamped = Math.min(Math.max(1, next), totalPages);
+    setPage(clamped);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const openClient = (client: ClientRow) => {
     setSelectedId(client.id);
@@ -172,6 +193,17 @@ const ClientsView: React.FC = () => {
         <div className="text-zinc-300 text-center">Nenhum cliente encontrado.</div>
       )}
 
+      {!loading && clients.length > 0 && (
+        <div className="flex items-center justify-between mb-4 text-sm text-zinc-300">
+          <span>
+            Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, clients.length)} de {clients.length}
+          </span>
+          <span>
+            Página {page} de {totalPages}
+          </span>
+        </div>
+      )}
+
       <div className="hidden md:block bg-surface-raised border border-line rounded-lg overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-surface-muted/50">
@@ -184,7 +216,7 @@ const ClientsView: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {clients.map((client) => (
+            {pageClients.map((client) => (
               <tr key={client.id} className="hover:bg-surface-muted/40">
                 <td className="p-4 font-semibold text-white">{client.name}</td>
                 <td className="p-4">
@@ -227,7 +259,7 @@ const ClientsView: React.FC = () => {
       </div>
 
       <div className="md:hidden space-y-3">
-        {clients.map((client) => (
+        {pageClients.map((client) => (
           <div key={client.id} className="bg-surface-raised border border-line rounded-lg p-4">
             <div className="font-semibold text-white">{client.name}</div>
             <div className="text-sm text-zinc-300 mt-1 flex items-center gap-2">
@@ -253,6 +285,12 @@ const ClientsView: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {!loading && clients.length > 0 && (
+        <div className="mt-6 flex justify-center">
+          <CardPagination page={page} totalPages={totalPages} onPageChange={goToPage} />
+        </div>
+      )}
 
       {selectedId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">

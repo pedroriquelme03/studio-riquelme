@@ -185,3 +185,78 @@ Os itens abaixo foram levantados na auditoria e **não** entraram nesta rodada:
   cliente antigo que nunca criou login. Exigir OTP também no registro resolveria.
 - **`ensureSchemaIfMissing()`** roda DDL e abre uma conexão Postgres a cada
   request em `/api/cancellations`.
+
+---
+
+# Segunda rodada — limites, validação e cabeçalhos (outubro/2026)
+
+## Passo obrigatório: SQL do limite de requisições
+
+Execute [`sql/rate-limit-schema.sql`](sql/rate-limit-schema.sql) no SQL Editor do
+Supabase. Sem ele o sistema funciona normalmente, mas **sem nenhum limite**: a
+API detecta que a função não existe e deixa passar (fail-open), registrando um
+aviso no log.
+
+## Limites aplicados
+
+Os contadores ficam na tabela `rate_limits`. Ao estourar, a API responde `429`
+com `Retry-After`.
+
+| Onde | Limite |
+|---|---|
+| Login (admin e cliente), mesmo IP + mesma conta | 5 tentativas em 15 min → bloqueio de 15 min |
+| Login, mesma conta de qualquer IP | 10 em 15 min → bloqueio de 15 min |
+| Login, mesmo IP em qualquer conta | 20 em 15 min → bloqueio de 30 min |
+| Criar conta de cliente, por IP | 5 por hora |
+| Pedir código de recuperação, por IP | 5 por hora |
+| Pedir código de recuperação, por telefone | 5 por dia (além de 1 por minuto) |
+| Conferir código / token de redefinição, por IP | 10 em 15 min → bloqueio de 30 min |
+| Pedir redefinição de senha do admin, por IP | 5 por hora |
+| Criar agendamento pelo site, por IP | 10 por hora |
+| Criar agendamento pelo site, por telefone | 8 por dia |
+
+Login correto zera a contagem da conta. Profissional logado e o agente de
+WhatsApp não entram no limite de agendamentos. Os valores estão em
+`RATE_RULES`, em [`api/_lib/rate-limit.ts`](api/_lib/rate-limit.ts).
+
+Para liberar alguém bloqueado por engano, apague a linha dele em `rate_limits`
+(a chave contém o IP ou a conta).
+
+Não há limite global por IP em todas as rotas: custaria uma consulta ao banco a
+cada requisição. Para isso, use uma regra de Rate Limiting no Firewall da Vercel.
+
+## Validação no servidor
+
+Máscaras e limites nos campos do navegador podem ser removidos pelo
+inspecionar; o que vale é a validação em
+[`api/_lib/validation.ts`](api/_lib/validation.ts): usuário, senhas (8 a 128
+caracteres), nome, telefone, e-mail, observações, data, hora e lista de serviços.
+
+`POST /api/bookings` agora também recusa data no passado e, para o visitante do
+site, horário fora do expediente ou além do mês limite. O profissional logado
+pode encaixar fora do expediente.
+
+## Cadastro de cliente protegido
+
+Agendar com o telefone de um cliente já cadastrado não altera mais o nome nem o
+e-mail dele, a menos que quem agenda seja o profissional logado, o agente de
+WhatsApp ou o próprio cliente logado. Para o visitante anônimo, só a observação
+do agendamento é gravada.
+
+## Erros e cabeçalhos
+
+- Respostas `5xx` devolvem uma mensagem genérica; o detalhe vai para o log da
+  Vercel (`hardenErrors`, em [`api/_lib/http.ts`](api/_lib/http.ts)).
+- `vercel.json` passou a enviar `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, HSTS e uma CSP restrita a
+  `frame-ancestors`, `base-uri`, `object-src` e `form-action`. Uma CSP de scripts
+  não foi aplicada porque o site carrega o Tailwind pela CDN com script inline.
+- Respostas de `/api/*` saem com `Cache-Control: no-store`.
+
+## Arquivos com credenciais removidos
+
+`create-admin.js`, `create-users.js`, `generate-hashes.js`, `test-login.js`,
+`sql/create-users.sql` e `INSTRUCOES_LOGIN_ADMIN.md` foram apagados. **Eles
+continuam no histórico do Git**: as senhas que estavam neles precisam ser
+trocadas no painel (Usuários), e qualquer conta com a senha padrão antiga deve
+ser desativada.

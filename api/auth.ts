@@ -19,6 +19,16 @@ import {
 	tokenHash,
 	verifyPassword,
 } from './_lib/session.js';
+import { hardenErrors } from './_lib/http.js';
+import { RATE_RULES, enforceRateLimits, getClientIp, rateLimitReset } from './_lib/rate-limit.js';
+import {
+	ValidationError,
+	validateLoginPassword,
+	validateNewPassword,
+	validateOptionalEmail,
+	validatePersonName,
+	validateUsername,
+} from './_lib/validation.js';
 
 function getSupabaseServer() {
 	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -40,6 +50,8 @@ function parseBody(req: any): any {
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
+
 	// ── Sessão atual / listagem de admins ────────────────────────────────
 	if (req.method === 'GET') {
 		try {
@@ -105,7 +117,28 @@ export default async function handler(req: any, res: any) {
 				});
 			}
 
+			// Formato inválido nunca chega ao banco. A resposta é a mesma de senha
+			// errada, para não revelar a regra a quem está testando.
+			try {
+				validateUsername(username);
+				validateLoginPassword(password);
+			} catch {
+				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
+			}
+
 			const supabase = getSupabaseServer();
+
+			// Limite de tentativas por IP + conta, por conta e por IP.
+			const ip = getClientIp(req);
+			const account = username.toLowerCase();
+			const ipAccountKey = `login:admin:ip-acct:${ip}:${account}`;
+			const accountKey = `login:admin:acct:${account}`;
+			const allowed = await enforceRateLimits(supabase, res, [
+				[ipAccountKey, RATE_RULES.loginIpAccount],
+				[accountKey, RATE_RULES.loginAccount],
+				[`login:admin:ip:${ip}`, RATE_RULES.loginIp],
+			]);
+			if (!allowed) return;
 
 			const { data: admin, error: findError } = await supabase
 				.from('admins')
@@ -156,6 +189,8 @@ export default async function handler(req: any, res: any) {
 				name: admin.name,
 			});
 			appendCookie(res, buildSessionCookie(ADMIN_COOKIE, token, maxAge));
+			// Login correto zera a contagem de erros desta conta.
+			await rateLimitReset(supabase, [ipAccountKey, accountKey]);
 
 			console.log('[AUTH] Login bem-sucedido:', username);
 			return res.status(200).json({
@@ -181,8 +216,16 @@ export default async function handler(req: any, res: any) {
 			if (!username || !password || !name) {
 				return res.status(400).json({ ok: false, error: 'username, password e name são obrigatórios' });
 			}
-			if (password.length < 8) {
-				return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
+			try {
+				validateUsername(username);
+				validateNewPassword(password);
+				validatePersonName(name);
+				validateOptionalEmail(email);
+			} catch (validationErr: any) {
+				if (validationErr instanceof ValidationError) {
+					return res.status(400).json({ ok: false, error: validationErr.message });
+				}
+				throw validationErr;
 			}
 
 			const supabase = getSupabaseServer();
@@ -247,7 +290,14 @@ export default async function handler(req: any, res: any) {
 					return res.status(400).json({ ok: false, error: 'email é obrigatório' });
 				}
 
+				if (email.length > 120) return res.status(200).json(genericResponse);
+
 				const supabase = getSupabaseServer();
+
+				const resetAllowed = await enforceRateLimits(supabase, res, [
+					[`reset:admin:ip:${getClientIp(req)}`, RATE_RULES.adminResetIp],
+				]);
+				if (!resetAllowed) return;
 
 				const { data: admin } = await supabase
 					.from('admins')
@@ -321,11 +371,21 @@ export default async function handler(req: any, res: any) {
 				if (!token || !newPassword) {
 					return res.status(400).json({ ok: false, error: 'token e newPassword são obrigatórios' });
 				}
-				if (newPassword.length < 8) {
-					return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
+				try {
+					validateNewPassword(newPassword);
+				} catch (validationErr: any) {
+					return res.status(400).json({ ok: false, error: validationErr?.message || 'Senha inválida' });
+				}
+				if (token.length > 200) {
+					return res.status(400).json({ ok: false, error: 'Token inválido ou expirado' });
 				}
 
 				const supabase = getSupabaseServer();
+
+				const tokenAllowed = await enforceRateLimits(supabase, res, [
+					[`reset-token:admin:ip:${getClientIp(req)}`, RATE_RULES.otpVerifyIp],
+				]);
+				if (!tokenAllowed) return;
 
 				const { data: resetToken, error: tokenError } = await supabase
 					.from('password_reset_tokens')

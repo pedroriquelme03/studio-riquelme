@@ -27,6 +27,9 @@ import {
 	requireClient,
 } from './_lib/session.js';
 import { sendWhatsAppText, waMessages } from './_lib/whatsapp.js';
+import { hardenErrors } from './_lib/http.js';
+import { RATE_RULES, enforceRateLimits, getClientIp, rateLimitReset } from './_lib/rate-limit.js';
+import { ValidationError, validateLoginPassword, validateNewPassword, validatePersonName } from './_lib/validation.js';
 import {
 	getMyPlanResponse,
 	subscribeToPlan,
@@ -85,6 +88,7 @@ async function sendOtpViaWhatsApp(name: string, phone: string, code: string): Pr
 }
 
 export default async function handler(req: any, res: any) {
+	hardenErrors(req, res);
 	try {
 		// ── Sessão atual ───────────────────────────────────────────────────
 		if (req.method === 'GET') {
@@ -187,15 +191,26 @@ export default async function handler(req: any, res: any) {
 		const password = String(body?.password || '');
 		const supabase = getSupabaseServer();
 
+		// Chaves do limite de tentativas de login (por IP + conta, por conta e por IP).
+		const ip = getClientIp(req);
+		const loginIpAccountKey = `login:client:ip-acct:${ip}:${phone}`;
+		const loginAccountKey = `login:client:acct:${phone}`;
+		const enforceLoginLimit = () =>
+			enforceRateLimits(supabase, res, [
+				[loginIpAccountKey, RATE_RULES.loginIpAccount],
+				[loginAccountKey, RATE_RULES.loginAccount],
+				[`login:client:ip:${ip}`, RATE_RULES.loginIp],
+			]);
+
 		// ── Registro ───────────────────────────────────────────────────────
 		if (action === 'register') {
 			if (!name) return res.status(400).json({ ok: false, error: 'name é obrigatório' });
 			if (!isValidPhone(phone)) {
 				return res.status(400).json({ ok: false, error: 'Informe um celular válido com DDD e o 9' });
 			}
-			if (password.length < 8) {
-				return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
-			}
+			validatePersonName(name);
+			validateNewPassword(password);
+			if (!(await enforceRateLimits(supabase, res, [[`register:ip:${ip}`, RATE_RULES.registerIp]]))) return;
 
 			const { data: existingClient } = await supabase
 				.from('clients')
@@ -255,6 +270,14 @@ export default async function handler(req: any, res: any) {
 			if (!phone || !password) {
 				return res.status(400).json({ ok: false, error: 'phone e password são obrigatórios' });
 			}
+			// Formato inválido recebe a mesma resposta de senha errada.
+			try {
+				if (!isValidPhone(phone)) throw new ValidationError('telefone');
+				validateLoginPassword(password);
+			} catch {
+				return res.status(401).json({ ok: false, error: 'Credenciais inválidas' });
+			}
+			if (!(await enforceLoginLimit())) return;
 
 			const { data: client } = await supabase
 				.from('clients')
@@ -280,6 +303,8 @@ export default async function handler(req: any, res: any) {
 				.eq('phone', phone);
 
 			issueClientSession(res, String(client.id), phone);
+			// Login correto zera a contagem de erros desta conta.
+			await rateLimitReset(supabase, [loginIpAccountKey, loginAccountKey]);
 			return res.status(200).json({ ok: true, phone: client.phone || phone });
 		}
 
@@ -287,9 +312,7 @@ export default async function handler(req: any, res: any) {
 		if (action === 'set_password') {
 			const newPassword = String(body?.new_password || body?.password || '');
 			const currentPassword = String(body?.current_password || '');
-			if (newPassword.length < 8) {
-				return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
-			}
+			validateNewPassword(newPassword);
 
 			const session = getSession(req, 'client');
 			let clientId: string | null = null;
@@ -304,6 +327,8 @@ export default async function handler(req: any, res: any) {
 						error: 'Faça login ou informe a senha atual para trocar a senha.',
 					});
 				}
+				// Sem sessão, a senha atual é uma tentativa de login como outra qualquer.
+				if (!(await enforceLoginLimit())) return;
 				const { data: client } = await supabase
 					.from('clients')
 					.select('id, password_hash')
@@ -335,6 +360,12 @@ export default async function handler(req: any, res: any) {
 			if (!isValidPhone(phone)) {
 				return res.status(400).json({ ok: false, error: 'Informe um celular válido com DDD e o 9' });
 			}
+
+			const otpAllowed = await enforceRateLimits(supabase, res, [
+				[`otp-request:ip:${ip}`, RATE_RULES.otpRequestIp],
+				[`otp-request:phone:${phone}`, RATE_RULES.otpRequestPhone],
+			]);
+			if (!otpAllowed) return;
 
 			const { data: client } = await supabase
 				.from('clients')
@@ -391,9 +422,8 @@ export default async function handler(req: any, res: any) {
 			if (!phone || !code) {
 				return res.status(400).json({ ok: false, error: 'phone e code são obrigatórios' });
 			}
-			if (newPassword.length < 8) {
-				return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 8 caracteres' });
-			}
+			validateNewPassword(newPassword);
+			if (!(await enforceRateLimits(supabase, res, [[`otp-verify:ip:${ip}`, RATE_RULES.otpVerifyIp]]))) return;
 
 			const { data: reset } = await supabase
 				.from('client_password_resets')
@@ -434,6 +464,9 @@ export default async function handler(req: any, res: any) {
 
 		return res.status(400).json({ ok: false, error: 'Ação inválida' });
 	} catch (err: any) {
+		if (err instanceof ValidationError) {
+			return res.status(400).json({ ok: false, error: err.message });
+		}
 		console.error('[client-auth] Erro inesperado:', err?.message || err);
 		return res.status(500).json({ ok: false, error: 'Erro inesperado' });
 	}

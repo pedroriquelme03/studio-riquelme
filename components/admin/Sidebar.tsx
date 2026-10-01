@@ -68,6 +68,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
           compact={isMobile}
         />
         <NavItem
+          label="Cancelamentos"
+          icon={<CalendarDaysIcon className="w-6 h-6" />}
+          isActive={activeView === 'cancellations'}
+          onClick={() => setActiveView('cancellations')}
+          compact={isMobile}
+        />
+        <NavItem
           label="Serviços"
           icon={<ScissorsIcon className="w-6 h-6" />}
           isActive={activeView === 'services'}

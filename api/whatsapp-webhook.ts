@@ -18,6 +18,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { handleAgentRequest } from './_lib/agent-tools.js';
 
 function getVerifyToken(): string | undefined {
 	return process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN?.trim() || undefined;
@@ -142,6 +143,13 @@ export default async function handler(req: any, res: any) {
 			res.status(status).setHeader('Content-Type', 'application/json').end(JSON.stringify(body));
 		}
 	};
+
+	// ── Ferramentas do agente (n8n) ──────────────────────────────────────
+	// /api/whatsapp-webhook?agent=<ação> — ver api/_lib/agent-tools.ts
+	const agentAction = getMetaVerifyQuery(req).get('agent');
+	if (agentAction) {
+		return handleAgentRequest(req, res, agentAction);
+	}
 
 	const verifyToken = getVerifyToken();
 

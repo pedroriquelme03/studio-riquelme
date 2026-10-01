@@ -133,7 +133,7 @@ export async function loadPromotionWithItems(
 	return data as PromotionRow;
 }
 
-async function loadDayWindowForProfessional(
+export async function loadDayWindowForProfessional(
 	supabase: SupabaseClient,
 	professionalId: string,
 	date: string,

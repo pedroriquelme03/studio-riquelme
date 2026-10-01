@@ -9,6 +9,13 @@
 //   EVOLUTION_API_KEY   a apikey global da Evolution
 //   EVOLUTION_INSTANCE  nome da instância conectada (ex.: StudioRiquelme)
 
+/**
+ * Caractere invisível (zero-width space) que marca mensagens automáticas.
+ * O agente do n8n pausa a conversa quando alguém do salão responde manualmente;
+ * sem esta marca, as notificações do sistema seriam confundidas com um humano.
+ */
+export const AUTOMATED_MARK = '​';
+
 function getConfig() {
 	return {
 		baseUrl: (process.env.EVOLUTION_API_URL || '').replace(/\/+$/, ''),
@@ -62,7 +69,7 @@ export async function sendWhatsAppText(
 				'Content-Type': 'application/json',
 				apikey: apiKey,
 			},
-			body: JSON.stringify({ number, text }),
+			body: JSON.stringify({ number, text: AUTOMATED_MARK + text }),
 		});
 
 		if (!response.ok) {

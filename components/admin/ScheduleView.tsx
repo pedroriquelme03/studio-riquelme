@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarIcon, WhatsAppIcon, whatsAppNumber } from '../icons';
+import BookingSourceTag from './BookingSourceTag';
 
 type Professional = {
   id: string;
@@ -10,6 +11,7 @@ type BookingRow = {
   booking_id: string;
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
+  source?: string | null;
   professional_id: string | null;
   client_id: string;
   client_name: string;
@@ -270,6 +272,7 @@ const ScheduleView: React.FC = () => {
                         </a>
                       </p>
                     )}
+                    <BookingSourceTag source={b.source} className="mt-1.5" />
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-gold text-lg">R${Number(b.total_price).toFixed(2)}</p>
@@ -429,6 +432,7 @@ const ScheduleView: React.FC = () => {
                         </a>
                       </p>
                     )}
+                    <BookingSourceTag source={b.source} className="mt-1.5" />
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-gold text-lg">R${Number(b.total_price).toFixed(2)}</p>

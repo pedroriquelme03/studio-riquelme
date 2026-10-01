@@ -20,6 +20,32 @@ import { resolveBookingServicePrice } from './_lib/price-variations.js';
 import { reservePlanBenefit, consumePlanBenefitForBooking, releasePlanBenefitForBooking } from './_lib/monthly-plans.js';
 import { randomUUID } from 'crypto';
 
+export type BookingSource = 'whatsapp_agent' | 'site' | 'professional';
+
+/**
+ * De onde veio o agendamento. Decidido no servidor, nunca pelo corpo da
+ * requisição — senão qualquer um marcaria a origem que quisesse.
+ *  - whatsapp_agent: chamada interna do agente (api/_lib/agent-tools.ts)
+ *  - professional:   lançado com sessão de admin (profissional pelo painel/site)
+ *  - site:           cliente pelo site
+ */
+function resolveBookingSource(req: any): BookingSource {
+	if (req?.internalSource === 'whatsapp_agent') return 'whatsapp_agent';
+	return getSession(req, 'admin')?.role === 'admin' ? 'professional' : 'site';
+}
+
+function isMissingSourceColumn(message: string): boolean {
+	return /\bsource\b/i.test(message || '');
+}
+
+/** Insere o agendamento; se a coluna `source` ainda não existir no banco, grava sem ela. */
+async function insertBooking(supabase: any, row: Record<string, unknown>) {
+	const first = await supabase.from('bookings').insert(row).select('id').single();
+	if (!first.error || !isMissingSourceColumn(first.error.message)) return first;
+	const { source: _source, ...withoutSource } = row;
+	return supabase.from('bookings').insert(withoutSource).select('id').single();
+}
+
 export default async function handler(req: any, res: any) {
 	const sendJson = (status: number, body: object) => {
 		try {
@@ -164,12 +190,14 @@ export default async function handler(req: any, res: any) {
 				return res.status(200).json({ ok: true, bookings: slots });
 			}
 
+			const buildQuery = (withSource: boolean) => {
 			let query = supabase
 				.from('bookings')
 				.select(`
           id,
           date,
           time,
+          ${withSource ? 'source,' : ''}
           professional_id,
           promotion_id,
           promotion_group_id,
@@ -210,7 +238,13 @@ export default async function handler(req: any, res: any) {
 				if (timeTo) query = query.lte('time', `${timeTo}:00`);
 			}
 
-			const { data, error } = await query;
+			return query;
+			};
+
+			let { data, error } = await buildQuery(true);
+			if (error && isMissingSourceColumn(error.message)) {
+				({ data, error } = await buildQuery(false));
+			}
 			if (error) {
 				return res.status(500).json({ ok: false, error: error.message });
 			}
@@ -234,6 +268,7 @@ export default async function handler(req: any, res: any) {
 					booking_id: b.id,
 					date: b.date,
 					time: b.time,
+					source: b.source || null,
 					professional_id: b.professional_id,
 					promotion_id: b.promotion_id || null,
 					promotion_group_id: b.promotion_group_id || null,
@@ -325,6 +360,7 @@ export default async function handler(req: any, res: any) {
 			}
 
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+			const source = resolveBookingSource(req);
 
 			// ── Agendamento de promoção (sequência multi-profissional) ──────────
 			if (promotionId) {
@@ -380,9 +416,8 @@ export default async function handler(req: any, res: any) {
 				const bookingIds: string[] = [];
 
 				for (const segment of segments) {
-					const { data: bookingData, error: bookingErr } = await supabase
-						.from('bookings')
-						.insert({
+					const { data: bookingData, error: bookingErr } = await insertBooking(supabase, {
+							source,
 							date,
 							time: segment.time,
 							professional_id: segment.professionalId,
@@ -391,9 +426,7 @@ export default async function handler(req: any, res: any) {
 							promotion_group_id: groupId,
 							segment_order: segment.sortOrder,
 							allocated_price: segment.allocatedPrice,
-						})
-						.select('id')
-						.single();
+						});
 					if (bookingErr) return res.status(500).json({ ok: false, error: bookingErr.message });
 					const bookingId = (bookingData as any).id as string;
 					bookingIds.push(bookingId);
@@ -544,16 +577,13 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// criar booking
-			const { data: bookingData, error: bookingErr } = await supabase
-				.from('bookings')
-				.insert({
-					date,
-					time,
-					professional_id: finalProfessionalId,
-					client_id: clientId,
-				})
-				.select('id')
-				.single();
+			const { data: bookingData, error: bookingErr } = await insertBooking(supabase, {
+				source,
+				date,
+				time,
+				professional_id: finalProfessionalId,
+				client_id: clientId,
+			});
 			if (bookingErr) {
 				return res.status(500).json({ ok: false, error: bookingErr.message });
 			}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarIcon, WhatsAppIcon, whatsAppNumber } from '../icons';
+import BookingSourceTag from './BookingSourceTag';
 
 type Professional = { id: string; name: string; };
 type Service = { id: number; name: string; };
@@ -8,6 +9,7 @@ type BookingRow = {
   booking_id: string;
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
+  source?: string | null;
   professional_id: string | null;
   client_id: string;
   client_name: string;
@@ -53,6 +55,8 @@ const AppointmentsView: React.FC = () => {
   const [time, setTime] = useState<string>(''); // HH:MM
   const [timeFrom, setTimeFrom] = useState<string>(''); // HH:MM
   const [timeTo, setTimeTo] = useState<string>(''); // HH:MM
+  const [dateFrom, setDateFrom] = useState<string>(''); // yyyy-mm-dd
+  const [dateTo, setDateTo] = useState<string>(''); // yyyy-mm-dd
 
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,6 +95,8 @@ const AppointmentsView: React.FC = () => {
       if (time) qs.set('time', time);
       if (!time && timeFrom) qs.set('time_from', timeFrom);
       if (!time && timeTo) qs.set('time_to', timeTo);
+      if (dateFrom) qs.set('from', dateFrom);
+      if (dateTo) qs.set('to', dateTo);
       const url = `/api/bookings${qs.toString() ? `?${qs.toString()}` : ''}`;
       const res = await fetch(url);
       const data = await parseJsonResponse(res);
@@ -130,7 +136,7 @@ const AppointmentsView: React.FC = () => {
     setPage(1);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
+  }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo, dateFrom, dateTo]);
 
   const approve = async (bookingId: string) => {
     const req = (requestsMap[bookingId] || []).find(x => x.status === 'pending');
@@ -345,6 +351,8 @@ const AppointmentsView: React.FC = () => {
                 setTime('');
                 setTimeFrom('');
                 setTimeTo('');
+                setDateFrom('');
+                setDateTo('');
                 setPage(1);
               }}
               className="bg-surface-muted hover:bg-surface-muted text-white font-semibold px-4 py-2 rounded transition-colors"
@@ -373,6 +381,27 @@ const AppointmentsView: React.FC = () => {
           </span>
         </div>
       )}
+
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+        <div>
+          <label className="block text-sm text-zinc-300 mb-1">Data de</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-zinc-300 mb-1">Data até</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
+          />
+        </div>
+      </div>
 
       <div className="space-y-6">
         {grouped.map(([date, rows]) => {
@@ -409,6 +438,7 @@ const AppointmentsView: React.FC = () => {
                           </div>
                         )}
                         <div className="text-zinc-300 text-sm break-words">{(b.services || []).map(formatBookingServiceLabel).join(', ')}</div>
+                        <BookingSourceTag source={b.source} className="mt-1.5" />
                       </div>
                     </div>
                     <div className="text-gold font-bold whitespace-nowrap">R${Number(b.total_price).toFixed(2)}</div>

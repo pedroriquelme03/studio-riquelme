@@ -411,7 +411,9 @@ function invokeBookings(req: { method: string; body: unknown; headers?: Record<s
 			setHeader() { return res; },
 			end(body?: unknown) { resolve({ status, body }); return res; },
 		};
-		Promise.resolve(bookingsHandler({ url: '/api/bookings', headers: {}, ...req }, res)).catch(reject);
+		// internalSource só existe em chamadas feitas em memória: marca a origem do agendamento.
+		const internal = { url: '/api/bookings', headers: {}, internalSource: 'whatsapp_agent', ...req };
+		Promise.resolve(bookingsHandler(internal, res)).catch(reject);
 	});
 }
 

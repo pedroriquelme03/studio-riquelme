@@ -12,8 +12,8 @@
 // Ações:
 //   context  { phone }                         → data/hora atual, cliente e próximos agendamentos
 //   catalog  {}                                → serviços, profissionais, horários e endereço
-//   slots    { service_ids, date, professional_id? }           → horários livres
-//   book     { phone, name, service_ids, date, time, professional_id?, hair_size? }
+//   slots    { services, date, professional_id? }              → horários livres (services = nomes exatos, separados por ;)
+//   book     { phone, name, services, date, time, professional_id?, hair_size? }
 //   bookings { phone }                         → próximos agendamentos do cliente
 //   cancel   { phone, booking_id }             → cancela um agendamento do cliente
 //   remember { phone, content }                → guarda um fato/preferência do cliente
@@ -128,17 +128,74 @@ async function findClients(supabase: any, phone: string) {
 	return (data || []) as Array<{ id: string; name: string; phone: string; email: string | null; notes: string | null }>;
 }
 
-async function loadServices(supabase: any, serviceIds: number[]) {
-	if (!serviceIds.length) throw new AgentError('Informe service_ids (IDs dos serviços do catálogo)');
+function normalizeName(value: unknown): string {
+	return String(value ?? '')
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim();
+}
+
+/**
+ * Resolve os serviços pedidos pelo agente.
+ *
+ * O agente informa os NOMES (`services`), não os IDs: a memória da conversa só
+ * guarda texto, então de uma mensagem para a outra o modelo não tem mais o ID e
+ * acaba inventando um — foi assim que "Esmaltação em Gel Mão" virou outro serviço.
+ * O nome está sempre na conversa e é conferido aqui contra o catálogo.
+ * `service_ids` continua aceito como alternativa.
+ */
+async function loadServices(supabase: any, body: any) {
 	const { data, error } = await supabase
 		.from('services')
-		.select('id, name, price, duration_minutes, responsible_professional_id, price_variation_enabled')
-		.in('id', serviceIds);
+		.select('id, name, price, duration_minutes, responsible_professional_id, price_variation_enabled');
 	if (error) throw new AgentError(error.message, 500);
-	const found = new Set((data || []).map((r: any) => Number(r.id)));
-	const missing = serviceIds.filter((id) => !found.has(id));
+	const all = (data || []) as any[];
+
+	const rawNames = Array.isArray(body?.services)
+		? body.services.map((s: unknown) => String(s))
+		: String(body?.services ?? '').split(/[;\n]/);
+	const names = rawNames.map((s: string) => s.trim()).filter(Boolean);
+
+	if (names.length) {
+		const byName = new Map(all.map((s) => [normalizeName(s.name), s]));
+		const resolved: any[] = [];
+		for (const name of names) {
+			const exact = byName.get(normalizeName(name));
+			if (exact) {
+				resolved.push(exact);
+				continue;
+			}
+			// "Mão, Pé" enviado com vírgula em vez de ponto e vírgula
+			const parts = name.split(',').map((p: string) => byName.get(normalizeName(p)));
+			if (parts.length > 1 && parts.every(Boolean)) {
+				resolved.push(...parts);
+				continue;
+			}
+			const words = normalizeName(name).split(' ').filter((w) => w.length > 2);
+			const similar = all
+				.filter((s) => words.some((w) => normalizeName(s.name).includes(w)))
+				.map((s) => s.name)
+				.slice(0, 8);
+			throw new AgentError(
+				`Serviço "${name}" não existe no catálogo. Use o nome exato.` +
+					(similar.length ? ` Parecidos: ${similar.join('; ')}.` : ' Consulte o catálogo.'),
+				400,
+				{ similar_services: similar },
+			);
+		}
+		return Array.from(new Set(resolved));
+	}
+
+	const serviceIds = parseServiceIds(body?.service_ids);
+	if (!serviceIds.length) {
+		throw new AgentError('Informe services: nomes exatos dos serviços do catálogo, separados por ponto e vírgula');
+	}
+	const found = all.filter((s) => serviceIds.includes(Number(s.id)));
+	const missing = serviceIds.filter((id) => !found.some((s) => Number(s.id) === id));
 	if (missing.length) throw new AgentError(`Serviços inexistentes: ${missing.join(', ')}. Consulte o catálogo.`);
-	return data as any[];
+	return found;
 }
 
 /** Mesma regra do site: sem profissional escolhido, vale o responsável pelos serviços. */
@@ -429,12 +486,18 @@ async function actionCatalog(supabase: any) {
 }
 
 async function actionSlots(supabase: any, body: any) {
-	const services = await loadServices(supabase, parseServiceIds(body?.service_ids));
+	const services = await loadServices(supabase, body);
 	const professionalId = resolveProfessionalId(services, body?.professional_id);
 	const durationMinutes = services.reduce((sum, s) => sum + Number(s.duration_minutes || 0), 0) || 30;
 	const date = String(body?.date || '').trim();
 	const result = await computeSlots(supabase, { date, durationMinutes, professionalId });
-	return { date, weekday: isValidDate(date) ? WEEKDAYS[weekdayOf(date)] : null, duration_minutes: durationMinutes, ...result };
+	return {
+		services: services.map((s) => s.name),
+		date,
+		weekday: isValidDate(date) ? WEEKDAYS[weekdayOf(date)] : null,
+		duration_minutes: durationMinutes,
+		...result,
+	};
 }
 
 async function actionBook(supabase: any, body: any) {
@@ -446,7 +509,7 @@ async function actionBook(supabase: any, body: any) {
 	const time = String(body?.time || '').trim().slice(0, 5);
 	if (!/^\d{2}:\d{2}$/.test(time)) throw new AgentError('time deve estar no formato HH:MM');
 
-	const services = await loadServices(supabase, parseServiceIds(body?.service_ids));
+	const services = await loadServices(supabase, body);
 	const professionalId = resolveProfessionalId(services, body?.professional_id);
 	const durationMinutes = services.reduce((sum, s) => sum + Number(s.duration_minutes || 0), 0) || 30;
 

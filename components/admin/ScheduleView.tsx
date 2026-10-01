@@ -354,22 +354,46 @@ const ScheduleView: React.FC = () => {
             return cells.map((day, idx) => {
               const key = formatDate(day);
               const inMonth = day.getMonth() === currentDate.getMonth();
-              const rows = grouped.find(([d]) => d === key)?.[1] || [];
+              const rows = (grouped.find(([d]) => d === key)?.[1] || [])
+                .slice()
+                .sort((a, b) => a.time.localeCompare(b.time));
               return (
                 <div
                   key={idx}
-                  className={`p-2 rounded border cursor-pointer ${inMonth ? 'border-line bg-surface-raised hover:border-gold' : 'border-line bg-surface-overlay/40'}`}
+                  className={`p-2 rounded border cursor-pointer overflow-hidden flex flex-col ${inMonth ? 'border-line bg-surface-raised hover:border-gold' : 'border-line bg-surface-overlay/40'}`}
                   style={{ aspectRatio: '1 / 1' }}
                   onClick={() => { setMonthSelectedDate(day); }}
                   title="Listar agendamentos do dia abaixo"
                 >
-                  <div className={`text-sm mb-2 ${inMonth ? 'text-zinc-200' : 'text-zinc-400'}`}>
+                  <div className={`text-sm mb-1 flex-shrink-0 ${inMonth ? 'text-zinc-200' : 'text-zinc-400'}`}>
                     {day.getDate().toString().padStart(2,'0')}
                   </div>
-                  <div className="mt-auto">
-                    <span className={`text-xs font-semibold ${rows.length ? 'text-gold' : 'text-zinc-400'}`}>
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    <div className={`text-xs font-semibold ${rows.length ? 'text-gold' : 'text-zinc-400'}`}>
                       {rows.length ? rows.length : '—'}
-                    </span>
+                    </div>
+                    {rows.length > 0 && (
+                      <ul className="mt-0.5 space-y-0.5">
+                        {rows.map((b) => (
+                          <li
+                            key={b.booking_id}
+                            className="text-xs leading-tight whitespace-nowrap overflow-hidden"
+                            style={{
+                              WebkitMaskImage: 'linear-gradient(to right, #000 70%, transparent 100%)',
+                              maskImage: 'linear-gradient(to right, #000 70%, transparent 100%)',
+                            }}
+                            title={`${b.time.slice(0, 5)} ${b.client_name}`}
+                          >
+                            <span className={`tabular-nums ${inMonth ? 'text-zinc-200' : 'text-zinc-400'}`}>
+                              {b.time.slice(0, 5)}
+                            </span>
+                            <span className={`ml-1 ${inMonth ? 'text-zinc-200' : 'text-zinc-400'}`}>
+                              {b.client_name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               );

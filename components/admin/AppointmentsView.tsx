@@ -58,6 +58,8 @@ const AppointmentsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requestsMap, setRequestsMap] = useState<Record<string, Array<{ id: string; requested_date: string; requested_time: string; status: string; created_at?: string }>>>({});
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     (async () => {
@@ -125,6 +127,7 @@ const AppointmentsView: React.FC = () => {
 
   // Carregar agendamentos quando o componente monta e quando os filtros mudam
   useEffect(() => {
+    setPage(1);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
@@ -232,16 +235,41 @@ const AppointmentsView: React.FC = () => {
     }
   };
 
+  const sortedBookings = useMemo(() => {
+    return [...bookings].sort((a, b) => {
+      const byDate = b.date.localeCompare(a.date);
+      if (byDate !== 0) return byDate;
+      return a.time.localeCompare(b.time);
+    });
+  }, [bookings]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedBookings.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageBookings = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sortedBookings.slice(start, start + PAGE_SIZE);
+  }, [sortedBookings, page, PAGE_SIZE]);
+
   const grouped = useMemo(() => {
     const m = new Map<string, BookingRow[]>();
-    bookings.forEach(b => {
+    pageBookings.forEach((b) => {
       const key = b.date;
       const arr = m.get(key) || [];
       arr.push(b);
       m.set(key, arr);
     });
-    return Array.from(m.entries()).sort(([a],[b]) => b.localeCompare(a));
-  }, [bookings]);
+    return Array.from(m.entries());
+  }, [pageBookings]);
+
+  const goToPage = (next: number) => {
+    const clamped = Math.min(Math.max(1, next), totalPages);
+    setPage(clamped);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div>
@@ -317,6 +345,7 @@ const AppointmentsView: React.FC = () => {
                 setTime('');
                 setTimeFrom('');
                 setTimeTo('');
+                setPage(1);
               }}
               className="bg-surface-muted hover:bg-surface-muted text-white font-semibold px-4 py-2 rounded transition-colors"
             >
@@ -330,8 +359,19 @@ const AppointmentsView: React.FC = () => {
 
       {loading && <div className="text-zinc-200">Carregando...</div>}
 
-      {!loading && grouped.length === 0 && (
+      {!loading && sortedBookings.length === 0 && (
         <div className="text-zinc-300">Nenhum agendamento encontrado com os filtros selecionados.</div>
+      )}
+
+      {!loading && sortedBookings.length > 0 && (
+        <div className="flex items-center justify-between mb-4 text-sm text-zinc-300">
+          <span>
+            Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedBookings.length)} de {sortedBookings.length}
+          </span>
+          <span>
+            Página {page} de {totalPages}
+          </span>
+        </div>
       )}
 
       <div className="space-y-6">
@@ -346,7 +386,7 @@ const AppointmentsView: React.FC = () => {
               {dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
             <div className="space-y-2">
-              {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
+              {rows.map(b => (
                 <div key={b.booking_id} className="bg-surface-raised px-4 py-4 rounded-lg border border-line hover:border-gold transition-colors duration-200">
                   {/* Linha 1: hora + cliente/serviços à esquerda, preço à direita */}
                   <div className="flex items-start justify-between gap-3">
@@ -445,6 +485,68 @@ const AppointmentsView: React.FC = () => {
           );
         })}
       </div>
+
+      {!loading && sortedBookings.length > 0 && totalPages > 1 && (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => goToPage(1)}
+            disabled={page <= 1}
+            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
+          >
+            «
+          </button>
+          <button
+            type="button"
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1}
+            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
+          >
+            Anterior
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce<(number | '…')[]>((acc, p, idx, arr) => {
+              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…');
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((item, idx) =>
+              item === '…' ? (
+                <span key={`ellipsis-${idx}`} className="px-1 text-zinc-400">…</span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => goToPage(item)}
+                  className={`min-w-10 px-3 py-2 rounded border text-sm ${
+                    item === page
+                      ? 'bg-gold border-gold text-white font-semibold'
+                      : 'border-line text-white hover:bg-surface-overlay'
+                  }`}
+                >
+                  {item}
+                </button>
+              ),
+            )}
+          <button
+            type="button"
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages}
+            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
+          >
+            Próxima
+          </button>
+          <button
+            type="button"
+            onClick={() => goToPage(totalPages)}
+            disabled={page >= totalPages}
+            className="px-3 py-2 rounded border border-line text-white text-sm disabled:opacity-40 hover:bg-surface-overlay"
+          >
+            »
+          </button>
+        </div>
+      )}
 
       {editId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">

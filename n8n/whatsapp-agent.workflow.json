@@ -9,7 +9,7 @@
         "responseMode": "onReceived",
         "options": {}
       },
-      "id": "326aff91-e830-4bc1-b916-b09103abe1fc",
+      "id": "300c618f-acc9-4e22-a06f-1c0e865195f6",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -17,32 +17,32 @@
         0,
         0
       ],
-      "webhookId": "aebcc580-ed52-4859-a4bc-69f0eb2effca"
+      "webhookId": "96c48d60-5277-48f8-8186-b31e9dc0fd3a"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "fada7140-d916-4330-a947-18bf7c2e68e8",
+              "id": "891e13ba-eecc-465b-ac4e-16759231a7aa",
               "name": "siteUrl",
               "value": "https://studioriquelme.com.br",
               "type": "string"
             },
             {
-              "id": "7e0c9a4e-cdb4-426f-8e6e-849bb698c5d4",
+              "id": "aae8df40-216b-494a-a57a-85358f79fc4b",
               "name": "evolutionUrl",
               "value": "http://evolution_api:8080",
               "type": "string"
             },
             {
-              "id": "4b7cb676-271f-47dd-848b-5ea184d82027",
+              "id": "f8010625-4937-4d98-90cc-411f813fd069",
               "name": "instance",
               "value": "StudioRiquelme",
               "type": "string"
             },
             {
-              "id": "2bb10a6b-5aa4-4d02-b68b-cd069df26b35",
+              "id": "3e2595f5-18a6-401d-ab58-5a615646db71",
               "name": "pauseHours",
               "value": 12,
               "type": "number"
@@ -51,7 +51,7 @@
         },
         "options": {}
       },
-      "id": "66b76e88-d2c7-494f-98ce-24d9364237cf",
+      "id": "dcf02baa-ac83-4d49-8b4a-6d4e5b4fd175",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -64,7 +64,7 @@
       "parameters": {
         "jsCode": "// Extrai a mensagem do payload da Evolution e decide se o agente deve responder.\nconst cfg = $('Config').first().json;\nconst body = $('Webhook').first().json.body || {};\n\nconst event = String(body.event || '').toLowerCase().replace(/_/g, '.');\nif (event !== 'messages.upsert') return [];\n\nconst data = Array.isArray(body.data) ? body.data[0] : (body.data || {});\nconst key = data.key || {};\n\n// Contas novas chegam como @lid; a Evolution informa o número real em campos alternativos.\nlet jid = String(key.remoteJid || '');\nif (jid.endsWith('@lid')) jid = String(key.remoteJidAlt || key.senderPn || data.senderPn || jid);\nif (!jid.endsWith('@s.whatsapp.net')) return []; // grupos, status, canais\n\nconst phone = jid.split('@')[0].split(':')[0];\nconst type = String(data.messageType || '');\nconst IGNORED = ['reactionMessage', 'protocolMessage', 'senderKeyDistributionMessage', 'pollUpdateMessage', 'stickerMessage', 'editedMessage'];\nif (IGNORED.includes(type)) return [];\n\nconst m = data.message || {};\nlet text = String(\n  m.conversation || m.extendedTextMessage?.text || m.imageMessage?.caption || m.videoMessage?.caption || ''\n).trim();\n\nconst MARK = String.fromCharCode(8203); // marca invisível das mensagens automáticas\nconst store = $getWorkflowStaticData('global');\nstore.paused = store.paused || {};\nconst now = Date.now();\nfor (const k of Object.keys(store.paused)) {\n  if (store.paused[k] < now) delete store.paused[k];\n}\n\nif (key.fromMe) {\n  if (text.includes(MARK)) return [];                 // enviada pelo agente ou pelo sistema\n  if (text.toLowerCase() === '#agente') {             // alguém do salão devolve a conversa ao agente\n    delete store.paused[phone];\n    return [];\n  }\n  // Alguém do salão respondeu manualmente: o agente se cala nesta conversa.\n  store.paused[phone] = now + Number(cfg.pauseHours || 12) * 60 * 60 * 1000;\n  return [];\n}\n\nif (store.paused[phone]) return [];\n\nif (!text) {\n  const labels = { audioMessage: 'um áudio', imageMessage: 'uma imagem', videoMessage: 'um vídeo', documentMessage: 'um documento', locationMessage: 'uma localização', contactMessage: 'um contato' };\n  text = '[O cliente enviou ' + (labels[type] || 'uma mensagem que não é texto') + '. Você não consegue abrir; peça que escreva em texto.]';\n}\n\nreturn [{ json: { phone, pushName: String(data.pushName || ''), text, messageId: String(key.id || '') } }];\n"
       },
-      "id": "35be8bd6-e238-424a-b0d9-0b9867a97128",
+      "id": "e4ff119b-5d14-439f-85b9-cc30ac98b748",
       "name": "Normalizar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -84,7 +84,7 @@
         "jsonBody": "={{ JSON.stringify({ phone: $json.phone }) }}",
         "options": {}
       },
-      "id": "4d3629bf-2dde-4716-b437-a1a5c31e4379",
+      "id": "027d768f-b794-4d96-91f2-1eecfaead016",
       "name": "Contexto",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -94,8 +94,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -108,7 +108,7 @@
           "maxIterations": 8
         }
       },
-      "id": "7f3633ea-9b8d-41f5-b937-2b8bf2f8c308",
+      "id": "a96764a4-0fcf-46be-878f-31abb9679b45",
       "name": "Agente",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
@@ -125,7 +125,7 @@
           "temperature": 0.3
         }
       },
-      "id": "d15d0e98-6bbb-4b24-9482-da0b39f9dc91",
+      "id": "f529086c-7664-4a70-ac37-888df2baa9f0",
       "name": "Google Gemini",
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
@@ -147,7 +147,7 @@
         "sessionTTL": 86400,
         "contextWindowLength": 20
       },
-      "id": "231dc89c-40cd-4797-8eb0-5cb5b7c3185f",
+      "id": "5cc609c0-f7fb-4e98-866d-5659b6dc5eef",
       "name": "Memória da conversa",
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
@@ -181,7 +181,7 @@
           ]
         }
       },
-      "id": "8a58a0c4-a198-4561-8db1-a2f16781d9aa",
+      "id": "236a5beb-250b-4c55-aa53-83426bfa0d92",
       "name": "catalogo",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -191,8 +191,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -241,7 +241,7 @@
           ]
         }
       },
-      "id": "8d8dde1e-eb6c-4092-87ad-20b0565cd8e6",
+      "id": "1ecd3471-4887-491e-90e4-94b8f6dda590",
       "name": "horarios_livres",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -251,8 +251,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -333,7 +333,7 @@
           ]
         }
       },
-      "id": "0876a0b7-d773-4fe0-bbed-bc467ef5b6fb",
+      "id": "6a275321-e626-438b-8fac-e70df5eab4ab",
       "name": "agendar",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -343,8 +343,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -367,7 +367,7 @@
           ]
         }
       },
-      "id": "1182b3e6-f65c-4c79-afb1-29767baf1087",
+      "id": "c26efc99-52d7-481e-9e9c-1f226470a207",
       "name": "meus_agendamentos",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -377,8 +377,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -414,7 +414,7 @@
           ]
         }
       },
-      "id": "7b88eda1-0b69-4606-b0eb-35cea8bc6467",
+      "id": "1f743f58-1f9d-4879-8c3f-3a96d28b6861",
       "name": "cancelar_agendamento",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -424,8 +424,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -461,7 +461,7 @@
           ]
         }
       },
-      "id": "e6a743da-6dd4-4399-9110-5a2d8c0e686a",
+      "id": "3a1f8f9f-ba7b-4136-9075-86f0f67d1359",
       "name": "lembrar",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -471,8 +471,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -508,7 +508,7 @@
           ]
         }
       },
-      "id": "a8e43db4-1c72-4aae-8128-257c3c26c52e",
+      "id": "f06ab9d9-fb06-43a6-878d-54be011035da",
       "name": "esquecer",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
@@ -518,8 +518,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Studio Riquelme - Agent API (x-agent-key)"
+          "id": "kHLqd0pUhpJIU5zY",
+          "name": "Agent API"
         }
       }
     },
@@ -534,7 +534,7 @@
         "jsonBody": "={{ JSON.stringify({ number: $('Normalizar').first().json.phone, text: String.fromCharCode(8203) + String($json.output || '').replace(/\\*\\*/g, '*').trim() }) }}",
         "options": {}
       },
-      "id": "7beb0116-b70e-4360-8067-2228bae2f24f",
+      "id": "752a78dd-9b05-40a1-b173-a612a5811184",
       "name": "Enviar resposta",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -544,8 +544,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SELECIONE",
-          "name": "Evolution API (apikey)"
+          "id": "ZYCcHjmg7At2bruC",
+          "name": "Evolution"
         }
       }
     }

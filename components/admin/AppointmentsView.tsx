@@ -60,6 +60,8 @@ const AppointmentsView: React.FC = () => {
   const [timeTo, setTimeTo] = useState<string>(''); // HH:MM
   const [dateFrom, setDateFrom] = useState<string>(''); // yyyy-mm-dd
   const [dateTo, setDateTo] = useState<string>(''); // yyyy-mm-dd
+  // nearest = mais próximas primeiro (ex.: amanhã); farthest = mais distantes primeiro (ex.: dezembro)
+  const [dateSort, setDateSort] = useState<'nearest' | 'farthest'>('nearest');
 
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -327,11 +329,18 @@ const AppointmentsView: React.FC = () => {
 
   const sortedBookings = useMemo(() => {
     return [...bookings].sort((a, b) => {
-      const byDate = b.date.localeCompare(a.date);
+      // nearest: data crescente (amanhã antes de dezembro)
+      // farthest: data decrescente (dezembro antes de amanhã)
+      const byDate = dateSort === 'nearest'
+        ? a.date.localeCompare(b.date)
+        : b.date.localeCompare(a.date);
       if (byDate !== 0) return byDate;
-      return a.time.localeCompare(b.time);
+      // No mesmo dia: horário crescente em "mais recente", decrescente em "mais distante"
+      return dateSort === 'nearest'
+        ? a.time.localeCompare(b.time)
+        : b.time.localeCompare(a.time);
     });
-  }, [bookings]);
+  }, [bookings, dateSort]);
 
   const totalPages = Math.max(1, Math.ceil(sortedBookings.length / PAGE_SIZE));
 
@@ -455,16 +464,32 @@ const AppointmentsView: React.FC = () => {
         <div className="text-zinc-300">Nenhum agendamento encontrado com os filtros selecionados.</div>
       )}
 
-      {!loading && sortedBookings.length > 0 && (
-        <div className="flex items-center justify-between mb-4 text-sm text-zinc-300">
-          <span>
-            Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedBookings.length)} de {sortedBookings.length}
-          </span>
-          <span>
-            Página {page} de {totalPages}
-          </span>
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div className="w-full sm:max-w-xs">
+          <label className="block text-sm text-zinc-300 mb-1">Ordenar por data</label>
+          <select
+            value={dateSort}
+            onChange={(e) => {
+              setDateSort(e.target.value as 'nearest' | 'farthest');
+              setPage(1);
+            }}
+            className="w-full bg-surface-raised text-white border border-line rounded px-3 py-2"
+          >
+            <option value="nearest">Mais recente primeiro</option>
+            <option value="farthest">Mais distante primeiro</option>
+          </select>
         </div>
-      )}
+        {!loading && sortedBookings.length > 0 && (
+          <div className="flex items-center justify-between sm:justify-end gap-4 text-sm text-zinc-300">
+            <span>
+              Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedBookings.length)} de {sortedBookings.length}
+            </span>
+            <span>
+              Página {page} de {totalPages}
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
         <div>

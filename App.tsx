@@ -78,6 +78,11 @@ const App: React.FC = () => {
 
   const [step, setStep] = useState<Step>('services');
 
+  // Sempre abre a próxima etapa do agendamento no topo da página
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step]);
+
   const [bookingMode, setBookingMode] = useState<BookingMode>('services');
 
   const [booking, setBooking] = useState<Partial<Booking>>({

@@ -38,11 +38,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
       className={
         isMobile
           ? 'bg-surface-raised p-2 flex flex-col'
-          : 'bg-surface-raised h-full min-h-screen w-full border-r border-line flex flex-col p-4'
+          : 'bg-surface-raised h-full max-h-screen w-full border-r border-line flex flex-col overflow-hidden'
       }
     >
       {!isMobile && (
-        <div className="mb-6 pb-4 border-b border-line">
+        <div className="flex-shrink-0 p-4 pb-4 mb-0 border-b border-line">
           <p className="text-xs font-semibold tracking-wide gold-text uppercase">Studio Riquelme</p>
           <p className="text-sm text-zinc-400 mt-0.5">Painel Admin</p>
           {admin && (
@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
         className={
           isMobile
             ? 'flex justify-around gap-1 overflow-x-auto'
-            : 'flex flex-col space-y-1 flex-grow'
+            : 'flex flex-col space-y-1 flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3'
         }
       >
         <NavItem
@@ -68,10 +68,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
           compact={isMobile}
         />
         <NavItem
-          label="Kanban"
-          icon={<ViewColumnsIcon className="w-6 h-6" />}
-          isActive={activeView === 'kanban'}
-          onClick={() => setActiveView('kanban')}
+          label="Agenda por Profissional"
+          icon={<CalendarIcon className="w-6 h-6" />}
+          isActive={activeView === 'schedule'}
+          onClick={() => setActiveView('schedule')}
           compact={isMobile}
         />
         <NavItem
@@ -124,10 +124,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
           compact={isMobile}
         />
         <NavItem
-          label="Agenda"
-          icon={<CalendarIcon className="w-6 h-6" />}
-          isActive={activeView === 'schedule'}
-          onClick={() => setActiveView('schedule')}
+          label="Kanban"
+          icon={<ViewColumnsIcon className="w-6 h-6" />}
+          isActive={activeView === 'kanban'}
+          onClick={() => setActiveView('kanban')}
           compact={isMobile}
         />
         <NavItem
@@ -153,7 +153,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
         />
       </nav>
 
-      <div className={isMobile ? 'hidden' : 'mt-4 pt-4 border-t border-line'}>
+      <div className={isMobile ? 'hidden' : 'flex-shrink-0 p-4 pt-3 border-t border-line'}>
         <button
           onClick={logout}
           className="w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors duration-200 text-zinc-200 hover:bg-red-950/40 hover:text-red-400"

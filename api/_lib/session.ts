@@ -9,8 +9,9 @@ import { createHmac, timingSafeEqual, randomBytes, scryptSync, createHash } from
 export const ADMIN_COOKIE = 'sr_admin';
 export const CLIENT_COOKIE = 'sr_client';
 
-const ADMIN_TTL_SECONDS = 12 * 60 * 60;       // 12 horas
-const CLIENT_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 dias
+const ADMIN_TTL_SECONDS = 12 * 60 * 60;              // 12 horas (padrão)
+export const ADMIN_REMEMBER_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 dias ("lembrar de mim")
+const CLIENT_TTL_SECONDS = 30 * 24 * 60 * 60;        // 30 dias
 
 export type AdminSession = {
 	role: 'admin';
@@ -59,9 +60,11 @@ function sign(payloadB64: string, secret: string): string {
 /** Gera um token de sessão assinado. */
 export function createSessionToken(
 	data: Omit<AdminSession, 'exp'> | Omit<ClientSession, 'exp'>,
+	options?: { ttlSeconds?: number },
 ): { token: string; maxAge: number } {
 	const secret = getSecret();
-	const maxAge = data.role === 'admin' ? ADMIN_TTL_SECONDS : CLIENT_TTL_SECONDS;
+	const defaultTtl = data.role === 'admin' ? ADMIN_TTL_SECONDS : CLIENT_TTL_SECONDS;
+	const maxAge = options?.ttlSeconds && options.ttlSeconds > 0 ? options.ttlSeconds : defaultTtl;
 	const payload = { ...data, exp: Math.floor(Date.now() / 1000) + maxAge };
 	const payloadB64 = b64url(JSON.stringify(payload));
 	return { token: `v1.${payloadB64}.${sign(payloadB64, secret)}`, maxAge };

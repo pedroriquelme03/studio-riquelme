@@ -1,14 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+const REMEMBER_USER_KEY = 'admin_remember_username';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_USER_KEY);
+      if (saved) {
+        setUsername(saved);
+        setRememberMe(true);
+      }
+    } catch {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,12 +29,17 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const result = await login(username, password);
+      const result = await login(username, password, rememberMe);
       if (result.ok) {
+        try {
+          if (rememberMe) {
+            localStorage.setItem(REMEMBER_USER_KEY, username.trim());
+          } else {
+            localStorage.removeItem(REMEMBER_USER_KEY);
+          }
+        } catch {}
         navigate('/admin');
       } else {
-        // Mostra o motivo real: antes, erro de configuração do servidor
-        // aparecia como "senha incorreta" e escondia a causa.
         setError(result.error || 'Não foi possível entrar. Tente novamente.');
       }
     } catch (err) {
@@ -53,6 +71,7 @@ const LoginPage: React.FC = () => {
               placeholder="Digite seu usuário"
               required
               autoFocus
+              autoComplete="username"
             />
           </div>
           <div>
@@ -67,8 +86,19 @@ const LoginPage: React.FC = () => {
               className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white focus:ring-gold focus:border-gold"
               placeholder="Digite sua senha"
               required
+              autoComplete="current-password"
             />
           </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-line bg-surface-overlay text-gold focus:ring-gold"
+            />
+            <span className="text-sm text-zinc-200">Lembrar de mim</span>
+          </label>
 
           {error && (
             <div className="bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
@@ -110,4 +140,3 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
-

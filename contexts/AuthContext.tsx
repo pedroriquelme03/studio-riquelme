@@ -16,7 +16,7 @@ export interface LoginResult {
 interface AuthContextType {
   isAuthenticated: boolean;
   admin: Admin | null;
-  login: (username: string, password: string) => Promise<LoginResult>;
+  login: (username: string, password: string, remember?: boolean) => Promise<LoginResult>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -58,13 +58,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const login = async (username: string, password: string): Promise<LoginResult> => {
+  const login = async (username: string, password: string, remember = false): Promise<LoginResult> => {
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, remember: !!remember }),
       });
 
       // Uma resposta não-JSON significa que /api/auth não foi executada

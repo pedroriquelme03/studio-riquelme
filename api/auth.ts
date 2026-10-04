@@ -11,6 +11,7 @@ import {
 	ADMIN_COOKIE,
 	appendCookie,
 	buildClearCookie,
+	ADMIN_REMEMBER_TTL_SECONDS,
 	buildSessionCookie,
 	createSessionToken,
 	getSession,
@@ -91,9 +92,10 @@ export default async function handler(req: any, res: any) {
 	// ── Login ────────────────────────────────────────────────────────────
 	if (req.method === 'POST') {
 		try {
-			const { username, password } = parseBody(req) as {
+			const { username, password, remember } = parseBody(req) as {
 				username?: string;
 				password?: string;
+				remember?: boolean;
 			};
 
 			if (!username || !password) {
@@ -182,12 +184,15 @@ export default async function handler(req: any, res: any) {
 			if (needsRehash) updates.password_hash = hashPassword(password);
 			await supabase.from('admins').update(updates).eq('id', admin.id);
 
-			const { token, maxAge } = createSessionToken({
-				role: 'admin',
-				sub: String(admin.id),
-				username: admin.username,
-				name: admin.name,
-			});
+			const { token, maxAge } = createSessionToken(
+				{
+					role: 'admin',
+					sub: String(admin.id),
+					username: admin.username,
+					name: admin.name,
+				},
+				remember ? { ttlSeconds: ADMIN_REMEMBER_TTL_SECONDS } : undefined,
+			);
 			appendCookie(res, buildSessionCookie(ADMIN_COOKIE, token, maxAge));
 			// Login correto zera a contagem de erros desta conta.
 			await rateLimitReset(supabase, [ipAccountKey, accountKey]);

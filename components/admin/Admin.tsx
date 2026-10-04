@@ -55,7 +55,7 @@ const Admin: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface">
       {/* Sidebar fixa na borda esquerda (desktop) */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:z-40 md:w-64">
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:z-40 md:w-64 md:h-screen md:overflow-hidden">
         <Sidebar activeView={activeView} setActiveView={setActiveView} />
       </aside>
 

@@ -11,11 +11,12 @@ export function fromMinutes(total: number): string {
 	return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/** Intervalo entre horários de início. Sempre 15 ou 30 min — nunca a duração do serviço. */
 export function getSlotStep(serviceDuration: number): number {
-	const duration = Math.max(30, serviceDuration || 30);
-	if (duration % 30 === 0) return 30;
-	if (duration % 15 === 0) return 15;
-	return duration;
+	const duration = Math.max(1, serviceDuration || 30);
+	// Serviços curtos: grade de 15 min; demais: 30 min.
+	if (duration < 45) return 15;
+	return 30;
 }
 
 export function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {

@@ -20,9 +20,9 @@ const NavItem: React.FC<{
     onClick={onClick}
     title={label}
     aria-label={label}
-    className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors duration-200 ${
+    className={`flex items-center rounded-lg text-left transition-colors duration-200 ${
       isActive ? 'bg-gold font-bold' : 'text-zinc-200 hover:bg-surface-muted'
-    } ${compact ? 'justify-center' : ''}`}
+    } ${compact ? 'flex-shrink-0 justify-center p-2.5' : 'w-full space-x-3 p-3'}`}
   >
     {icon}
     {!compact && <span>{label}</span>}
@@ -33,11 +33,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
   const { logout, admin } = useAuth();
   const isMobile = variant === 'mobile';
 
+  const logoutIcon = (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  );
+
   return (
     <div
       className={
         isMobile
-          ? 'bg-surface-raised p-2 flex flex-col'
+          ? 'bg-surface-raised p-2 flex items-stretch gap-1'
           : 'bg-surface-raised h-full max-h-screen w-full border-r border-line flex flex-col overflow-hidden'
       }
     >
@@ -56,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
       <nav
         className={
           isMobile
-            ? 'flex justify-around gap-1 overflow-x-auto'
+            ? 'flex flex-1 min-w-0 gap-1 overflow-x-auto'
             : 'flex flex-col space-y-1 flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3'
         }
       >
@@ -160,17 +166,29 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, variant = 
         />
       </nav>
 
-      <div className={isMobile ? 'hidden' : 'flex-shrink-0 p-4 pt-3 border-t border-line'}>
+      {isMobile ? (
         <button
+          type="button"
           onClick={logout}
-          className="w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors duration-200 text-zinc-200 hover:bg-red-950/40 hover:text-red-400"
+          title="Sair"
+          aria-label="Sair"
+          className="flex-shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-lg text-red-400 border-l border-line ml-1 hover:bg-red-950/40"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>Sair</span>
+          {logoutIcon}
+          <span className="text-[10px] mt-0.5 font-medium">Sair</span>
         </button>
-      </div>
+      ) : (
+        <div className="flex-shrink-0 p-4 pt-3 border-t border-line">
+          <button
+            type="button"
+            onClick={logout}
+            className="w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors duration-200 text-zinc-200 hover:bg-red-950/40 hover:text-red-400"
+          >
+            {logoutIcon}
+            <span>Sair</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

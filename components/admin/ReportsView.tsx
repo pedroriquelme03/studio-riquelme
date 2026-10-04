@@ -148,9 +148,9 @@ const GoalBar: React.FC<{ label: string; actual: number; target: number; pct: nu
   label, actual, target, pct, format = 'money',
 }) => (
   <div>
-    <div className="flex justify-between text-xs text-zinc-400 mb-1">
-      <span>{label}</span>
-      <span>
+    <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 text-[11px] sm:text-xs text-zinc-400 mb-1">
+      <span className="truncate">{label}</span>
+      <span className="tabular-nums">
         {format === 'money' ? money(actual) : actual} / {format === 'money' ? money(target) : target} ({pct}%)
       </span>
     </div>
@@ -504,45 +504,45 @@ const ReportsView: React.FC = () => {
   const needsProfessional = entryCategory !== 'structure';
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold gold-text text-center mb-6">Relatórios</h2>
+    <div className="pb-6">
+      <h2 className="text-xl sm:text-2xl font-bold gold-text text-center mb-4 sm:mb-6">Relatórios</h2>
 
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-center gap-3 mb-6">
-        <div className="inline-flex rounded overflow-hidden border border-line self-center">
-          <button onClick={() => setView('month')} className={`px-3 py-2 ${view === 'month' ? 'bg-gold text-white' : 'bg-surface-raised text-zinc-200'}`}>Mês</button>
-          <button onClick={() => setView('week')} className={`px-3 py-2 ${view === 'week' ? 'bg-gold text-white' : 'bg-surface-raised text-zinc-200'}`}>Semana</button>
-          <button onClick={() => setView('day')} className={`px-3 py-2 ${view === 'day' ? 'bg-gold text-white' : 'bg-surface-raised text-zinc-200'}`}>Dia</button>
+      <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+        <div className="grid grid-cols-3 rounded-lg overflow-hidden border border-line w-full max-w-md mx-auto xl:mx-0 xl:max-w-none xl:inline-flex xl:w-auto xl:self-center">
+          <button onClick={() => setView('month')} className={`px-3 py-2.5 text-sm sm:text-base ${view === 'month' ? 'bg-gold text-white' : 'bg-surface-raised text-zinc-200'}`}>Mês</button>
+          <button onClick={() => setView('week')} className={`px-3 py-2.5 text-sm sm:text-base ${view === 'week' ? 'bg-gold text-white' : 'bg-surface-raised text-zinc-200'}`}>Semana</button>
+          <button onClick={() => setView('day')} className={`px-3 py-2.5 text-sm sm:text-base ${view === 'day' ? 'bg-gold text-white' : 'bg-surface-raised text-zinc-200'}`}>Dia</button>
         </div>
 
-        <div className="inline-flex items-center gap-2 self-center">
-          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-surface-muted text-white rounded">Hoje</button>
-          <button onClick={() => { const d = new Date(currentDate); if (view === 'day') d.setDate(d.getDate() - 1); else if (view === 'week') d.setDate(d.getDate() - 7); else d.setMonth(d.getMonth() - 1); setCurrentDate(d); }} className="px-3 py-2 bg-surface-raised text-white rounded border border-line">◀</button>
-          <div className="text-zinc-200 font-semibold min-w-[180px] text-center">
-            {view === 'day' && currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-            {view === 'week' && `${startOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${endOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
+        <div className="flex items-center gap-2 w-full max-w-md mx-auto xl:max-w-none xl:self-center">
+          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-surface-muted text-white rounded text-sm flex-shrink-0">Hoje</button>
+          <button onClick={() => { const d = new Date(currentDate); if (view === 'day') d.setDate(d.getDate() - 1); else if (view === 'week') d.setDate(d.getDate() - 7); else d.setMonth(d.getMonth() - 1); setCurrentDate(d); }} className="px-3 py-2 bg-surface-raised text-white rounded border border-line flex-shrink-0" aria-label="Anterior">◀</button>
+          <div className="text-zinc-200 font-semibold text-center text-sm sm:text-base flex-1 min-w-0 capitalize leading-snug">
+            {view === 'day' && currentDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
+            {view === 'week' && `${startOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${endOfWeek(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
             {view === 'month' && currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
           </div>
-          <button onClick={() => { const d = new Date(currentDate); if (view === 'day') d.setDate(d.getDate() + 1); else if (view === 'week') d.setDate(d.getDate() + 7); else d.setMonth(d.getMonth() + 1); setCurrentDate(d); }} className="px-3 py-2 bg-surface-raised text-white rounded border border-line">▶</button>
+          <button onClick={() => { const d = new Date(currentDate); if (view === 'day') d.setDate(d.getDate() + 1); else if (view === 'week') d.setDate(d.getDate() + 7); else d.setMonth(d.getMonth() + 1); setCurrentDate(d); }} className="px-3 py-2 bg-surface-raised text-white rounded border border-line flex-shrink-0" aria-label="Próximo">▶</button>
         </div>
 
-        <div className="border border-line rounded p-2 bg-surface-raised max-w-md mx-auto xl:mx-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="border border-line rounded-lg p-3 bg-surface-raised w-full max-w-md mx-auto xl:mx-0">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-xs text-zinc-300 mb-1">De</label>
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-2 py-1 text-white" />
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-2 py-2 text-white text-sm" />
             </div>
             <div>
               <label className="block text-xs text-zinc-300 mb-1">Até</label>
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-2 py-1 text-white" />
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-2 py-2 text-white text-sm" />
             </div>
           </div>
           {(customFrom || customTo) && (
-            <button onClick={() => { setCustomFrom(''); setCustomTo(''); }} className="mt-2 px-3 py-2 bg-surface-muted text-white rounded text-sm">Limpar período personalizado</button>
+            <button onClick={() => { setCustomFrom(''); setCustomTo(''); }} className="mt-2 w-full px-3 py-2 bg-surface-muted text-white rounded text-sm">Limpar período</button>
           )}
         </div>
       </div>
 
-      <p className="text-center text-sm text-zinc-400 mb-6">
+      <p className="text-center text-xs sm:text-sm text-zinc-400 mb-4 sm:mb-6 px-1">
         Período: {new Date(period.from + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(period.to + 'T12:00:00').toLocaleDateString('pt-BR')}
       </p>
 
@@ -550,49 +550,49 @@ const ReportsView: React.FC = () => {
       {loading && <div className="text-zinc-200 mb-4">Carregando...</div>}
 
       {!loading && (
-        <div className="grid gap-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Entrou (total)</div>
-              <div className="text-xl font-bold text-emerald-400">{money(totals.income)}</div>
+        <div className="grid gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Entrou (total)</div>
+              <div className="text-base sm:text-xl font-bold text-emerald-400 break-words">{money(totals.income)}</div>
               {salonIncomeGoal && (
                 <div className="mt-2 text-left">
                   <GoalBar label="Meta faturamento" actual={salonIncomeGoal.actual} target={salonIncomeGoal.target} pct={salonIncomeGoal.progress_pct} />
                 </div>
               )}
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Produtos (estoque)</div>
-              <div className="text-xl font-bold text-orange-400">{money(totals.products)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Produtos (estoque)</div>
+              <div className="text-base sm:text-xl font-bold text-orange-400 break-words">{money(totals.products)}</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Estrutura (total)</div>
-              <div className="text-xl font-bold text-amber-400">{money(structure.total)}</div>
-              <div className="text-xs text-zinc-500 mt-1">{money(structure.share_per_professional)} / profissional</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Estrutura (total)</div>
+              <div className="text-base sm:text-xl font-bold text-amber-400 break-words">{money(structure.total)}</div>
+              <div className="text-[11px] sm:text-xs text-zinc-500 mt-1 leading-tight">{money(structure.share_per_professional)} / profissional</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Pro Salão</div>
-              <div className="text-xl font-bold text-gold">{money(totals.pro_salao)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Pro Salão</div>
+              <div className="text-base sm:text-xl font-bold text-gold break-words">{money(totals.pro_salao)}</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Salários pagos</div>
-              <div className="text-xl font-bold text-red-400">{money(totals.salary)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Salários pagos</div>
+              <div className="text-base sm:text-xl font-bold text-red-400 break-words">{money(totals.salary)}</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Sobra do salão</div>
-              <div className={`text-xl font-bold ${totals.salon_remaining >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(totals.salon_remaining)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Sobra do salão</div>
+              <div className={`text-base sm:text-xl font-bold break-words ${totals.salon_remaining >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(totals.salon_remaining)}</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Saídas gerais</div>
-              <div className="text-xl font-bold text-red-300">{money(totals.expenses)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Saídas gerais</div>
+              <div className="text-base sm:text-xl font-bold text-red-300 break-words">{money(totals.expenses)}</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Contas fixas (período)</div>
-              <div className="text-xl font-bold text-sky-400">{money(fixedAccountsSummary.total)}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
+              <div className="text-zinc-300 text-xs sm:text-sm">Contas fixas</div>
+              <div className="text-base sm:text-xl font-bold text-sky-400 break-words">{money(fixedAccountsSummary.total)}</div>
             </div>
-            <div className="bg-surface-raised border border-line rounded-lg p-4 text-center">
-              <div className="text-zinc-300 text-sm">Agendamentos</div>
-              <div className="text-xl font-bold gold-text">{totals.appointments}</div>
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center col-span-2 lg:col-span-1">
+              <div className="text-zinc-300 text-xs sm:text-sm">Agendamentos</div>
+              <div className="text-base sm:text-xl font-bold gold-text">{totals.appointments}</div>
               {salonAppointmentsGoal && (
                 <div className="mt-2 text-left">
                   <GoalBar label="Meta atendimentos" actual={salonAppointmentsGoal.actual} target={salonAppointmentsGoal.target} pct={salonAppointmentsGoal.progress_pct} format="number" />
@@ -601,8 +601,8 @@ const ReportsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-surface-raised border border-line rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4">
+            <div className="flex flex-col gap-3 mb-4">
               <div>
                 <h3 className="text-white font-semibold">Metas do período</h3>
                 <p className="text-xs text-zinc-400 mt-1">Defina metas mensais de atendimentos e faturamento para o salão ou por profissional.</p>
@@ -610,21 +610,21 @@ const ReportsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { resetGoalForm(); setShowGoalForm(true); }}
-                className="px-4 py-2 bg-gold hover:brightness-110 text-white font-semibold rounded"
+                className="w-full sm:w-auto px-4 py-2.5 bg-gold hover:brightness-110 text-white font-semibold rounded"
               >
                 Nova meta
               </button>
             </div>
 
             {showGoalForm && (
-              <form onSubmit={saveGoal} className="mb-4 p-4 border border-line rounded-lg bg-surface-overlay grid md:grid-cols-3 gap-3">
+              <form onSubmit={saveGoal} className="mb-4 p-3 sm:p-4 border border-line rounded-lg bg-surface-overlay grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Mês</label>
-                  <input type="month" value={goalMonth} onChange={(e) => setGoalMonth(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" required />
+                  <input type="month" value={goalMonth} onChange={(e) => setGoalMonth(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" required />
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Métrica</label>
-                  <select value={goalMetric} onChange={(e) => setGoalMetric(e.target.value as GoalMetric)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white">
+                  <select value={goalMetric} onChange={(e) => setGoalMetric(e.target.value as GoalMetric)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white">
                     <option value="appointments">Quantidade de atendimentos</option>
                     <option value="income">Valor recebido dos atendimentos</option>
                   </select>
@@ -637,30 +637,30 @@ const ReportsView: React.FC = () => {
                     step={goalMetric === 'appointments' ? '1' : '0.01'}
                     value={goalTarget}
                     onChange={(e) => setGoalTarget(e.target.value)}
-                    className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white"
+                    className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Escopo</label>
-                  <select value={goalProfId} onChange={(e) => setGoalProfId(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white">
+                  <select value={goalProfId} onChange={(e) => setGoalProfId(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white">
                     <option value="">Salão (todos)</option>
                     {adminProfessionals.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-xs text-zinc-300 mb-1">Observações</label>
-                  <input value={goalNotes} onChange={(e) => setGoalNotes(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" />
+                  <input value={goalNotes} onChange={(e) => setGoalNotes(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" />
                 </div>
-                <div className="flex items-center gap-2 pt-6">
+                <div className="flex items-center gap-2 sm:pt-0">
                   <input id="goal-active" type="checkbox" checked={goalActive} onChange={(e) => setGoalActive(e.target.checked)} />
                   <label htmlFor="goal-active" className="text-sm text-zinc-300">Ativa</label>
                 </div>
-                <div className="md:col-span-3 flex gap-2 justify-end">
-                  <button type="button" onClick={resetGoalForm} className="px-4 py-2 border border-line rounded text-white">Cancelar</button>
-                  <button type="submit" disabled={goalSaving} className="px-4 py-2 bg-gold text-white font-semibold rounded disabled:opacity-50">
+                <div className="sm:col-span-2 md:col-span-3 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                  <button type="button" onClick={resetGoalForm} className="w-full sm:w-auto px-4 py-2.5 border border-line rounded text-white">Cancelar</button>
+                  <button type="submit" disabled={goalSaving} className="w-full sm:w-auto px-4 py-2.5 bg-gold text-white font-semibold rounded disabled:opacity-50">
                     {goalSaving ? 'Salvando...' : editingGoalId ? 'Atualizar' : 'Cadastrar'}
                   </button>
                 </div>
@@ -670,54 +670,93 @@ const ReportsView: React.FC = () => {
             {performanceGoals.length === 0 ? (
               <p className="text-sm text-zinc-400">Nenhuma meta cadastrada para {new Date(goalMonth + '-01T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-zinc-400 border-b border-line">
-                      <th className="text-left py-2 pr-3">Mês</th>
-                      <th className="text-left py-2 pr-3">Escopo</th>
-                      <th className="text-left py-2 pr-3">Métrica</th>
-                      <th className="text-left py-2 pr-3">Meta mensal</th>
-                      <th className="text-left py-2 pr-3">No período</th>
-                      <th className="text-left py-2">Status</th>
-                      <th className="text-right py-2">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {performanceGoals.map((goal) => {
-                      const progressList = goal.professional_id
-                        ? (goalsSummary.by_professional[goal.professional_id] || [])
-                        : goalsSummary.salon;
-                      const progress = progressList.find((g) => g.id === goal.id);
-                      return (
-                        <tr key={goal.id} className="border-b border-line/60 text-zinc-200">
-                          <td className="py-2 pr-3">{new Date(goal.period_month + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}</td>
-                          <td className="py-2 pr-3">{goal.professionals?.name || 'Salão'}</td>
-                          <td className="py-2 pr-3">{GOAL_METRIC_LABELS[goal.metric]}</td>
-                          <td className="py-2 pr-3">{goal.metric === 'income' ? money(Number(goal.target_value)) : Number(goal.target_value)}</td>
-                          <td className="py-2 pr-3">
-                            {progress ? (
-                              <span className={progress.progress_pct >= 100 ? 'text-emerald-400' : 'text-gold'}>
-                                {progress.progress_pct}% ({goal.metric === 'income' ? money(progress.actual) : progress.actual})
-                              </span>
-                            ) : '—'}
-                          </td>
-                          <td className="py-2">{goal.is_active ? <span className="text-emerald-400">Ativa</span> : <span className="text-zinc-500">Inativa</span>}</td>
-                          <td className="py-2 text-right whitespace-nowrap">
-                            <button onClick={() => openEditGoal(goal)} className="text-gold hover:underline mr-3">Editar</button>
-                            <button onClick={() => removeGoal(goal.id)} className="text-red-400 hover:underline">Excluir</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="md:hidden space-y-3">
+                  {performanceGoals.map((goal) => {
+                    const progressList = goal.professional_id
+                      ? (goalsSummary.by_professional[goal.professional_id] || [])
+                      : goalsSummary.salon;
+                    const progress = progressList.find((g) => g.id === goal.id);
+                    return (
+                      <div key={goal.id} className="border border-line rounded-lg p-3 bg-surface-overlay space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-white font-medium">{goal.professionals?.name || 'Salão'}</p>
+                            <p className="text-xs text-zinc-400 capitalize">
+                              {new Date(goal.period_month + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+                          {goal.is_active ? <span className="text-xs text-emerald-400">Ativa</span> : <span className="text-xs text-zinc-500">Inativa</span>}
+                        </div>
+                        <p className="text-sm text-zinc-300">{GOAL_METRIC_LABELS[goal.metric]}</p>
+                        <p className="text-sm text-white">
+                          Meta: {goal.metric === 'income' ? money(Number(goal.target_value)) : Number(goal.target_value)}
+                        </p>
+                        <p className="text-sm">
+                          Período:{' '}
+                          {progress ? (
+                            <span className={progress.progress_pct >= 100 ? 'text-emerald-400' : 'text-gold'}>
+                              {progress.progress_pct}% ({goal.metric === 'income' ? money(progress.actual) : progress.actual})
+                            </span>
+                          ) : '—'}
+                        </p>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => openEditGoal(goal)} className="flex-1 py-2 rounded border border-line text-gold text-sm">Editar</button>
+                          <button onClick={() => removeGoal(goal.id)} className="flex-1 py-2 rounded border border-red-900/50 text-red-400 text-sm">Excluir</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-zinc-400 border-b border-line">
+                        <th className="text-left py-2 pr-3">Mês</th>
+                        <th className="text-left py-2 pr-3">Escopo</th>
+                        <th className="text-left py-2 pr-3">Métrica</th>
+                        <th className="text-left py-2 pr-3">Meta mensal</th>
+                        <th className="text-left py-2 pr-3">No período</th>
+                        <th className="text-left py-2">Status</th>
+                        <th className="text-right py-2">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {performanceGoals.map((goal) => {
+                        const progressList = goal.professional_id
+                          ? (goalsSummary.by_professional[goal.professional_id] || [])
+                          : goalsSummary.salon;
+                        const progress = progressList.find((g) => g.id === goal.id);
+                        return (
+                          <tr key={goal.id} className="border-b border-line/60 text-zinc-200">
+                            <td className="py-2 pr-3">{new Date(goal.period_month + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}</td>
+                            <td className="py-2 pr-3">{goal.professionals?.name || 'Salão'}</td>
+                            <td className="py-2 pr-3">{GOAL_METRIC_LABELS[goal.metric]}</td>
+                            <td className="py-2 pr-3">{goal.metric === 'income' ? money(Number(goal.target_value)) : Number(goal.target_value)}</td>
+                            <td className="py-2 pr-3">
+                              {progress ? (
+                                <span className={progress.progress_pct >= 100 ? 'text-emerald-400' : 'text-gold'}>
+                                  {progress.progress_pct}% ({goal.metric === 'income' ? money(progress.actual) : progress.actual})
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td className="py-2">{goal.is_active ? <span className="text-emerald-400">Ativa</span> : <span className="text-zinc-500">Inativa</span>}</td>
+                            <td className="py-2 text-right whitespace-nowrap">
+                              <button onClick={() => openEditGoal(goal)} className="text-gold hover:underline mr-3">Editar</button>
+                              <button onClick={() => removeGoal(goal.id)} className="text-red-400 hover:underline">Excluir</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
 
-          <div className="bg-surface-raised border border-line rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4">
+            <div className="flex flex-col gap-3 mb-4">
               <div>
                 <h3 className="text-white font-semibold">Contas fixas</h3>
                 <p className="text-xs text-zinc-400 mt-1">Cadastre despesas mensais recorrentes. O valor entra automaticamente no relatório do período.</p>
@@ -725,29 +764,29 @@ const ReportsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { resetFixedForm(); setShowFixedForm(true); }}
-                className="px-4 py-2 bg-gold hover:brightness-110 text-white font-semibold rounded"
+                className="w-full sm:w-auto px-4 py-2.5 bg-gold hover:brightness-110 text-white font-semibold rounded"
               >
                 Nova conta fixa
               </button>
             </div>
 
             {showFixedForm && (
-              <form onSubmit={saveFixedAccount} className="mb-4 p-4 border border-line rounded-lg bg-surface-overlay grid md:grid-cols-3 gap-3">
-                <div className="md:col-span-1">
+              <form onSubmit={saveFixedAccount} className="mb-4 p-3 sm:p-4 border border-line rounded-lg bg-surface-overlay grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 md:col-span-1">
                   <label className="block text-xs text-zinc-300 mb-1">Nome</label>
-                  <input value={fixedName} onChange={(e) => setFixedName(e.target.value)} placeholder="Ex.: Aluguel" className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" required />
+                  <input value={fixedName} onChange={(e) => setFixedName(e.target.value)} placeholder="Ex.: Aluguel" className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" required />
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Valor mensal (R$)</label>
-                  <input type="number" min="0.01" step="0.01" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" required />
+                  <input type="number" min="0.01" step="0.01" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" required />
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Dia do vencimento</label>
-                  <input type="number" min="1" max="31" value={fixedDueDay} onChange={(e) => setFixedDueDay(e.target.value)} placeholder="Opcional" className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" />
+                  <input type="number" min="1" max="31" value={fixedDueDay} onChange={(e) => setFixedDueDay(e.target.value)} placeholder="Opcional" className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" />
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Tipo</label>
-                  <select value={fixedAllocation} onChange={(e) => setFixedAllocation(e.target.value as FixedAllocation)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white">
+                  <select value={fixedAllocation} onChange={(e) => setFixedAllocation(e.target.value as FixedAllocation)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white">
                     <option value="structure">Estrutura (rateio do salão)</option>
                     <option value="expense">Saída geral</option>
                     <option value="product">Produto (estoque)</option>
@@ -756,7 +795,7 @@ const ReportsView: React.FC = () => {
                 {fixedAllocation !== 'structure' && (
                   <div>
                     <label className="block text-xs text-zinc-300 mb-1">Profissional</label>
-                    <select value={fixedProfId} onChange={(e) => setFixedProfId(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" required={fixedAllocation === 'product'}>
+                    <select value={fixedProfId} onChange={(e) => setFixedProfId(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" required={fixedAllocation === 'product'}>
                       <option value="">{fixedAllocation === 'expense' ? 'Rateio do salão' : 'Selecione'}</option>
                       {adminProfessionals.map((p) => (
                         <option key={p.id} value={p.id}>{p.name}</option>
@@ -764,17 +803,17 @@ const ReportsView: React.FC = () => {
                     </select>
                   </div>
                 )}
-                <div className={fixedAllocation === 'structure' ? 'md:col-span-2' : ''}>
+                <div className={fixedAllocation === 'structure' ? 'sm:col-span-2' : 'sm:col-span-2 md:col-span-1'}>
                   <label className="block text-xs text-zinc-300 mb-1">Observações</label>
-                  <input value={fixedNotes} onChange={(e) => setFixedNotes(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-white" />
+                  <input value={fixedNotes} onChange={(e) => setFixedNotes(e.target.value)} className="w-full bg-surface-raised border border-line rounded px-3 py-2.5 text-white" />
                 </div>
-                <div className="flex items-center gap-2 pt-6">
+                <div className="flex items-center gap-2">
                   <input id="fixed-active" type="checkbox" checked={fixedActive} onChange={(e) => setFixedActive(e.target.checked)} />
                   <label htmlFor="fixed-active" className="text-sm text-zinc-300">Ativa</label>
                 </div>
-                <div className="md:col-span-3 flex gap-2 justify-end">
-                  <button type="button" onClick={resetFixedForm} className="px-4 py-2 border border-line rounded text-white">Cancelar</button>
-                  <button type="submit" disabled={fixedSaving} className="px-4 py-2 bg-gold text-white font-semibold rounded disabled:opacity-50">
+                <div className="sm:col-span-2 md:col-span-3 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                  <button type="button" onClick={resetFixedForm} className="w-full sm:w-auto px-4 py-2.5 border border-line rounded text-white">Cancelar</button>
+                  <button type="submit" disabled={fixedSaving} className="w-full sm:w-auto px-4 py-2.5 bg-gold text-white font-semibold rounded disabled:opacity-50">
                     {fixedSaving ? 'Salvando...' : editingFixedId ? 'Atualizar' : 'Cadastrar'}
                   </button>
                 </div>
@@ -784,70 +823,125 @@ const ReportsView: React.FC = () => {
             {fixedAccounts.length === 0 ? (
               <p className="text-sm text-zinc-400">Nenhuma conta fixa cadastrada.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-zinc-400 border-b border-line">
-                      <th className="text-left py-2 pr-3">Nome</th>
-                      <th className="text-left py-2 pr-3">Mensal</th>
-                      <th className="text-left py-2 pr-3">No período</th>
-                      <th className="text-left py-2 pr-3">Venc.</th>
-                      <th className="text-left py-2 pr-3">Tipo</th>
-                      <th className="text-left py-2 pr-3">Profissional</th>
-                      <th className="text-left py-2">Status</th>
-                      <th className="text-right py-2">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fixedAccounts.map((account) => {
-                      const periodItem = fixedAccountsSummary.items.find((i) => i.id === account.id);
-                      return (
-                        <tr key={account.id} className="border-b border-line/60 text-zinc-200">
-                          <td className="py-2 pr-3 font-medium text-white">{account.name}</td>
-                          <td className="py-2 pr-3">{money(Number(account.amount))}</td>
-                          <td className="py-2 pr-3 text-sky-300">{money(periodItem?.period_amount || 0)}</td>
-                          <td className="py-2 pr-3">{account.due_day ? `Dia ${account.due_day}` : '—'}</td>
-                          <td className="py-2 pr-3">{ALLOCATION_LABELS[account.allocation]}</td>
-                          <td className="py-2 pr-3">{account.professionals?.name || (account.allocation === 'structure' || account.allocation === 'expense' ? 'Salão' : '—')}</td>
-                          <td className="py-2">{account.is_active ? <span className="text-emerald-400">Ativa</span> : <span className="text-zinc-500">Inativa</span>}</td>
-                          <td className="py-2 text-right whitespace-nowrap">
-                            <button onClick={() => openEditFixed(account)} className="text-gold hover:underline mr-3">Editar</button>
-                            <button onClick={() => removeFixedAccount(account.id)} className="text-red-400 hover:underline">Excluir</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="md:hidden space-y-3">
+                  {fixedAccounts.map((account) => {
+                    const periodItem = fixedAccountsSummary.items.find((i) => i.id === account.id);
+                    return (
+                      <div key={account.id} className="border border-line rounded-lg p-3 bg-surface-overlay space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-white font-medium">{account.name}</p>
+                            <p className="text-xs text-zinc-400">{ALLOCATION_LABELS[account.allocation]}</p>
+                          </div>
+                          {account.is_active ? <span className="text-xs text-emerald-400">Ativa</span> : <span className="text-xs text-zinc-500">Inativa</span>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <p className="text-zinc-500 text-xs">Mensal</p>
+                            <p className="text-white">{money(Number(account.amount))}</p>
+                          </div>
+                          <div>
+                            <p className="text-zinc-500 text-xs">No período</p>
+                            <p className="text-sky-300">{money(periodItem?.period_amount || 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-zinc-500 text-xs">Vencimento</p>
+                            <p className="text-zinc-200">{account.due_day ? `Dia ${account.due_day}` : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-zinc-500 text-xs">Profissional</p>
+                            <p className="text-zinc-200">{account.professionals?.name || (account.allocation === 'structure' || account.allocation === 'expense' ? 'Salão' : '—')}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => openEditFixed(account)} className="flex-1 py-2 rounded border border-line text-gold text-sm">Editar</button>
+                          <button onClick={() => removeFixedAccount(account.id)} className="flex-1 py-2 rounded border border-red-900/50 text-red-400 text-sm">Excluir</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-zinc-400 border-b border-line">
+                        <th className="text-left py-2 pr-3">Nome</th>
+                        <th className="text-left py-2 pr-3">Mensal</th>
+                        <th className="text-left py-2 pr-3">No período</th>
+                        <th className="text-left py-2 pr-3">Venc.</th>
+                        <th className="text-left py-2 pr-3">Tipo</th>
+                        <th className="text-left py-2 pr-3">Profissional</th>
+                        <th className="text-left py-2">Status</th>
+                        <th className="text-right py-2">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fixedAccounts.map((account) => {
+                        const periodItem = fixedAccountsSummary.items.find((i) => i.id === account.id);
+                        return (
+                          <tr key={account.id} className="border-b border-line/60 text-zinc-200">
+                            <td className="py-2 pr-3 font-medium text-white">{account.name}</td>
+                            <td className="py-2 pr-3">{money(Number(account.amount))}</td>
+                            <td className="py-2 pr-3 text-sky-300">{money(periodItem?.period_amount || 0)}</td>
+                            <td className="py-2 pr-3">{account.due_day ? `Dia ${account.due_day}` : '—'}</td>
+                            <td className="py-2 pr-3">{ALLOCATION_LABELS[account.allocation]}</td>
+                            <td className="py-2 pr-3">{account.professionals?.name || (account.allocation === 'structure' || account.allocation === 'expense' ? 'Salão' : '—')}</td>
+                            <td className="py-2">{account.is_active ? <span className="text-emerald-400">Ativa</span> : <span className="text-zinc-500">Inativa</span>}</td>
+                            <td className="py-2 text-right whitespace-nowrap">
+                              <button onClick={() => openEditFixed(account)} className="text-gold hover:underline mr-3">Editar</button>
+                              <button onClick={() => removeFixedAccount(account.id)} className="text-red-400 hover:underline">Excluir</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
 
           {chartData.labels.length > 0 && (
-            <div className="bg-surface-raised border border-line rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-3">Pro Salão x Salário por profissional</h3>
-              <Bar
-                data={{
-                  labels: chartData.labels,
-                  datasets: [
-                    { label: 'Pro Salão (R$)', data: chartData.proSalao, backgroundColor: 'rgba(212, 175, 55, 0.55)', borderColor: '#d4af37' },
-                    { label: 'Salário (R$)', data: chartData.salary, backgroundColor: 'rgba(248, 113, 113, 0.55)', borderColor: '#f87171' },
-                  ],
-                }}
-                options={{ responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }}
-              />
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4">
+              <h3 className="text-white font-semibold mb-3 text-sm sm:text-base">Pro Salão x Salário por profissional</h3>
+              <div className="relative h-56 sm:h-72">
+                <Bar
+                  data={{
+                    labels: chartData.labels,
+                    datasets: [
+                      { label: 'Pro Salão (R$)', data: chartData.proSalao, backgroundColor: 'rgba(212, 175, 55, 0.55)', borderColor: '#d4af37' },
+                      { label: 'Salário (R$)', data: chartData.salary, backgroundColor: 'rgba(248, 113, 113, 0.55)', borderColor: '#f87171' },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, font: { size: 11 }, color: '#d4d4d8' },
+                      },
+                    },
+                    scales: {
+                      x: { ticks: { color: '#a1a1aa', maxRotation: 45, minRotation: 0, font: { size: 10 } } },
+                      y: { beginAtZero: true, ticks: { color: '#a1a1aa', font: { size: 10 } } },
+                    },
+                  }}
+                />
+              </div>
             </div>
           )}
 
-          <div className="bg-surface-raised border border-line rounded-lg p-4">
+          <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4">
             <h3 className="text-white font-semibold mb-2">Registrar movimentação</h3>
-            <p className="text-xs text-zinc-400 mb-4">
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
               Produto = estoque por profissional · Estrutura = valor do salão dividido entre todas · Salário = retirada do Pro Salão
             </p>
-            <form onSubmit={addEntry} className="grid md:grid-cols-6 gap-3 items-end">
+            <form onSubmit={addEntry} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
               <div>
                 <label className="block text-xs text-zinc-300 mb-1">Tipo</label>
-                <select value={entryCategory} onChange={(e) => setEntryCategory(e.target.value as ExpenseCategory)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white">
+                <select value={entryCategory} onChange={(e) => setEntryCategory(e.target.value as ExpenseCategory)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2.5 text-white">
                   <option value="expense">Saída geral</option>
                   <option value="product">Produto (estoque)</option>
                   <option value="structure">Estrutura (salão)</option>
@@ -857,7 +951,7 @@ const ReportsView: React.FC = () => {
               {needsProfessional && (
                 <div>
                   <label className="block text-xs text-zinc-300 mb-1">Profissional</label>
-                  <select value={entryProfId} onChange={(e) => setEntryProfId(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white" required>
+                  <select value={entryProfId} onChange={(e) => setEntryProfId(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2.5 text-white" required>
                     <option value="">Selecione</option>
                     {selectableProfessionals.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -867,34 +961,34 @@ const ReportsView: React.FC = () => {
               )}
               <div>
                 <label className="block text-xs text-zinc-300 mb-1">Valor (R$)</label>
-                <input type="number" min="0.01" step="0.01" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white" required />
+                <input type="number" min="0.01" step="0.01" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2.5 text-white" required />
               </div>
               <div>
                 <label className="block text-xs text-zinc-300 mb-1">Data</label>
-                <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white" required />
+                <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="w-full bg-surface-overlay border border-line rounded px-3 py-2.5 text-white" required />
               </div>
-              <div className={needsProfessional ? '' : 'md:col-span-2'}>
+              <div className={needsProfessional ? 'sm:col-span-2 md:col-span-1' : 'sm:col-span-2'}>
                 <label className="block text-xs text-zinc-300 mb-1">Descrição</label>
-                <input type="text" value={entryDescription} onChange={(e) => setEntryDescription(e.target.value)} placeholder="Ex.: shampoo, aluguel..." className="w-full bg-surface-overlay border border-line rounded px-3 py-2 text-white" />
+                <input type="text" value={entryDescription} onChange={(e) => setEntryDescription(e.target.value)} placeholder="Ex.: shampoo, aluguel..." className="w-full bg-surface-overlay border border-line rounded px-3 py-2.5 text-white" />
               </div>
-              <button type="submit" disabled={entrySaving} className="bg-gold hover:brightness-110 text-white font-semibold px-4 py-2 rounded disabled:opacity-50">
+              <button type="submit" disabled={entrySaving} className="w-full sm:col-span-2 md:col-span-1 bg-gold hover:brightness-110 text-white font-semibold px-4 py-2.5 rounded disabled:opacity-50">
                 {entrySaving ? 'Salvando...' : 'Adicionar'}
               </button>
             </form>
           </div>
 
           {structure.items.length > 0 && (
-            <div className="bg-surface-raised border border-line rounded-lg p-4">
+            <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4">
               <h3 className="text-white font-semibold mb-3">Investimentos em estrutura (salão)</h3>
               <ul className="divide-y divide-line">
                 {structure.items.map((item) => (
-                  <li key={item.id} className="py-2 flex items-center justify-between text-sm">
-                    <div>
-                      <div className="text-white">{item.description || 'Estrutura'}</div>
+                  <li key={item.id} className="py-2.5 flex items-start sm:items-center justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <div className="text-white break-words">{item.description || 'Estrutura'}</div>
                       <div className="text-zinc-400">{new Date(item.expense_date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-amber-400 font-semibold">{money(item.amount)}</span>
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3 flex-shrink-0">
+                      <span className="text-amber-400 font-semibold whitespace-nowrap">{money(item.amount)}</span>
                       <button onClick={() => removeEntry(item.id)} className="text-zinc-400 hover:text-red-400 text-xs">Remover</button>
                     </div>
                   </li>
@@ -903,7 +997,7 @@ const ReportsView: React.FC = () => {
             </div>
           )}
 
-          <div className="grid gap-4">
+          <div className="grid gap-3 sm:gap-4">
             {professionals.filter((p) => p.id !== '__none__').length === 0 && (
               <div className="text-zinc-300 text-center py-8">Nenhum dado no período selecionado.</div>
             )}
@@ -912,11 +1006,11 @@ const ReportsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExpandedId((prev) => (prev === prof.id ? null : prof.id))}
-                  className="w-full px-4 py-4 text-left hover:bg-surface-overlay transition-colors"
+                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-left hover:bg-surface-overlay transition-colors"
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
                     <div>
-                      <div className="text-lg font-semibold text-white">{prof.name}</div>
+                      <div className="text-base sm:text-lg font-semibold text-white">{prof.name}</div>
                       <div className="text-sm text-zinc-400">{prof.appointments} agendamento(s)</div>
                       {(prof.goals || []).length > 0 && (
                         <div className="mt-2 space-y-1 max-w-md">
@@ -933,20 +1027,20 @@ const ReportsView: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
-                      <div><div className="text-zinc-500 text-xs">Entrou</div><div className="font-bold text-emerald-400">{money(prof.income)}</div></div>
-                      <div><div className="text-zinc-500 text-xs">Produto</div><div className="font-bold text-orange-400">{money(prof.products)}</div></div>
-                      <div><div className="text-zinc-500 text-xs">Estrutura</div><div className="font-bold text-amber-400">{money(prof.structure_share)}</div></div>
-                      <div><div className="text-zinc-500 text-xs">Pro Salão</div><div className="font-bold text-gold">{money(prof.pro_salao)}</div></div>
-                      <div><div className="text-zinc-500 text-xs">Salário</div><div className="font-bold text-red-400">{money(prof.salary)}</div></div>
-                      <div><div className="text-zinc-500 text-xs">Sobra</div><div className={`font-bold ${prof.salon_remaining >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(prof.salon_remaining)}</div></div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
+                      <div><div className="text-zinc-500 text-xs">Entrou</div><div className="font-bold text-emerald-400 break-words">{money(prof.income)}</div></div>
+                      <div><div className="text-zinc-500 text-xs">Produto</div><div className="font-bold text-orange-400 break-words">{money(prof.products)}</div></div>
+                      <div><div className="text-zinc-500 text-xs">Estrutura</div><div className="font-bold text-amber-400 break-words">{money(prof.structure_share)}</div></div>
+                      <div><div className="text-zinc-500 text-xs">Pro Salão</div><div className="font-bold text-gold break-words">{money(prof.pro_salao)}</div></div>
+                      <div><div className="text-zinc-500 text-xs">Salário</div><div className="font-bold text-red-400 break-words">{money(prof.salary)}</div></div>
+                      <div><div className="text-zinc-500 text-xs">Sobra</div><div className={`font-bold break-words ${prof.salon_remaining >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(prof.salon_remaining)}</div></div>
                     </div>
                   </div>
                 </button>
 
                 {expandedId === prof.id && (
-                  <div className="px-4 pb-4 border-t border-line">
-                    <div className="mt-3 text-xs text-zinc-400 mb-2">
+                  <div className="px-3 sm:px-4 pb-4 border-t border-line">
+                    <div className="mt-3 text-xs text-zinc-400 mb-2 leading-relaxed">
                       Pro Salão = Entrou − Saídas − Produtos − Cota de estrutura ({money(prof.structure_share)})
                     </div>
                     {prof.expense_items.length === 0 ? (
@@ -954,15 +1048,15 @@ const ReportsView: React.FC = () => {
                     ) : (
                       <ul className="divide-y divide-line">
                         {prof.expense_items.map((item) => (
-                          <li key={item.id} className="py-2 flex items-center justify-between gap-3 text-sm">
-                            <div>
-                              <div className="text-white font-medium">{item.description || CATEGORY_LABELS[item.category]}</div>
+                          <li key={item.id} className="py-2.5 flex items-start sm:items-center justify-between gap-3 text-sm">
+                            <div className="min-w-0">
+                              <div className="text-white font-medium break-words">{item.description || CATEGORY_LABELS[item.category]}</div>
                               <div className="text-zinc-400">
                                 {CATEGORY_LABELS[item.category]} · {new Date(item.expense_date + 'T12:00:00').toLocaleDateString('pt-BR')}
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-red-400 font-semibold">{money(item.amount)}</span>
+                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3 flex-shrink-0">
+                              <span className="text-red-400 font-semibold whitespace-nowrap">{money(item.amount)}</span>
                               <button onClick={() => removeEntry(item.id)} className="text-zinc-400 hover:text-red-400 text-xs">Remover</button>
                             </div>
                           </li>

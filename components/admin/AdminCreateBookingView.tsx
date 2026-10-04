@@ -10,6 +10,12 @@ type ClientRow = {
   email?: string | null;
 };
 
+type Professional = {
+  id: string;
+  name: string;
+  is_active?: boolean;
+};
+
 type Step = 'details' | 'datetime' | 'success';
 
 function todayYmdLocal(d = new Date()) {
@@ -32,6 +38,7 @@ async function parseJson(res: Response) {
 const AdminCreateBookingView: React.FC = () => {
   const [step, setStep] = useState<Step>('details');
   const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(true);
 
   const [clientName, setClientName] = useState('');
@@ -42,6 +49,7 @@ const AdminCreateBookingView: React.FC = () => {
   const [clientResults, setClientResults] = useState<ClientRow[]>([]);
   const [searchingClients, setSearchingClients] = useState(false);
 
+  const [professionalId, setProfessionalId] = useState<string>('');
   const [serviceId, setServiceId] = useState<string>('');
   const [priceSelection, setPriceSelection] = useState<ServicePriceSelection | null>(null);
 
@@ -53,6 +61,31 @@ const AdminCreateBookingView: React.FC = () => {
     clientName: string;
     serviceName: string;
   } | null>(null);
+
+  const activeProfessionals = useMemo(
+    () => professionals.filter((p) => p.is_active !== false).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    [professionals],
+  );
+
+  const filteredServices = useMemo(() => {
+    const list = !professionalId
+      ? services
+      : services.filter((s) => s.responsibleProfessionalId === professionalId);
+    return [...list].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [services, professionalId]);
+
+  const servicesByProfessional = useMemo(() => {
+    if (professionalId) return null;
+    const groups = new Map<string, { label: string; items: Service[] }>();
+    for (const s of filteredServices) {
+      const key = s.responsibleProfessionalId || '__none__';
+      const label = s.responsibleProfessionalName || 'Sem profissional';
+      const g = groups.get(key) || { label, items: [] };
+      g.items.push(s);
+      groups.set(key, g);
+    }
+    return Array.from(groups.entries()).sort((a, b) => a[1].label.localeCompare(b[1].label, 'pt-BR'));
+  }, [filteredServices, professionalId]);
 
   const selectedService = useMemo(
     () => services.find((s) => String(s.id) === serviceId) || null,
@@ -67,10 +100,16 @@ const AdminCreateBookingView: React.FC = () => {
     (async () => {
       setLoadingMeta(true);
       try {
-        const res = await fetch('/api/services', { credentials: 'same-origin' });
-        const data = await parseJson(res);
-        if (!res.ok) throw new Error(data?.error || 'Erro ao carregar serviços');
-        setServices((data.services || []) as Service[]);
+        const [svcRes, proRes] = await Promise.all([
+          fetch('/api/services', { credentials: 'same-origin' }),
+          fetch('/api/professionals', { credentials: 'same-origin' }),
+        ]);
+        const [svcData, proData] = await Promise.all([parseJson(svcRes), parseJson(proRes)]);
+        if (!svcRes.ok) throw new Error(svcData?.error || 'Erro ao carregar serviços');
+        setServices((svcData.services || []) as Service[]);
+        if (proRes.ok) {
+          setProfessionals((proData.professionals || []) as Professional[]);
+        }
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar serviços');
       } finally {
@@ -109,6 +148,15 @@ const AdminCreateBookingView: React.FC = () => {
     setPriceSelection(null);
   }, [serviceId]);
 
+  useEffect(() => {
+    if (!serviceId) return;
+    const stillVisible = filteredServices.some((s) => String(s.id) === serviceId);
+    if (!stillVisible) {
+      setServiceId('');
+      setPriceSelection(null);
+    }
+  }, [professionalId, filteredServices, serviceId]);
+
   const selectClient = (c: ClientRow) => {
     setClientName(c.name || '');
     setClientPhone(c.phone || '');
@@ -130,6 +178,7 @@ const AdminCreateBookingView: React.FC = () => {
     setClientEmail('');
     setClientNotes('');
     setClientSearch('');
+    setProfessionalId('');
     setServiceId('');
     setPriceSelection(null);
     setError(null);
@@ -334,6 +383,22 @@ const AdminCreateBookingView: React.FC = () => {
         </div>
 
         <div>
+          <label className="block text-sm text-zinc-300 mb-1">Profissional</label>
+          <select
+            value={professionalId}
+            onChange={(e) => setProfessionalId(e.target.value)}
+            className="w-full bg-surface-overlay border border-line rounded-lg px-3 py-2 text-white"
+          >
+            <option value="">Todos os profissionais</option>
+            {activeProfessionals.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label className="block text-sm text-zinc-300 mb-1">Serviço *</label>
           <select
             value={serviceId}
@@ -341,14 +406,27 @@ const AdminCreateBookingView: React.FC = () => {
             className="w-full bg-surface-overlay border border-line rounded-lg px-3 py-2 text-white"
           >
             <option value="">Selecione um serviço</option>
-            {services.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-                {s.responsibleProfessionalName ? ` — ${s.responsibleProfessionalName}` : ''}
-                {` (${s.duration} min)`}
-              </option>
-            ))}
+            {professionalId ? (
+              filteredServices.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.duration} min)
+                </option>
+              ))
+            ) : (
+              (servicesByProfessional || []).map(([key, group]) => (
+                <optgroup key={key} label={group.label}>
+                  {group.items.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.duration} min)
+                    </option>
+                  ))}
+                </optgroup>
+              ))
+            )}
           </select>
+          {professionalId && filteredServices.length === 0 && (
+            <p className="text-xs text-zinc-400 mt-1">Nenhum serviço vinculado a este profissional.</p>
+          )}
         </div>
 
         {needsVariant && selectedService && (

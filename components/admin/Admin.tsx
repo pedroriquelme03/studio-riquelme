@@ -13,8 +13,9 @@ import BioLinksView from './BioLinksView';
 import MonthlyPlansView from './MonthlyPlansView';
 import CancellationsView from './CancellationsView';
 import ClientsView from './ClientsView';
+import AdminCreateBookingView from './AdminCreateBookingView';
 
-export type AdminView = 'appointments' | 'kanban' | 'cancellations' | 'clients' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
+export type AdminView = 'appointments' | 'create_booking' | 'kanban' | 'cancellations' | 'clients' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
 
 const Admin: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('appointments');
@@ -23,6 +24,8 @@ const Admin: React.FC = () => {
     switch (activeView) {
       case 'appointments':
         return <AppointmentsView />;
+      case 'create_booking':
+        return <AdminCreateBookingView />;
       case 'kanban':
         return <KanbanView />;
       case 'cancellations':

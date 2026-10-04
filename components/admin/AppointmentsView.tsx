@@ -34,6 +34,14 @@ function formatBookingServiceLabel(service: BookingRow['services'][number]): str
   return service.name;
 }
 
+function todayYmd(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 async function parseJsonResponse(res: Response): Promise<any> {
   const text = await res.text();
   if (!text.trim()) return {};
@@ -58,7 +66,7 @@ const AppointmentsView: React.FC = () => {
   const [time, setTime] = useState<string>(''); // HH:MM
   const [timeFrom, setTimeFrom] = useState<string>(''); // HH:MM
   const [timeTo, setTimeTo] = useState<string>(''); // HH:MM
-  const [dateFrom, setDateFrom] = useState<string>(''); // yyyy-mm-dd
+  const [dateFrom, setDateFrom] = useState<string>(() => todayYmd()); // inicia no dia atual
   const [dateTo, setDateTo] = useState<string>(''); // yyyy-mm-dd
   // nearest = mais próximas primeiro (ex.: amanhã); farthest = mais distantes primeiro (ex.: dezembro)
   const [dateSort, setDateSort] = useState<'nearest' | 'farthest'>('nearest');
@@ -444,8 +452,9 @@ const AppointmentsView: React.FC = () => {
                 setTime('');
                 setTimeFrom('');
                 setTimeTo('');
-                setDateFrom('');
+                setDateFrom(todayYmd());
                 setDateTo('');
+                setDateSort('nearest');
                 setPage(1);
               }}
               className="bg-surface-muted hover:bg-surface-muted text-white font-semibold px-4 py-2 rounded transition-colors"

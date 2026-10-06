@@ -164,34 +164,80 @@ async function sendViaSendGrid(
 }
 
 function getEmailTemplate(resetLink: string, adminName: string): string {
+	const safeName = String(adminName || 'cliente')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+	const safeLink = String(resetLink || '')
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+
 	return `
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Redefinição de Senha</title>
+	<meta name="color-scheme" content="dark">
+	<title>Redefinição de Senha — Studio Riquelme</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-	<div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; border: 1px solid #e0e0e0;">
-		<h1 style="color: #ec4899; margin-top: 0;">Studio Riquelme</h1>
-		<h2 style="color: #333;">Redefinição de Senha</h2>
-		<p>Olá, ${adminName || 'usuário'}!</p>
-		<p>Você solicitou a redefinição da sua senha. Clique no botão abaixo para criar uma nova senha:</p>
-		<div style="text-align: center; margin: 30px 0;">
-			<a href="${resetLink}" style="background-color: #ec4899; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Redefinir Senha</a>
-		</div>
-		<p style="color: #666; font-size: 14px;">
-			Ou copie e cole este link no seu navegador:<br>
-			<a href="${resetLink}" style="color: #ec4899; word-break: break-all;">${resetLink}</a>
-		</p>
-		<p style="color: #999; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-			<strong>Importante:</strong> Este link expira em 1 hora e só pode ser usado uma vez. Se você não solicitou esta redefinição, ignore este email.
-		</p>
-	</div>
-	<div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-		<p>Studio Riquelme - Sistema de Agendamento</p>
-	</div>
+<body style="margin:0;padding:0;background-color:#0b0b0b;font-family:Georgia,'Times New Roman',serif;line-height:1.6;color:#f5f5f5;-webkit-font-smoothing:antialiased;">
+	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#0b0b0b;padding:32px 16px;">
+		<tr>
+			<td align="center">
+				<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background-color:#141414;border:1px solid #2e2e2e;border-radius:16px;overflow:hidden;">
+					<tr>
+						<td style="padding:28px 32px 20px;border-bottom:1px solid #2e2e2e;text-align:center;">
+							<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:700;letter-spacing:0.04em;color:#d4af37;">
+								Studio Riquelme
+							</p>
+							<p style="margin:10px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#a8892a;">
+								Redefinição de senha
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<td style="padding:32px;">
+							<p style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#f5f5f5;">
+								Olá, ${safeName}!
+							</p>
+							<p style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#c4c4c4;">
+								Você solicitou a redefinição da sua senha. Clique no botão abaixo para criar uma nova senha:
+							</p>
+							<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+								<tr>
+									<td align="center" style="padding:8px 0 28px;">
+										<a href="${safeLink}" style="display:inline-block;background-color:#d4af37;background-image:linear-gradient(135deg,#e2c35a 0%,#d4af37 45%,#a8892a 100%);color:#111111;padding:14px 32px;text-decoration:none;border-radius:10px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;letter-spacing:0.02em;">
+											Redefinir senha
+										</a>
+									</td>
+								</tr>
+							</table>
+							<p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a8a8a;">
+								Ou copie e cole este link no seu navegador:
+							</p>
+							<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;word-break:break-all;">
+								<a href="${safeLink}" style="color:#d4af37;text-decoration:underline;">${safeLink}</a>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<td style="padding:20px 32px 28px;border-top:1px solid #2e2e2e;">
+							<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a8a8a;line-height:1.5;">
+								<strong style="color:#c4c4c4;">Importante:</strong> Este link expira em 1 hora e só pode ser usado uma vez. Se você não solicitou esta redefinição, ignore este e-mail.
+							</p>
+						</td>
+					</tr>
+				</table>
+				<p style="margin:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#5a5a5a;text-align:center;">
+					Studio Riquelme · Sistema de Agendamento
+				</p>
+			</td>
+		</tr>
+	</table>
 </body>
 </html>
 	`.trim();

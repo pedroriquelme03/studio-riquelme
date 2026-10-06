@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type Mode =
@@ -56,6 +57,8 @@ const ClientLoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Estado do fluxo "esqueci a senha"
   const [forgotChallenge, setForgotChallenge] = useState('');
@@ -83,6 +86,8 @@ const ClientLoginPage: React.FC = () => {
     resetMessages();
     setPassword('');
     setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     if (next === 'register' || next === 'login') {
       setName('');
       clearForgotState();
@@ -472,32 +477,54 @@ const ClientLoginPage: React.FC = () => {
               <label className={labelClass}>
                 {mode === 'forgot_reset' ? 'Nova senha' : 'Senha'}
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-                placeholder={mode === 'login' ? 'Sua senha' : `Mínimo ${MIN_PASSWORD} caracteres`}
-                minLength={mode === 'login' ? undefined : MIN_PASSWORD}
-                required
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              />
+              <div className="relative">
+                <input
+                  type={mode === 'forgot_reset' && showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputClass}${mode === 'forgot_reset' ? ' pr-12' : ''}`}
+                  placeholder={mode === 'login' ? 'Sua senha' : `Mínimo ${MIN_PASSWORD} caracteres`}
+                  minLength={mode === 'login' ? undefined : MIN_PASSWORD}
+                  required
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                />
+                {mode === 'forgot_reset' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
           {mode === 'forgot_reset' && (
             <div>
               <label className={labelClass}>Confirmar nova senha</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={inputClass}
-                placeholder="Repita a senha"
-                minLength={MIN_PASSWORD}
-                required
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`${inputClass} pr-12`}
+                  placeholder="Repita a senha"
+                  minLength={MIN_PASSWORD}
+                  required
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1"
+                  aria-label={showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
           )}
 

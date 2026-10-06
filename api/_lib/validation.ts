@@ -72,6 +72,16 @@ export function validateOptionalEmail(value: unknown): string | undefined {
 	return email;
 }
 
+/** E-mail obrigatório (cadastro / reset de senha do cliente). */
+export function validateRequiredEmail(value: unknown): string {
+	const email = validateOptionalEmail(value);
+	if (!email) throw new ValidationError('E-mail é obrigatório.');
+	if (email.endsWith('@temp.local') || email.startsWith('whatsapp_')) {
+		throw new ValidationError('Informe um e-mail válido.');
+	}
+	return email;
+}
+
 /** Texto livre curto (observações). Remove caracteres de controle e limita o tamanho. */
 export function sanitizeNotes(value: unknown, max = 500): string | null {
 	const text = asString(value).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();

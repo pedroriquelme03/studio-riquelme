@@ -176,7 +176,7 @@ function getEmailTemplate(resetLink: string, adminName: string): string {
 	<div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; border: 1px solid #e0e0e0;">
 		<h1 style="color: #ec4899; margin-top: 0;">Studio Riquelme</h1>
 		<h2 style="color: #333;">Redefinição de Senha</h2>
-		<p>Olá, ${adminName || 'Administrador'}!</p>
+		<p>Olá, ${adminName || 'usuário'}!</p>
 		<p>Você solicitou a redefinição da sua senha. Clique no botão abaixo para criar uma nova senha:</p>
 		<div style="text-align: center; margin: 30px 0;">
 			<a href="${resetLink}" style="background-color: #ec4899; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Redefinir Senha</a>

@@ -17,6 +17,16 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
+      watch: {
+        ignored: ['**/node_modules.onedrive.bak/**', '**/node_modules/**'],
+      },
+      fs: {
+        deny: ['**/node_modules.onedrive.bak/**'],
+      },
+    },
+    optimizeDeps: {
+      // Evita o Vite escanear HTML dentro de backups OneDrive em node_modules*.
+      entries: ['index.html'],
     },
     plugins: [react(), vercelApiDevPlugin()],
     define: {

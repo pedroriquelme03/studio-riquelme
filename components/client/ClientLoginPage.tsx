@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type Mode = 'login' | 'register' | 'forgot_request' | 'forgot_confirm';
 
@@ -7,7 +7,6 @@ function normalizePhone(phone: string) {
   return (phone || '').replace(/\D/g, '');
 }
 
-// Mesma máscara usada em "Seus dados"
 function applyPhoneMask(value: string): string {
   const numbers = value.replace(/\D/g, '');
   if (numbers.length <= 2) {
@@ -16,13 +15,11 @@ function applyPhoneMask(value: string): string {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
   } else if (numbers.length <= 11) {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-  } else {
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   }
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
 }
 
 const MIN_PASSWORD = 8;
-
 const inputClass = 'w-full bg-surface-overlay border border-line rounded-lg p-3 text-white';
 const labelClass = 'block text-sm font-medium text-zinc-200 mb-1';
 
@@ -38,12 +35,16 @@ async function postClientAuth(payload: Record<string, unknown>) {
 }
 
 const ClientLoginPage: React.FC = () => {
-  const [mode, setMode] = useState<Mode>('login');
+  const [searchParams] = useSearchParams();
+  const tokenFromUrl = searchParams.get('token') || '';
+
+  const [mode, setMode] = useState<Mode>(tokenFromUrl ? 'forgot_confirm' : 'login');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,16 +59,17 @@ const ClientLoginPage: React.FC = () => {
     resetMessages();
     setPassword('');
     setConfirmPassword('');
-    setCode('');
     if (next === 'register' || next === 'login') setName('');
+    if (next !== 'forgot_confirm') {
+      // Limpa o token da URL ao sair da tela de redefinição.
+      if (tokenFromUrl) navigate('/login-cliente', { replace: true });
+    }
     setMode(next);
   };
 
   const enter = (digits: string) => {
-    // Guardado apenas para exibir o número na tela; quem autoriza de verdade é
-    // o cookie de sessão HttpOnly emitido pela API.
     try {
-      localStorage.setItem('client_phone', digits);
+      if (digits) localStorage.setItem('client_phone', digits);
     } catch {}
     navigate('/meus-agendamentos');
   };
@@ -78,19 +80,25 @@ const ClientLoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const digits = normalizePhone(phone);
-
       if (mode === 'forgot_request') {
-        const { res, data } = await postClientAuth({ action: 'request_reset', phone: digits });
-        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível enviar o código');
+        const mail = email.trim().toLowerCase();
+        if (!mail) {
+          setError('Informe o e-mail da conta');
+          return;
+        }
+        const { res, data } = await postClientAuth({ action: 'request_reset', email: mail });
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível enviar o e-mail');
         setSuccessMessage(
-          data.message || 'Se houver uma conta para este WhatsApp, você receberá um código em instantes.',
+          data.message || 'Se houver uma conta para este e-mail, você receberá um link em instantes.',
         );
-        setMode('forgot_confirm');
         return;
       }
 
       if (mode === 'forgot_confirm') {
+        if (!tokenFromUrl) {
+          setError('Link inválido. Solicite uma nova redefinição.');
+          return;
+        }
         if (password.length < MIN_PASSWORD) {
           setError(`A senha deve ter no mínimo ${MIN_PASSWORD} caracteres`);
           return;
@@ -100,19 +108,24 @@ const ClientLoginPage: React.FC = () => {
           return;
         }
         const { res, data } = await postClientAuth({
-          action: 'reset_with_code',
-          phone: digits,
-          code,
+          action: 'reset_password',
+          token: tokenFromUrl,
           new_password: password,
         });
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível redefinir a senha');
-        enter(digits);
+        enter(String(data.phone || ''));
         return;
       }
 
       if (mode === 'register') {
+        const digits = normalizePhone(phone);
+        const mail = email.trim().toLowerCase();
         if (!name.trim()) {
           setError('Nome é obrigatório');
+          return;
+        }
+        if (!mail) {
+          setError('E-mail é obrigatório');
           return;
         }
         if (password.length < MIN_PASSWORD) {
@@ -123,6 +136,7 @@ const ClientLoginPage: React.FC = () => {
           action: 'register',
           name: name.trim(),
           phone: digits,
+          email: mail,
           password,
         });
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'Falha ao criar a conta');
@@ -130,13 +144,19 @@ const ClientLoginPage: React.FC = () => {
         return;
       }
 
+      // login
+      const id = identifier.trim();
+      if (!id) {
+        setError('Informe seu WhatsApp ou e-mail');
+        return;
+      }
       const { res, data } = await postClientAuth({
         action: 'login_password',
-        phone: digits,
+        identifier: id,
         password,
       });
       if (!res.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível entrar');
-      enter(digits);
+      enter(String(data.phone || normalizePhone(id)));
     } catch (err: any) {
       setError(err?.message || 'Erro inesperado');
     } finally {
@@ -153,12 +173,12 @@ const ClientLoginPage: React.FC = () => {
 
   const subtitle =
     mode === 'forgot_request'
-      ? 'Informe seu WhatsApp. Enviaremos um código de 6 dígitos para confirmar que o número é seu.'
+      ? 'Informe o e-mail da sua conta. Enviaremos um link para redefinir a senha.'
       : mode === 'forgot_confirm'
-      ? 'Digite o código que enviamos no seu WhatsApp e escolha a nova senha.'
+      ? 'Escolha uma nova senha para acessar sua conta.'
       : mode === 'register'
-      ? 'Crie sua conta para acessar seu histórico de agendamentos'
-      : 'Acesse seu histórico com seu WhatsApp';
+      ? 'Crie sua conta com WhatsApp e e-mail para acessar seu histórico'
+      : 'Entre com WhatsApp ou e-mail e sua senha';
 
   const buttonLabel = isLoading
     ? mode === 'forgot_request'
@@ -169,7 +189,7 @@ const ClientLoginPage: React.FC = () => {
       ? 'Criando conta...'
       : 'Entrando...'
     : mode === 'forgot_request'
-    ? 'Enviar código'
+    ? 'Enviar link por e-mail'
     : mode === 'forgot_confirm'
     ? 'Redefinir senha'
     : mode === 'register'
@@ -196,34 +216,55 @@ const ClientLoginPage: React.FC = () => {
           </div>
         )}
 
-        <div>
-          <label className={labelClass}>WhatsApp</label>
-          <input
-            type="tel"
-            inputMode="numeric"
-            value={phone}
-            onChange={(e) => setPhone(applyPhoneMask(e.target.value))}
-            maxLength={15}
-            readOnly={mode === 'forgot_confirm'}
-            className={`${inputClass} ${mode === 'forgot_confirm' ? 'opacity-70' : ''}`}
-            placeholder="(99) 99999-9999"
-            required
-          />
-        </div>
-
-        {mode === 'forgot_confirm' && (
+        {mode === 'login' && (
           <div>
-            <label className={labelClass}>Código recebido</label>
+            <label className={labelClass}>WhatsApp ou e-mail</label>
             <input
               type="text"
+              value={identifier}
+              onChange={(e) => {
+                const v = e.target.value;
+                setIdentifier(v.includes('@') ? v : applyPhoneMask(v));
+              }}
+              className={inputClass}
+              placeholder="(99) 99999-9999 ou seu@email.com"
+              required
+              autoComplete="username"
+            />
+          </div>
+        )}
+
+        {mode === 'register' && (
+          <div>
+            <label className={labelClass}>WhatsApp</label>
+            <input
+              type="tel"
               inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className={`${inputClass} tracking-[0.4em] text-center text-lg font-semibold`}
-              placeholder="000000"
-              maxLength={6}
+              value={phone}
+              onChange={(e) => setPhone(applyPhoneMask(e.target.value))}
+              maxLength={15}
+              className={inputClass}
+              placeholder="(99) 99999-9999"
               required
             />
+          </div>
+        )}
+
+        {(mode === 'register' || mode === 'forgot_request') && (
+          <div>
+            <label className={labelClass}>E-mail {mode === 'register' ? '*' : ''}</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputClass}
+              placeholder="seu@email.com"
+              required
+              autoComplete="email"
+            />
+            {mode === 'register' && (
+              <p className="text-xs text-zinc-400 mt-1">Usado para redefinir a senha, se necessário.</p>
+            )}
           </div>
         )}
 
@@ -240,6 +281,7 @@ const ClientLoginPage: React.FC = () => {
               placeholder={mode === 'login' ? 'Sua senha' : `Mínimo ${MIN_PASSWORD} caracteres`}
               minLength={mode === 'login' ? undefined : MIN_PASSWORD}
               required
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
           </div>
         )}
@@ -255,6 +297,7 @@ const ClientLoginPage: React.FC = () => {
               placeholder="Repita a senha"
               minLength={MIN_PASSWORD}
               required
+              autoComplete="new-password"
             />
           </div>
         )}
@@ -281,24 +324,13 @@ const ClientLoginPage: React.FC = () => {
 
       <div className="mt-6 text-center space-y-2">
         {mode === 'forgot_request' || mode === 'forgot_confirm' ? (
-          <>
-            {mode === 'forgot_confirm' && (
-              <button
-                type="button"
-                onClick={() => goTo('forgot_request')}
-                className="block w-full text-zinc-300 hover:text-white text-sm font-medium"
-              >
-                Não recebeu? Enviar outro código
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => goTo('login')}
-              className="block w-full text-gold hover:text-gold-light text-sm font-medium"
-            >
-              Voltar ao login
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => goTo('login')}
+            className="block w-full text-gold hover:text-gold-light text-sm font-medium"
+          >
+            Voltar ao login
+          </button>
         ) : (
           <>
             <button

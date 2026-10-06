@@ -42,6 +42,11 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         setFeedback('Informe um WhatsApp válido.');
         return;
       }
+      const mail = (email || '').trim().toLowerCase();
+      if (!mail || !mail.includes('@')) {
+        setFeedback('Informe um e-mail válido. Ele será usado para redefinir a senha.');
+        return;
+      }
       if (!password || password.length < 8) {
         setFeedback('A senha deve ter no mínimo 8 caracteres.');
         return;
@@ -53,7 +58,13 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ action: 'register', name: client.name, phone: digits, password }),
+        body: JSON.stringify({
+          action: 'register',
+          name: client.name,
+          phone: digits,
+          email: mail,
+          password,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao registrar conta');
@@ -61,7 +72,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
       // Apenas para exibir o número; a autorização vem do cookie de sessão.
       localStorage.setItem('client_phone', digits);
 
-      setFeedback('Conta criada! Você já pode acessar seu histórico com seu WhatsApp e senha.');
+      setFeedback('Conta criada! Você já pode acessar seu histórico com WhatsApp/e-mail e senha.');
       setCreated(true);
     } catch (err: any) {
       setFeedback(err?.message || 'Não foi possível criar a conta.');
@@ -199,7 +210,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-md bg-surface-raised rounded-2xl border border-line shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xl font-bold text-white">Criar conta com WhatsApp</h4>
+              <h4 className="text-xl font-bold text-white">Criar conta</h4>
               <button
                 onClick={() => { setIsCreateOpen(false); setFeedback(null); }}
                 className="text-zinc-400 hover:text-zinc-200"
@@ -231,14 +242,16 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-200 mb-1">Email (opcional)</label>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">E-mail *</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-surface-overlay border border-line rounded-lg p-3 text-white"
                   placeholder="seuemail@exemplo.com"
+                  required
                 />
+                <p className="text-xs text-zinc-400 mt-1">Usado para redefinir a senha, se necessário.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-200 mb-1">Senha</label>

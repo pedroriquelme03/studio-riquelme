@@ -1,16 +1,18 @@
 // Autenticação de clientes (WhatsApp e/ou e-mail + senha).
 //
 // Ações (POST):
-//   register         cria conta (nome, WhatsApp, e-mail, senha) + sessão
-//   login_password   login com WhatsApp OU e-mail + senha
-//   set_password     troca de senha (exige sessão OU senha atual)
-//   request_reset    envia link de redefinição por e-mail (Resend)
-//   reset_password   confirma o token do e-mail e define a nova senha
-//   logout           encerra a sessão
+//   register          cria conta (nome, WhatsApp, e-mail, senha) + sessão
+//   login_password    login com WhatsApp OU e-mail + senha
+//   set_password      troca de senha (exige sessão OU senha atual)
+//   forgot_lookup     busca conta pelo WhatsApp (fluxo esqueci a senha)
+//   forgot_complete   confirma identidade, vincula e-mail se preciso e envia link
+//   request_reset     envia link de redefinição direto por e-mail (Resend)
+//   reset_password    confirma o token do e-mail e define a nova senha
+//   logout            encerra a sessão
 // GET: devolve a sessão atual.
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
 	CLIENT_COOKIE,
 	appendCookie,
@@ -41,6 +43,7 @@ import {
 
 const RESET_TTL_HOURS = 1;
 const RESET_RESEND_COOLDOWN_SECONDS = 60;
+const FORGOT_CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
 function getSupabaseServer() {
 	const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -99,6 +102,111 @@ function frontendBaseUrl(): string {
 			: 'http://localhost:5173';
 	}
 	return frontendUrl.replace(/\/$/, '');
+}
+
+function maskEmail(email: string): string {
+	const [user, domain] = String(email || '').split('@');
+	if (!user || !domain) return '***';
+	const visible = user.slice(0, Math.min(2, user.length));
+	return `${visible}***@${domain}`;
+}
+
+function hasUsableEmail(email: unknown): boolean {
+	return Boolean(email && !isTempEmail(String(email)));
+}
+
+function issueForgotChallenge(clientId: string, phone: string): string {
+	const exp = Date.now() + FORGOT_CHALLENGE_TTL_MS;
+	const payload = `${clientId}.${phone}.${exp}`;
+	const secret = process.env.SESSION_SECRET || '';
+	const sig = createHmac('sha256', secret).update(payload).digest('hex');
+	return Buffer.from(`${payload}.${sig}`).toString('base64url');
+}
+
+function parseForgotChallenge(challenge: string): { clientId: string; phone: string } | null {
+	try {
+		const raw = Buffer.from(String(challenge || ''), 'base64url').toString('utf8');
+		const parts = raw.split('.');
+		if (parts.length !== 4) return null;
+		const [clientId, phone, expStr, sig] = parts;
+		const exp = Number(expStr);
+		if (!clientId || !phone || !Number.isFinite(exp) || Date.now() > exp) return null;
+		const payload = `${clientId}.${phone}.${expStr}`;
+		const secret = process.env.SESSION_SECRET || '';
+		const expected = createHmac('sha256', secret).update(payload).digest('hex');
+		const a = Buffer.from(sig);
+		const b = Buffer.from(expected);
+		if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+		return { clientId, phone };
+	} catch {
+		return null;
+	}
+}
+
+async function sendPasswordResetForClient(
+	supabase: any,
+	client: { id: string; name?: string | null; phone?: string | null; email?: string | null },
+): Promise<{ sent: boolean; reason?: string }> {
+	const email = normalizeEmail(client.email || '');
+	const clientPhone = normalizePhone(client.phone || '');
+	if (!hasUsableEmail(email) || !clientPhone) {
+		return { sent: false, reason: 'missing_email' };
+	}
+
+	const { data: recent } = await supabase
+		.from('client_password_resets')
+		.select('created_at')
+		.eq('client_id', client.id)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (recent?.created_at) {
+		const elapsed = (Date.now() - new Date(recent.created_at).getTime()) / 1000;
+		if (elapsed < RESET_RESEND_COOLDOWN_SECONDS) {
+			return { sent: true, reason: 'cooldown' };
+		}
+	}
+
+	const token = randomBytes(32).toString('hex');
+	const expiresAt = new Date(Date.now() + RESET_TTL_HOURS * 60 * 60 * 1000);
+
+	await supabase
+		.from('client_password_resets')
+		.update({ used: true })
+		.eq('client_id', client.id)
+		.eq('used', false);
+
+	const { error: insErr } = await supabase.from('client_password_resets').insert({
+		client_id: client.id,
+		phone: clientPhone,
+		code_hash: tokenHash(token),
+		expires_at: expiresAt.toISOString(),
+		attempts: 0,
+		used: false,
+	});
+	if (insErr) {
+		console.error('[client-auth] Erro ao gravar token de reset:', insErr.message);
+		return { sent: false, reason: 'persist' };
+	}
+
+	const resetLink = `${frontendBaseUrl()}/login-cliente?token=${token}`;
+	try {
+		const mod = await import('./_lib/sendEmail.js');
+		const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (
+			to: string,
+			link: string,
+			name: string,
+		) => Promise<{ success: boolean; error?: string }>;
+		const result = await sendResetPasswordEmail(email, resetLink, client.name || 'Cliente');
+		if (!result.success) {
+			console.error('[client-auth] Falha ao enviar e-mail de reset:', result.error);
+			return { sent: false, reason: 'email' };
+		}
+		return { sent: true };
+	} catch (e: any) {
+		console.error('[client-auth] Falha ao carregar sendEmail:', e?.message || e);
+		return { sent: false, reason: 'email' };
+	}
 }
 
 async function findClientByEmail(supabase: any, email: string) {
@@ -189,6 +297,8 @@ export default async function handler(req: any, res: any) {
 			'register',
 			'login_password',
 			'set_password',
+			'forgot_lookup',
+			'forgot_complete',
 			'request_reset',
 			'reset_password',
 			'logout',
@@ -427,7 +537,122 @@ export default async function handler(req: any, res: any) {
 			return res.status(200).json({ ok: true });
 		}
 
-		// ── Solicitar redefinição por e-mail (Resend) ──────────────────────
+		// ── Esqueci a senha: buscar conta pelo WhatsApp ─────────────────────
+		if (action === 'forgot_lookup') {
+			if (!isValidPhone(phone)) {
+				return res.status(400).json({ ok: false, error: 'Informe o WhatsApp cadastrado com DDD e o 9' });
+			}
+			const allowed = await enforceRateLimits(supabase, res, [
+				[`otp-request:ip:${ip}`, RATE_RULES.otpRequestIp],
+				[`forgot-lookup:phone:${phone}`, RATE_RULES.otpRequestPhone],
+			]);
+			if (!allowed) return;
+
+			const client = await findClientByPhone(supabase, phone);
+			if (!client?.id || !client.password_hash) {
+				return res.status(404).json({
+					ok: false,
+					error: 'Não encontramos uma conta com este WhatsApp. Confira o número ou crie uma conta.',
+				});
+			}
+
+			const needsEmail = !hasUsableEmail(client.email);
+			return res.status(200).json({
+				ok: true,
+				found: true,
+				challenge: issueForgotChallenge(String(client.id), phone),
+				display_name: String(client.name || 'Cliente').trim() || 'Cliente',
+				needs_email: needsEmail,
+				email_hint: needsEmail ? null : maskEmail(String(client.email)),
+			});
+		}
+
+		// ── Confirmar identidade, vincular e-mail se preciso e enviar link ─
+		if (action === 'forgot_complete') {
+			const challenge = String(body?.challenge || '');
+			const parsed = parseForgotChallenge(challenge);
+			if (!parsed) {
+				return res.status(400).json({
+					ok: false,
+					error: 'Sessão de recuperação expirada. Informe o WhatsApp novamente.',
+				});
+			}
+
+			const allowed = await enforceRateLimits(supabase, res, [
+				[`otp-request:ip:${ip}`, RATE_RULES.otpRequestIp],
+				[`forgot-complete:client:${parsed.clientId}`, RATE_RULES.otpRequestPhone],
+			]);
+			if (!allowed) return;
+
+			const { data: client } = await supabase
+				.from('clients')
+				.select('id, name, phone, email, password_hash')
+				.eq('id', parsed.clientId)
+				.maybeSingle();
+
+			if (!client?.id || !client.password_hash || normalizePhone(client.phone) !== parsed.phone) {
+				return res.status(400).json({ ok: false, error: 'Conta inválida para recuperação.' });
+			}
+
+			let emailToUse = hasUsableEmail(client.email) ? normalizeEmail(client.email) : '';
+
+			if (!emailToUse) {
+				let email: string;
+				let emailConfirm: string;
+				try {
+					email = validateRequiredEmail(body?.email);
+					emailConfirm = validateRequiredEmail(body?.email_confirm ?? body?.emailConfirm);
+				} catch (e: any) {
+					return res.status(400).json({ ok: false, error: e?.message || 'Informe um e-mail válido' });
+				}
+				if (email !== emailConfirm) {
+					return res.status(400).json({ ok: false, error: 'Os e-mails não coincidem.' });
+				}
+
+				const taken = await findClientByEmail(supabase, email);
+				if (taken?.id && String(taken.id) !== String(client.id)) {
+					return res.status(409).json({
+						ok: false,
+						error: 'Este e-mail já está vinculado a outra conta. Use outro e-mail.',
+					});
+				}
+
+				const { error: upErr } = await supabase
+					.from('clients')
+					.update({ email, updated_at: new Date().toISOString() })
+					.eq('id', client.id);
+				if (upErr) {
+					if (/unique|duplicate/i.test(upErr.message)) {
+						return res.status(409).json({ ok: false, error: 'Este e-mail já está em uso.' });
+					}
+					return res.status(500).json({ ok: false, error: upErr.message });
+				}
+
+				await supabase
+					.from('registered_clients')
+					.update({ email, updated_at: new Date().toISOString() })
+					.eq('phone', parsed.phone);
+
+				emailToUse = email;
+				client.email = email;
+			}
+
+			const result = await sendPasswordResetForClient(supabase, {
+				id: String(client.id),
+				name: client.name,
+				phone: client.phone,
+				email: emailToUse,
+			});
+
+			return res.status(200).json({
+				ok: true,
+				message: `Enviamos um link de redefinição para ${maskEmail(emailToUse)}. Confira sua caixa de entrada e o spam.`,
+				email_hint: maskEmail(emailToUse),
+				sent: result.sent,
+			});
+		}
+
+		// ── Solicitar redefinição direto por e-mail (contas que já têm e-mail)
 		if (action === 'request_reset') {
 			const generic = {
 				ok: true,
@@ -450,63 +675,7 @@ export default async function handler(req: any, res: any) {
 			const client = await findClientByEmail(supabase, email);
 			if (!client?.id || !client.password_hash) return res.status(200).json(generic);
 
-			const clientPhone = normalizePhone(client.phone);
-			if (!clientPhone) return res.status(200).json(generic);
-
-			const { data: recent } = await supabase
-				.from('client_password_resets')
-				.select('created_at')
-				.eq('client_id', client.id)
-				.order('created_at', { ascending: false })
-				.limit(1)
-				.maybeSingle();
-			if (recent?.created_at) {
-				const elapsed = (Date.now() - new Date(recent.created_at).getTime()) / 1000;
-				if (elapsed < RESET_RESEND_COOLDOWN_SECONDS) return res.status(200).json(generic);
-			}
-
-			const token = randomBytes(32).toString('hex');
-			const expiresAt = new Date(Date.now() + RESET_TTL_HOURS * 60 * 60 * 1000);
-
-			await supabase
-				.from('client_password_resets')
-				.update({ used: true })
-				.eq('client_id', client.id)
-				.eq('used', false);
-
-			const { error: insErr } = await supabase.from('client_password_resets').insert({
-				client_id: client.id,
-				phone: clientPhone,
-				code_hash: tokenHash(token),
-				expires_at: expiresAt.toISOString(),
-				attempts: 0,
-				used: false,
-			});
-			if (insErr) {
-				console.error('[client-auth] Erro ao gravar token de reset:', insErr.message);
-				return res.status(200).json(generic);
-			}
-
-			const resetLink = `${frontendBaseUrl()}/login-cliente?token=${token}`;
-			try {
-				const mod = await import('./_lib/sendEmail.js');
-				const sendResetPasswordEmail = (mod as any).sendResetPasswordEmail as (
-					to: string,
-					link: string,
-					name: string,
-				) => Promise<{ success: boolean; error?: string }>;
-				const result = await sendResetPasswordEmail(
-					String(client.email || email),
-					resetLink,
-					client.name || 'Cliente',
-				);
-				if (!result.success) {
-					console.error('[client-auth] Falha ao enviar e-mail de reset:', result.error);
-				}
-			} catch (e: any) {
-				console.error('[client-auth] Falha ao carregar sendEmail:', e?.message || e);
-			}
-
+			await sendPasswordResetForClient(supabase, client);
 			return res.status(200).json(generic);
 		}
 

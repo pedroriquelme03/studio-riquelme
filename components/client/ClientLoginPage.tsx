@@ -9,7 +9,16 @@ type Mode =
   | 'forgot_confirm_name'
   | 'forgot_email'
   | 'forgot_sent'
-  | 'forgot_reset';
+  | 'forgot_reset'
+  | 'forgot_support';
+
+const SUPPORT_WHATSAPP = '5545991070844';
+const SUPPORT_MESSAGE =
+  'Olá preciso de ajuda para recuperar minha senha do agendamento online do Studio Riquelme';
+
+function supportWhatsAppUrl() {
+  return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(SUPPORT_MESSAGE)}`;
+}
 
 function normalizePhone(phone: string) {
   return (phone || '').replace(/\D/g, '');
@@ -241,7 +250,7 @@ const ClientLoginPage: React.FC = () => {
   const handleConfirmIdentity = async (isMe: boolean) => {
     resetMessages();
     if (!isMe) {
-      goTo('forgot_phone');
+      setMode('forgot_support');
       return;
     }
     if (forgotNeedsEmail) {
@@ -265,9 +274,17 @@ const ClientLoginPage: React.FC = () => {
     mode === 'forgot_confirm_name' ||
     mode === 'forgot_email' ||
     mode === 'forgot_sent' ||
-    mode === 'forgot_reset';
+    mode === 'forgot_reset' ||
+    mode === 'forgot_support';
 
-  const title = isForgot ? 'Redefinir senha' : mode === 'register' ? 'Criar Conta' : 'Entrar';
+  const title =
+    mode === 'forgot_support'
+      ? 'Precisa de ajuda?'
+      : isForgot
+      ? 'Redefinir senha'
+      : mode === 'register'
+      ? 'Criar Conta'
+      : 'Entrar';
 
   const subtitle =
     mode === 'forgot_phone'
@@ -280,6 +297,8 @@ const ClientLoginPage: React.FC = () => {
       ? 'Verifique seu e-mail para continuar.'
       : mode === 'forgot_reset'
       ? 'Escolha uma nova senha para acessar sua conta.'
+      : mode === 'forgot_support'
+      ? 'Se a conta encontrada não é sua, fale com o suporte para recuperar o acesso.'
       : mode === 'register'
       ? 'Crie sua conta com WhatsApp e e-mail para acessar seu histórico'
       : 'Entre com WhatsApp ou e-mail e sua senha';
@@ -374,6 +393,29 @@ const ClientLoginPage: React.FC = () => {
           <p className="text-zinc-400 text-center text-xs">
             Não encontrou? Confira a pasta de spam ou tente novamente em alguns minutos.
           </p>
+        </div>
+      )}
+
+      {mode === 'forgot_support' && (
+        <div className="space-y-4">
+          <p className="text-zinc-400 text-center text-sm">
+            Nosso time vai te ajudar a recuperar o acesso à sua conta.
+          </p>
+          <a
+            href={supportWhatsAppUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 bg-gold hover:brightness-110 text-[#111] font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
+          >
+            Entrar em contato com o suporte
+          </a>
+          <button
+            type="button"
+            onClick={() => goTo('forgot_phone')}
+            className="block w-full text-zinc-300 hover:text-white text-sm font-medium"
+          >
+            Tentar outro WhatsApp
+          </button>
         </div>
       )}
 

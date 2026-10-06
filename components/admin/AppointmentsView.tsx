@@ -17,6 +17,7 @@ type BookingRow = {
   client_name: string;
   client_phone: string;
   client_email: string;
+  client_notes?: string | null;
   total_price: string;
   total_duration_minutes: number;
   services: Array<{
@@ -556,6 +557,12 @@ const AppointmentsView: React.FC = () => {
                           </div>
                         )}
                         <div className="text-zinc-300 text-sm break-words">{(b.services || []).map(formatBookingServiceLabel).join(', ')}</div>
+                        {b.client_notes?.trim() && (
+                          <div className="mt-1.5 text-sm text-amber-200/90 break-words">
+                            <span className="text-zinc-400">Obs.: </span>
+                            {b.client_notes.trim()}
+                          </div>
+                        )}
                         {b.confirmed_at && (
                           <span className="inline-block text-xs border rounded px-2 py-0.5 text-green-300 bg-green-950/40 border-green-800 mt-1.5 mr-1.5" title="Horário confirmado ao cliente">
                             ✓ Confirmado

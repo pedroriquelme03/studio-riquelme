@@ -315,7 +315,7 @@ export default async function handler(req: any, res: any) {
           promotion_group_id,
           segment_order,
           allocated_price,
-          clients:client_id ( id, name, phone, email ),
+          clients:client_id ( id, name, phone, email, notes ),
           booking_services (
             quantity,
             unit_price,
@@ -392,6 +392,7 @@ export default async function handler(req: any, res: any) {
 					client_name: b.clients?.name,
 					client_phone: b.clients?.phone,
 					client_email: b.clients?.email,
+					client_notes: b.clients?.notes || null,
 					total_price: total_price.toFixed(2),
 					total_duration_minutes,
 					services,

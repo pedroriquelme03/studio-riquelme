@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Service, ServicePriceSelection } from '../../types';
 import DateTimePicker from '../DateTimePicker';
 import { PlusCircleIcon } from '../icons';
+import { applyPriceSelection, serviceRequiresHairSize } from '../../lib/priceVariations';
 
 type ClientRow = {
   id: string;
@@ -16,6 +17,12 @@ type Professional = {
   is_active?: boolean;
 };
 
+type SelectedLine = {
+  key: string;
+  service: Service;
+  priceSelection: ServicePriceSelection | null;
+};
+
 type Step = 'details' | 'datetime' | 'success';
 
 function todayYmdLocal(d = new Date()) {
@@ -23,6 +30,20 @@ function todayYmdLocal(d = new Date()) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function newLineKey() {
+  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function lineLabel(line: SelectedLine) {
+  if (line.priceSelection) return `${line.service.name} (${line.priceSelection.label})`;
+  return line.service.name;
+}
+
+function linePrice(line: SelectedLine) {
+  if (line.priceSelection) return line.priceSelection.price;
+  return line.service.price;
 }
 
 async function parseJson(res: Response) {
@@ -52,6 +73,7 @@ const AdminCreateBookingView: React.FC = () => {
   const [professionalId, setProfessionalId] = useState<string>('');
   const [serviceId, setServiceId] = useState<string>('');
   const [priceSelection, setPriceSelection] = useState<ServicePriceSelection | null>(null);
+  const [selectedLines, setSelectedLines] = useState<SelectedLine[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +81,9 @@ const AdminCreateBookingView: React.FC = () => {
     date: string;
     time: string;
     clientName: string;
-    serviceName: string;
+    serviceNames: string[];
+    totalDuration: number;
+    totalPrice: number;
   } | null>(null);
 
   const activeProfessionals = useMemo(
@@ -67,12 +91,24 @@ const AdminCreateBookingView: React.FC = () => {
     [professionals],
   );
 
+  const cartProfessionalId = useMemo(() => {
+    const pros = Array.from(
+      new Set(selectedLines.map((l) => l.service.responsibleProfessionalId).filter(Boolean)),
+    ) as string[];
+    return pros.length === 1 ? pros[0] : null;
+  }, [selectedLines]);
+
   const filteredServices = useMemo(() => {
-    const list = !professionalId
-      ? services
-      : services.filter((s) => s.responsibleProfessionalId === professionalId);
+    let list = services;
+    if (professionalId) {
+      list = list.filter((s) => s.responsibleProfessionalId === professionalId);
+    } else if (cartProfessionalId) {
+      list = list.filter(
+        (s) => !s.responsibleProfessionalId || s.responsibleProfessionalId === cartProfessionalId,
+      );
+    }
     return [...list].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [services, professionalId]);
+  }, [services, professionalId, cartProfessionalId]);
 
   const servicesByProfessional = useMemo(() => {
     if (professionalId) return null;
@@ -87,14 +123,28 @@ const AdminCreateBookingView: React.FC = () => {
     return Array.from(groups.entries()).sort((a, b) => a[1].label.localeCompare(b[1].label, 'pt-BR'));
   }, [filteredServices, professionalId]);
 
-  const selectedService = useMemo(
+  const draftService = useMemo(
     () => services.find((s) => String(s.id) === serviceId) || null,
     [services, serviceId],
   );
 
-  const needsVariant = Boolean(
-    selectedService?.priceVariationEnabled && (selectedService?.priceVariants?.length || 0) > 0,
+  const needsVariant = serviceRequiresHairSize(draftService);
+
+  const totalDuration = useMemo(
+    () => selectedLines.reduce((sum, l) => sum + Number(l.service.duration || 0), 0),
+    [selectedLines],
   );
+
+  const totalPrice = useMemo(
+    () => selectedLines.reduce((sum, l) => sum + linePrice(l), 0),
+    [selectedLines],
+  );
+
+  const bookingProfessionalId = useMemo(() => {
+    if (cartProfessionalId) return cartProfessionalId;
+    const first = selectedLines.find((l) => l.service.responsibleProfessionalId);
+    return first?.service.responsibleProfessionalId || null;
+  }, [selectedLines, cartProfessionalId]);
 
   useEffect(() => {
     (async () => {
@@ -165,11 +215,51 @@ const AdminCreateBookingView: React.FC = () => {
     setClientResults([]);
   };
 
+  const canAddService =
+    !!draftService && (!needsVariant || !!priceSelection);
+
+  const addServiceLine = () => {
+    if (!draftService || !canAddService) return;
+
+    if (cartProfessionalId && draftService.responsibleProfessionalId
+      && draftService.responsibleProfessionalId !== cartProfessionalId) {
+      setError('Todos os serviços do agendamento precisam ser do mesmo profissional.');
+      return;
+    }
+
+    const distinctInCart = Array.from(
+      new Set([
+        ...selectedLines.map((l) => l.service.responsibleProfessionalId).filter(Boolean),
+        draftService.responsibleProfessionalId,
+      ].filter(Boolean)),
+    );
+    if (distinctInCart.length > 1) {
+      setError('Os serviços selecionados possuem profissionais responsáveis diferentes.');
+      return;
+    }
+
+    const priced = priceSelection ? applyPriceSelection(draftService, priceSelection) : draftService;
+    setSelectedLines((prev) => [
+      ...prev,
+      {
+        key: newLineKey(),
+        service: priced,
+        priceSelection,
+      },
+    ]);
+    setServiceId('');
+    setPriceSelection(null);
+    setError(null);
+  };
+
+  const removeLine = (key: string) => {
+    setSelectedLines((prev) => prev.filter((l) => l.key !== key));
+  };
+
   const canGoDatetime =
     clientName.trim().length >= 2 &&
     clientPhone.replace(/\D/g, '').length >= 8 &&
-    !!selectedService &&
-    (!needsVariant || !!priceSelection);
+    selectedLines.length > 0;
 
   const resetForm = () => {
     setStep('details');
@@ -181,12 +271,13 @@ const AdminCreateBookingView: React.FC = () => {
     setProfessionalId('');
     setServiceId('');
     setPriceSelection(null);
+    setSelectedLines([]);
     setError(null);
     setSuccessInfo(null);
   };
 
   const handleCreate = async (date: Date, time: string) => {
-    if (!selectedService) return;
+    if (selectedLines.length === 0) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -194,25 +285,23 @@ const AdminCreateBookingView: React.FC = () => {
       const body: Record<string, unknown> = {
         date: todayYmdLocal(date),
         time,
-        professional_id: selectedService.responsibleProfessionalId || null,
+        professional_id: bookingProfessionalId,
         client: {
           name: clientName.trim(),
           phone: phoneDigits,
           email: clientEmail.trim() || undefined,
           notes: clientNotes.trim() || undefined,
         },
-        services: [
-          {
-            id: selectedService.id,
-            quantity: 1,
-            ...(priceSelection
-              ? {
-                  variation_type: priceSelection.variationType,
-                  variant_key: priceSelection.variantKey,
-                }
-              : {}),
-          },
-        ],
+        services: selectedLines.map((line) => ({
+          id: line.service.id,
+          quantity: 1,
+          ...(line.priceSelection
+            ? {
+                variation_type: line.priceSelection.variationType,
+                variant_key: line.priceSelection.variantKey,
+              }
+            : {}),
+        })),
       };
 
       const res = await fetch('/api/bookings', {
@@ -230,9 +319,9 @@ const AdminCreateBookingView: React.FC = () => {
         date: todayYmdLocal(date),
         time,
         clientName: clientName.trim(),
-        serviceName: priceSelection
-          ? `${selectedService.name} (${priceSelection.label})`
-          : selectedService.name,
+        serviceNames: selectedLines.map(lineLabel),
+        totalDuration,
+        totalPrice,
       });
       setStep('success');
     } catch (e: any) {
@@ -247,13 +336,13 @@ const AdminCreateBookingView: React.FC = () => {
     return <div className="text-zinc-300">Carregando...</div>;
   }
 
-  if (step === 'datetime' && selectedService) {
+  if (step === 'datetime' && selectedLines.length > 0) {
+    const names = selectedLines.map(lineLabel).join(', ');
     return (
       <div>
         <h2 className="text-2xl font-bold gold-text text-center mb-2">Novo Agendamento</h2>
-        <p className="text-center text-zinc-300 mb-6 text-sm">
-          {clientName} · {selectedService.name}
-          {priceSelection ? ` (${priceSelection.label})` : ''} · {selectedService.duration} min
+        <p className="text-center text-zinc-300 mb-6 text-sm px-2">
+          {clientName} · {names} · {totalDuration} min
         </p>
         {error && (
           <div className="mb-4 bg-red-950/50 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
@@ -266,8 +355,8 @@ const AdminCreateBookingView: React.FC = () => {
           <DateTimePicker
             onBack={() => setStep('details')}
             onDateTimeSelect={handleCreate}
-            serviceDuration={selectedService.duration}
-            professionalId={selectedService.responsibleProfessionalId || null}
+            serviceDuration={totalDuration}
+            professionalId={bookingProfessionalId}
           />
         )}
       </div>
@@ -286,7 +375,16 @@ const AdminCreateBookingView: React.FC = () => {
         <h2 className="text-2xl font-bold gold-text">Agendamento criado</h2>
         <div className="bg-surface-raised border border-line rounded-xl p-6 text-left space-y-2">
           <p className="text-white"><span className="text-zinc-400">Cliente:</span> {successInfo.clientName}</p>
-          <p className="text-white"><span className="text-zinc-400">Serviço:</span> {successInfo.serviceName}</p>
+          <div className="text-white">
+            <span className="text-zinc-400">Serviços:</span>
+            <ul className="mt-1 list-disc list-inside text-sm space-y-0.5">
+              {successInfo.serviceNames.map((name, idx) => (
+                <li key={`${idx}-${name}`}>{name}</li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-white"><span className="text-zinc-400">Duração:</span> {successInfo.totalDuration} min</p>
+          <p className="text-white"><span className="text-zinc-400">Valor:</span> R$ {successInfo.totalPrice.toFixed(2)}</p>
           <p className="text-white"><span className="text-zinc-400">Data:</span> {dateLabel}</p>
           <p className="text-white"><span className="text-zinc-400">Horário:</span> {successInfo.time.slice(0, 5)}</p>
         </div>
@@ -305,7 +403,7 @@ const AdminCreateBookingView: React.FC = () => {
     <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold gold-text text-center mb-2">Novo Agendamento</h2>
       <p className="text-center text-zinc-300 mb-8 text-sm">
-        Lance um horário pelo painel, sem usar o agendamento público do site.
+        Lance um horário pelo painel. Você pode incluir vários serviços no mesmo agendamento.
       </p>
 
       {error && (
@@ -383,7 +481,7 @@ const AdminCreateBookingView: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-300 mb-1">Profissional</label>
+          <label className="block text-sm text-zinc-300 mb-1">Filtrar por profissional</label>
           <select
             value={professionalId}
             onChange={(e) => setProfessionalId(e.target.value)}
@@ -398,75 +496,124 @@ const AdminCreateBookingView: React.FC = () => {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm text-zinc-300 mb-1">Serviço *</label>
-          <select
-            value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
-            className="w-full bg-surface-overlay border border-line rounded-lg px-3 py-2 text-white"
-          >
-            <option value="">Selecione um serviço</option>
-            {professionalId ? (
-              filteredServices.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.duration} min)
-                </option>
-              ))
-            ) : (
-              (servicesByProfessional || []).map(([key, group]) => (
-                <optgroup key={key} label={group.label}>
-                  {group.items.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.duration} min)
-                    </option>
-                  ))}
-                </optgroup>
-              ))
+        <div className="border border-line rounded-lg p-4 space-y-3">
+          <h3 className="text-white font-semibold text-sm">Adicionar serviços</h3>
+          <div>
+            <label className="block text-sm text-zinc-300 mb-1">Serviço</label>
+            <select
+              value={serviceId}
+              onChange={(e) => setServiceId(e.target.value)}
+              className="w-full bg-surface-overlay border border-line rounded-lg px-3 py-2 text-white"
+            >
+              <option value="">Selecione um serviço</option>
+              {professionalId ? (
+                filteredServices.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.duration} min)
+                  </option>
+                ))
+              ) : (
+                (servicesByProfessional || []).map(([key, group]) => (
+                  <optgroup key={key} label={group.label}>
+                    {group.items.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.duration} min)
+                      </option>
+                    ))}
+                  </optgroup>
+                ))
+              )}
+            </select>
+            {professionalId && filteredServices.length === 0 && (
+              <p className="text-xs text-zinc-400 mt-1">Nenhum serviço vinculado a este profissional.</p>
             )}
-          </select>
-          {professionalId && filteredServices.length === 0 && (
-            <p className="text-xs text-zinc-400 mt-1">Nenhum serviço vinculado a este profissional.</p>
+          </div>
+
+          {needsVariant && draftService && (
+            <div>
+              <label className="block text-sm text-zinc-300 mb-2">Variação / tamanho *</label>
+              <div className="space-y-2">
+                {(draftService.priceVariants || []).map((v) => {
+                  const active = priceSelection?.variantKey === v.variantKey;
+                  return (
+                    <button
+                      key={v.variantKey}
+                      type="button"
+                      onClick={() =>
+                        setPriceSelection({
+                          variationType: v.variationType,
+                          variantKey: v.variantKey,
+                          label: v.label,
+                          price: v.price,
+                        })
+                      }
+                      className={`w-full text-left px-3 py-2 rounded-lg border ${
+                        active ? 'border-gold bg-gold/10' : 'border-line hover:border-gold/50'
+                      }`}
+                    >
+                      <span className="text-white font-medium">{v.label}</span>
+                      <span className="text-gold ml-2">R$ {v.price.toFixed(2)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
+
+          {draftService && !needsVariant && (
+            <p className="text-sm text-zinc-300">
+              Valor: <span className="text-gold font-semibold">R$ {draftService.price.toFixed(2)}</span>
+              {draftService.responsibleProfessionalName
+                ? ` · ${draftService.responsibleProfessionalName}`
+                : ''}
+            </p>
+          )}
+
+          <button
+            type="button"
+            disabled={!canAddService}
+            onClick={addServiceLine}
+            className="w-full flex items-center justify-center gap-2 border border-gold text-gold hover:bg-gold/10 font-semibold py-2.5 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <PlusCircleIcon className="w-5 h-5" />
+            Adicionar serviço
+          </button>
         </div>
 
-        {needsVariant && selectedService && (
-          <div>
-            <label className="block text-sm text-zinc-300 mb-2">Variação / tamanho *</label>
-            <div className="space-y-2">
-              {(selectedService.priceVariants || []).map((v) => {
-                const active = priceSelection?.variantKey === v.variantKey;
-                return (
+        {selectedLines.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold text-sm">
+              Serviços no agendamento ({selectedLines.length})
+            </h3>
+            <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden">
+              {selectedLines.map((line) => (
+                <li key={line.key} className="flex items-start justify-between gap-3 px-3 py-3 bg-surface-overlay">
+                  <div className="min-w-0">
+                    <p className="text-white font-medium break-words">{lineLabel(line)}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      {line.service.duration} min · R$ {linePrice(line).toFixed(2)}
+                      {line.service.responsibleProfessionalName
+                        ? ` · ${line.service.responsibleProfessionalName}`
+                        : ''}
+                    </p>
+                  </div>
                   <button
-                    key={v.variantKey}
                     type="button"
-                    onClick={() =>
-                      setPriceSelection({
-                        variationType: v.variationType,
-                        variantKey: v.variantKey,
-                        label: v.label,
-                        price: v.price,
-                      })
-                    }
-                    className={`w-full text-left px-3 py-2 rounded-lg border ${
-                      active ? 'border-gold bg-gold/10' : 'border-line hover:border-gold/50'
-                    }`}
+                    onClick={() => removeLine(line.key)}
+                    className="text-red-400 hover:text-red-300 text-sm flex-shrink-0"
                   >
-                    <span className="text-white font-medium">{v.label}</span>
-                    <span className="text-gold ml-2">R$ {v.price.toFixed(2)}</span>
+                    Remover
                   </button>
-                );
-              })}
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-between text-sm pt-1">
+              <span className="text-zinc-400">Total</span>
+              <span className="text-gold font-semibold">
+                {totalDuration} min · R$ {totalPrice.toFixed(2)}
+              </span>
             </div>
           </div>
-        )}
-
-        {selectedService && !needsVariant && (
-          <p className="text-sm text-zinc-300">
-            Valor: <span className="text-gold font-semibold">R$ {selectedService.price.toFixed(2)}</span>
-            {selectedService.responsibleProfessionalName
-              ? ` · Profissional: ${selectedService.responsibleProfessionalName}`
-              : ''}
-          </p>
         )}
 
         <button
@@ -478,7 +625,6 @@ const AdminCreateBookingView: React.FC = () => {
           }}
           className="w-full flex items-center justify-center gap-2 bg-gold hover:brightness-110 font-bold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <PlusCircleIcon className="w-5 h-5" />
           Escolher data e horário
         </button>
       </div>

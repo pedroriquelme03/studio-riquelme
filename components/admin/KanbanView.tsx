@@ -14,6 +14,7 @@ type BookingRow = {
   is_cancelled?: boolean;
   promotion_group_id?: string | null;
   client_name: string;
+  client_notes?: string | null;
   services: Array<{
     id: number;
     name: string;
@@ -201,12 +202,15 @@ const KanbanView: React.FC = () => {
       cardsByColumn[col].forEach((b, index) => {
         const time = b.time.slice(0, 5);
         const when = multiDay ? `${b.date.slice(8, 10)}/${b.date.slice(5, 7)} ${time}` : time;
+        const servicesLabel = (b.services || []).map(serviceLabel).join(', ');
+        const notes = b.client_notes?.trim();
+        const metaParts = [servicesLabel, notes ? `Obs.: ${notes}` : ''].filter(Boolean);
         out.push({
           id: b.booking_id,
           columnId: col,
           order: index,
           title: `${when} · ${b.client_name || 'Cliente'}`,
-          meta: (b.services || []).map(serviceLabel).join(', ') || undefined,
+          meta: metaParts.length ? metaParts.join(' · ') : undefined,
         });
       });
     });

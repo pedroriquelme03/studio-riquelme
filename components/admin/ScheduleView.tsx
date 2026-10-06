@@ -18,6 +18,7 @@ type BookingRow = {
   client_name: string;
   client_phone: string;
   client_email: string;
+  client_notes?: string | null;
   total_price: string;
   total_duration_minutes: number;
   services: Array<{
@@ -312,6 +313,12 @@ const ScheduleView: React.FC = () => {
                     {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
                   </ul>
                 </div>
+                {b.client_notes?.trim() && (
+                  <div className="mt-3 text-sm text-amber-200/90 break-words">
+                    <span className="text-zinc-400">Obs.: </span>
+                    {b.client_notes.trim()}
+                  </div>
+                )}
                 {!b.confirmed_at && (
                   <button
                     onClick={() => confirmBooking(b.booking_id)}
@@ -489,6 +496,12 @@ const ScheduleView: React.FC = () => {
                     {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
                   </ul>
                 </div>
+                {b.client_notes?.trim() && (
+                  <div className="mt-3 text-sm text-amber-200/90 break-words">
+                    <span className="text-zinc-400">Obs.: </span>
+                    {b.client_notes.trim()}
+                  </div>
+                )}
                 {!b.confirmed_at && (
                   <button
                     onClick={() => confirmBooking(b.booking_id)}

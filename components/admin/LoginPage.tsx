@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import AdminPwaInstall from './AdminPwaInstall';
 
 const REMEMBER_USER_KEY = 'admin_remember_username';
 
@@ -135,6 +136,7 @@ const LoginPage: React.FC = () => {
           </button>
         </div>
       </div>
+      <AdminPwaInstall />
     </div>
   );
 };

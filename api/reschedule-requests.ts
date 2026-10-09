@@ -10,6 +10,7 @@ import {
 	validatePromotionSequence,
 } from './_lib/promotions.js';
 import { hardenErrors } from './_lib/http.js';
+import { forgetPushReminders } from './_lib/push.js';
 
 async function validatePromotionReschedule(
 	supabase: any,
@@ -98,6 +99,7 @@ async function applyPromotionReschedule(
 			.eq('id', row.id);
 		if (error) throw new Error(error.message);
 	}
+	await forgetPushReminders(supabase, bookingIds);
 	return true;
 }
 
@@ -374,6 +376,7 @@ export default async function handler(req: any, res: any) {
 							.update({ date: reqRow.requested_date, time: reqRow.requested_time, updated_at: new Date().toISOString() })
 							.eq('id', reqRow.booking_id);
 						if (upErr) return res.status(500).json({ ok: false, error: upErr.message });
+						await forgetPushReminders(supabase, [reqRow.booking_id]);
 					}
 				} catch (slotErr: any) {
 					if (slotErr?.code === 'SLOT_UNAVAILABLE') {

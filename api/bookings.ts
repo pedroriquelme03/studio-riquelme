@@ -22,6 +22,7 @@ import { randomUUID } from 'crypto';
 import { hardenErrors } from './_lib/http.js';
 import { RATE_RULES, enforceRateLimits, getClientIp } from './_lib/rate-limit.js';
 import { checkScheduleRules, nowInSalon } from './_lib/schedule-rules.js';
+import { forgetPushReminders, notifyNewBookings } from './_lib/push.js';
 import {
 	ValidationError,
 	sanitizeNotes,
@@ -593,6 +594,16 @@ export default async function handler(req: any, res: any) {
 					).catch(() => {});
 				} catch { /* silencioso */ }
 
+				const promoLabel = `Promoção: ${promotion.name}`;
+				await notifyNewBookings(supabase, segments.map((segment, index) => ({
+					bookingId: bookingIds[index],
+					professionalId: segment.professionalId,
+					clientName: clientPayload.name,
+					date,
+					time: segment.time,
+					serviceLabel: promoLabel,
+				}))).catch((err) => console.error('[push] promoção:', err));
+
 				return res.status(201).json({
 					ok: true,
 					booking_id: bookingIds[0],
@@ -756,6 +767,7 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// ── Disparar WhatsApp no momento da criação/solicitação ────────────
+			let serviceLabel = '';
 			try {
 				// Nome dos serviços para compor a mensagem.
 				const { data: serviceRows } = await supabase
@@ -765,7 +777,7 @@ export default async function handler(req: any, res: any) {
 				const serviceMap = new Map<number, string>(
 					(serviceRows || []).map((r: any) => [Number(r.id), String(r.name || '').trim()]),
 				);
-				const serviceLabel = services
+				serviceLabel = services
 					.map(s => serviceMap.get(Number(s.id)))
 					.filter((name): name is string => Boolean(name))
 					.join(', ') || 'serviço selecionado';
@@ -800,6 +812,15 @@ export default async function handler(req: any, res: any) {
 				console.error('[whatsapp] Erro ao preparar envio na criação:', whatsErr);
 			}
 			// ──────────────────────────────────────────────────────────────────
+
+			await notifyNewBookings(supabase, [{
+				bookingId,
+				professionalId: finalProfessionalId,
+				clientName: clientPayload.name,
+				date,
+				time,
+				serviceLabel,
+			}]).catch((err) => console.error('[push] agendamento:', err));
 
 			return res.status(201).json({ ok: true, booking_id: bookingId });
 		} catch (err: any) {
@@ -1140,6 +1161,7 @@ export default async function handler(req: any, res: any) {
 				} catch { }
 
 				await notifyClientRescheduled(supabase, groupBookingIds, date, time);
+				await forgetPushReminders(supabase, groupBookingIds);
 
 				return res.status(200).json({ ok: true, message: 'Promoção reagendada com sucesso' });
 			}
@@ -1184,6 +1206,7 @@ export default async function handler(req: any, res: any) {
 			} catch { }
 
 			await notifyClientRescheduled(supabase, [bookingId], date, time);
+			await forgetPushReminders(supabase, [bookingId]);
 
 			return res.status(200).json({ ok: true, message: 'Agendamento reagendado com sucesso' });
 		} catch (err: any) {

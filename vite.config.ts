@@ -40,6 +40,9 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: false,
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         includeAssets: ['icone-dourado.png', 'pwa/apple-touch-icon.png'],
         manifest: {
           id: '/admin',
@@ -76,24 +79,9 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          navigateFallback: '/index.html',
-          navigateFallbackDenylist: [/^\/api\//],
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          runtimeCaching: [
-            {
-              urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-              handler: 'NetworkOnly',
-            },
-            {
-              urlPattern: ({ request }) => request.destination === 'image',
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'sr-admin-images',
-                expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              },
-            },
-          ],
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
         devOptions: {
           enabled: false,

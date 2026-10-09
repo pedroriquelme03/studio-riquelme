@@ -15,6 +15,7 @@ import CancellationsView from './CancellationsView';
 import ClientsView from './ClientsView';
 import AdminCreateBookingView from './AdminCreateBookingView';
 import AdminPwaInstall from './AdminPwaInstall';
+import AdminPushNotifications from './AdminPushNotifications';
 
 export type AdminView = 'appointments' | 'create_booking' | 'kanban' | 'cancellations' | 'clients' | 'services' | 'promotions' | 'monthly_plans' | 'professionals' | 'schedule' | 'reports' | 'users' | 'hours' | 'bio';
 
@@ -70,7 +71,10 @@ const Admin: React.FC = () => {
 
       {/* Conteúdo com offset da sidebar */}
       <div className="md:pl-64 min-h-screen">
-        <div className="p-4 md:p-8">{renderContent()}</div>
+        <div className="p-4 md:p-8">
+          <AdminPushNotifications />
+          {renderContent()}
+        </div>
       </div>
 
       <AdminPwaInstall />

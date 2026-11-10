@@ -144,6 +144,15 @@ function isMissingTableError(message: string | undefined) {
 	return /relation|does not exist|schema cache/i.test(message || '');
 }
 
+function isMissingColumnError(message: string | undefined, column: string) {
+	const text = message || '';
+	return text.toLowerCase().includes(column.toLowerCase()) && /does not exist|schema cache|could not find/i.test(text);
+}
+
+function includeInReports(row: { include_in_reports?: boolean | null }) {
+	return row?.include_in_reports !== false;
+}
+
 export default async function handler(req: any, res: any) {
 	hardenErrors(req, res);
 	try {
@@ -175,8 +184,8 @@ export default async function handler(req: any, res: any) {
 					return res.status(400).json({ ok: false, error: 'from e to são obrigatórios' });
 				}
 
-				const [{ data: professionals, error: profErr }, { data: bookings, error: bookErr }, { data: expenses, error: expErr }, { data: fixedAccounts, error: fixedErr }, { data: goals, error: goalsErr }] = await Promise.all([
-					supabase.from('professionals').select('id, name, is_active').order('name', { ascending: true }),
+				const [{ data: professionalsRaw, error: profErrRaw }, { data: bookings, error: bookErr }, { data: expenses, error: expErr }, { data: fixedAccounts, error: fixedErr }, { data: goals, error: goalsErr }] = await Promise.all([
+					supabase.from('professionals').select('id, name, is_active, include_in_reports').order('name', { ascending: true }),
 					supabase
 						.from('bookings')
 						.select(`
@@ -205,6 +214,13 @@ export default async function handler(req: any, res: any) {
 						.eq('is_active', true),
 				]);
 
+				let professionals = professionalsRaw;
+				let profErr = profErrRaw;
+				if (profErr && isMissingColumnError(profErr.message, 'include_in_reports')) {
+					const fallback = await supabase.from('professionals').select('id, name, is_active').order('name', { ascending: true });
+					professionals = (fallback.data || []).map((row: any) => ({ ...row, include_in_reports: true }));
+					profErr = fallback.error;
+				}
 				if (profErr) return res.status(500).json({ ok: false, error: profErr.message });
 				if (bookErr) return res.status(500).json({ ok: false, error: bookErr.message });
 				if (expErr && !isMissingTableError(expErr.message)) {
@@ -218,6 +234,11 @@ export default async function handler(req: any, res: any) {
 				}
 
 				const activeProfessionals = (professionals || []).filter((p: any) => p.is_active !== false);
+				const excludedFromTotals = new Set(
+					activeProfessionals
+						.filter((p: any) => !includeInReports(p))
+						.map((p: any) => String(p.id)),
+				);
 				const splitCount = Math.max(activeProfessionals.length, 1);
 
 				const incomeByProf = new Map<string, { income: number; appointments: number }>();
@@ -332,7 +353,7 @@ export default async function handler(req: any, res: any) {
 				let salonIncome = 0;
 				for (const [profId, row] of incomeByProf.entries()) {
 					salonAppointments += row.appointments;
-					salonIncome += row.income;
+					if (!excludedFromTotals.has(profId)) salonIncome += row.income;
 					if (profId !== '__none__') {
 						actualByScope.set(profId, { appointments: row.appointments, income: row.income });
 					}
@@ -354,6 +375,7 @@ export default async function handler(req: any, res: any) {
 						id: p.id,
 						name: p.name,
 						is_active: p.is_active,
+						include_in_reports: includeInReports(p),
 						income: incomeRow.income,
 						appointments: incomeRow.appointments,
 						expenses: expensesTotal,
@@ -374,6 +396,7 @@ export default async function handler(req: any, res: any) {
 						id: '__none__',
 						name: 'Sem profissional',
 						is_active: true,
+						include_in_reports: true,
 						income: noneIncome.income,
 						appointments: noneIncome.appointments,
 						expenses: 0,
@@ -388,17 +411,21 @@ export default async function handler(req: any, res: any) {
 				}
 
 				const totals = profRows.reduce(
-					(acc, row) => ({
-						income: acc.income + row.income,
-						expenses: acc.expenses + row.expenses,
-						products: acc.products + row.products,
-						structure: acc.structure + row.structure_share,
-						pro_salao: acc.pro_salao + row.pro_salao,
-						salary: acc.salary + row.salary,
-						salon_remaining: acc.salon_remaining + row.salon_remaining,
-						balance: acc.balance + row.balance,
-						appointments: acc.appointments + row.appointments,
-					}),
+					(acc, row) => {
+						const omittedIncome = row.include_in_reports === false ? row.income : 0;
+						return {
+							income: acc.income + row.income - omittedIncome,
+							expenses: acc.expenses + row.expenses,
+							products: acc.products + row.products,
+							structure: acc.structure + row.structure_share,
+							pro_salao: acc.pro_salao + row.pro_salao - omittedIncome,
+							salary: acc.salary + row.salary,
+							salon_remaining: acc.salon_remaining + row.salon_remaining - omittedIncome,
+							balance: acc.balance + row.balance - omittedIncome,
+							appointments: acc.appointments + row.appointments,
+							excluded_income: acc.excluded_income + omittedIncome,
+						};
+					},
 					{
 						income: 0,
 						expenses: 0,
@@ -409,6 +436,7 @@ export default async function handler(req: any, res: any) {
 						salon_remaining: 0,
 						balance: 0,
 						appointments: 0,
+						excluded_income: 0,
 					},
 				);
 
@@ -468,14 +496,22 @@ export default async function handler(req: any, res: any) {
 			}
 
 			const columns = isAdmin
-				? 'id, name, email, phone, is_active, created_at, updated_at'
+				? 'id, name, email, phone, is_active, include_in_reports, created_at, updated_at'
 				: 'id, name, is_active';
 
 			let query = supabase.from('professionals').select(columns).order('name', { ascending: true });
 			// Visitante só enxerga quem está ativo.
 			if (!isAdmin) query = query.eq('is_active', true);
 
-			const { data, error } = await query;
+			let { data, error } = await query;
+			if (error && isAdmin && isMissingColumnError(error.message, 'include_in_reports')) {
+				const fallback = await supabase
+					.from('professionals')
+					.select('id, name, email, phone, is_active, created_at, updated_at')
+					.order('name', { ascending: true });
+				data = (fallback.data || []).map((row: any) => ({ ...row, include_in_reports: true }));
+				error = fallback.error;
+			}
 			if (error) return res.status(500).json({ ok: false, error: error.message });
 			return res.status(200).json({ ok: true, professionals: data || [] });
 		}
@@ -589,11 +625,12 @@ export default async function handler(req: any, res: any) {
 				return res.status(201).json({ ok: true, goal: data });
 			}
 
-			const { name, email, phone, is_active } = (body || {}) as {
+			const { name, email, phone, is_active, include_in_reports } = (body || {}) as {
 				name?: string;
 				email?: string;
 				phone?: string;
 				is_active?: boolean;
+				include_in_reports?: boolean;
 			};
 			if (!name || !email || !phone) {
 				return res.status(400).json({ ok: false, error: 'name, email e phone são obrigatórios' });
@@ -603,10 +640,16 @@ export default async function handler(req: any, res: any) {
 				.insert({
 					name, email, phone,
 					is_active: typeof is_active === 'boolean' ? is_active : true,
+					include_in_reports: typeof include_in_reports === 'boolean' ? include_in_reports : true,
 				})
-				.select('id, name, email, phone, is_active, created_at, updated_at')
+				.select('id, name, email, phone, is_active, include_in_reports, created_at, updated_at')
 				.single();
-			if (error) return res.status(500).json({ ok: false, error: error.message });
+			if (error) {
+				if (isMissingColumnError(error.message, 'include_in_reports')) {
+					return res.status(500).json({ ok: false, error: 'Execute sql/professional-include-in-reports.sql no Supabase para ativar a opção de valores nos relatórios.' });
+				}
+				return res.status(500).json({ ok: false, error: error.message });
+			}
 			return res.status(201).json({ ok: true, professional: data });
 		}
 
@@ -684,25 +727,33 @@ export default async function handler(req: any, res: any) {
 				return res.status(200).json({ ok: true });
 			}
 
-			const { id, name, email, phone, is_active } = (body || {}) as {
+			const { id, name, email, phone, is_active, include_in_reports } = (body || {}) as {
 				id?: string;
 				name?: string;
 				email?: string;
 				phone?: string;
 				is_active?: boolean;
+				include_in_reports?: boolean;
 			};
 			if (!id || !name || !email || !phone) {
 				return res.status(400).json({ ok: false, error: 'id, name, email e phone são obrigatórios' });
 			}
+			const updatePayload: Record<string, unknown> = {
+				name, email, phone,
+				is_active: typeof is_active === 'boolean' ? is_active : true,
+				updated_at: new Date().toISOString(),
+			};
+			if (typeof include_in_reports === 'boolean') updatePayload.include_in_reports = include_in_reports;
 			const { error } = await supabase
 				.from('professionals')
-				.update({
-					name, email, phone,
-					is_active: typeof is_active === 'boolean' ? is_active : true,
-					updated_at: new Date().toISOString(),
-				})
+				.update(updatePayload)
 				.eq('id', id);
-			if (error) return res.status(500).json({ ok: false, error: error.message });
+			if (error) {
+				if (isMissingColumnError(error.message, 'include_in_reports')) {
+					return res.status(500).json({ ok: false, error: 'Execute sql/professional-include-in-reports.sql no Supabase para ativar a opção de valores nos relatórios.' });
+				}
+				return res.status(500).json({ ok: false, error: error.message });
+			}
 			return res.status(200).json({ ok: true });
 		}
 
@@ -743,3 +794,4 @@ export default async function handler(req: any, res: any) {
 	}
 }
 
+  

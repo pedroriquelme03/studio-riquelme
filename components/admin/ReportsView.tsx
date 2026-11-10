@@ -26,6 +26,7 @@ type ProfessionalReport = {
   id: string;
   name: string;
   is_active: boolean;
+  include_in_reports?: boolean;
   income: number;
   expenses: number;
   products: number;
@@ -79,6 +80,7 @@ type ReportTotals = {
   salon_remaining: number;
   balance: number;
   appointments: number;
+  excluded_income: number;
 };
 
 type StructureInfo = {
@@ -170,7 +172,7 @@ const ReportsView: React.FC = () => {
   const [professionals, setProfessionals] = useState<ProfessionalReport[]>([]);
   const [totals, setTotals] = useState<ReportTotals>({
     income: 0, expenses: 0, products: 0, structure: 0, pro_salao: 0,
-    salary: 0, salon_remaining: 0, balance: 0, appointments: 0,
+    salary: 0, salon_remaining: 0, balance: 0, appointments: 0, excluded_income: 0,
   });
   const [structure, setStructure] = useState<StructureInfo>({
     total: 0, share_per_professional: 0, professionals_count: 0, items: [],
@@ -247,7 +249,7 @@ const ReportsView: React.FC = () => {
       setProfessionals((data.professionals || []) as ProfessionalReport[]);
       setTotals(data.totals || {
         income: 0, expenses: 0, products: 0, structure: 0, pro_salao: 0,
-        salary: 0, salon_remaining: 0, balance: 0, appointments: 0,
+        salary: 0, salon_remaining: 0, balance: 0, appointments: 0, excluded_income: 0,
       });
       setStructure(data.structure || { total: 0, share_per_professional: 0, professionals_count: 0, items: [] });
       setFixedAccountsSummary(data.fixed_accounts || { total: 0, items: [] });
@@ -451,8 +453,9 @@ const ReportsView: React.FC = () => {
   const chartData = useMemo(() => {
     const rows = professionals.filter((p) => p.id !== '__none__');
     return {
-      labels: rows.map((p) => p.name),
+      labels: rows.map((p) => (p.include_in_reports === false ? `${p.name} (fora da soma)` : p.name)),
       proSalao: rows.map((p) => p.pro_salao),
+      proSalaoColors: rows.map((p) => (p.include_in_reports === false ? 'rgba(251, 191, 36, 0.45)' : 'rgba(212, 175, 55, 0.55)')),
       salary: rows.map((p) => p.salary),
     };
   }, [professionals]);
@@ -501,6 +504,7 @@ const ReportsView: React.FC = () => {
   };
 
   const selectableProfessionals = professionals.filter((p) => p.id !== '__none__');
+  const excludedProfessionals = selectableProfessionals.filter((p) => p.include_in_reports === false);
   const needsProfessional = entryCategory !== 'structure';
 
   return (
@@ -555,6 +559,9 @@ const ReportsView: React.FC = () => {
             <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
               <div className="text-zinc-300 text-xs sm:text-sm">Entrou (total)</div>
               <div className="text-base sm:text-xl font-bold text-emerald-400 break-words">{money(totals.income)}</div>
+              {totals.excluded_income > 0 && (
+                <div className="text-[11px] sm:text-xs text-amber-300 mt-1 leading-tight">Não somado: {money(totals.excluded_income)}</div>
+              )}
               {salonIncomeGoal && (
                 <div className="mt-2 text-left">
                   <GoalBar label="Meta faturamento" actual={salonIncomeGoal.actual} target={salonIncomeGoal.target} pct={salonIncomeGoal.progress_pct} />
@@ -573,6 +580,9 @@ const ReportsView: React.FC = () => {
             <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
               <div className="text-zinc-300 text-xs sm:text-sm">Pro Salão</div>
               <div className="text-base sm:text-xl font-bold text-gold break-words">{money(totals.pro_salao)}</div>
+              {totals.excluded_income > 0 && (
+                <div className="text-[11px] sm:text-xs text-amber-300 mt-1 leading-tight">Sem o faturamento fora da soma</div>
+              )}
             </div>
             <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
               <div className="text-zinc-300 text-xs sm:text-sm">Salários pagos</div>
@@ -581,6 +591,9 @@ const ReportsView: React.FC = () => {
             <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
               <div className="text-zinc-300 text-xs sm:text-sm">Sobra do salão</div>
               <div className={`text-base sm:text-xl font-bold break-words ${totals.salon_remaining >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(totals.salon_remaining)}</div>
+              {totals.excluded_income > 0 && (
+                <div className="text-[11px] sm:text-xs text-amber-300 mt-1 leading-tight">Sem o faturamento fora da soma</div>
+              )}
             </div>
             <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4 text-center">
               <div className="text-zinc-300 text-xs sm:text-sm">Saídas gerais</div>
@@ -904,13 +917,16 @@ const ReportsView: React.FC = () => {
 
           {chartData.labels.length > 0 && (
             <div className="bg-surface-raised border border-line rounded-lg p-3 sm:p-4">
-              <h3 className="text-white font-semibold mb-3 text-sm sm:text-base">Pro Salão x Salário por profissional</h3>
+              <h3 className={`text-white font-semibold text-sm sm:text-base ${excludedProfessionals.length > 0 ? 'mb-1' : 'mb-3'}`}>Pro Salão x Salário por profissional</h3>
+              {excludedProfessionals.length > 0 && (
+                <p className="text-xs text-amber-300 mb-3">Barras em âmbar são de quem não entra na soma. O valor realizado continua visível aqui e no card.</p>
+              )}
               <div className="relative h-56 sm:h-72">
                 <Bar
                   data={{
                     labels: chartData.labels,
                     datasets: [
-                      { label: 'Pro Salão (R$)', data: chartData.proSalao, backgroundColor: 'rgba(212, 175, 55, 0.55)', borderColor: '#d4af37' },
+                      { label: 'Pro Salão (R$)', data: chartData.proSalao, backgroundColor: chartData.proSalaoColors, borderColor: '#d4af37' },
                       { label: 'Salário (R$)', data: chartData.salary, backgroundColor: 'rgba(248, 113, 113, 0.55)', borderColor: '#f87171' },
                     ],
                   }}
@@ -997,12 +1013,19 @@ const ReportsView: React.FC = () => {
             </div>
           )}
 
+          {excludedProfessionals.length > 0 && (
+            <div className="border border-amber-700/50 bg-amber-950/30 rounded-lg p-3 text-sm text-amber-100">
+              {excludedProfessionals.map((p) => p.name).join(', ')} {excludedProfessionals.length === 1 ? 'não entra' : 'não entram'} na soma dos relatórios de valores.
+              O faturamento de serviços {totals.excluded_income > 0 ? `(${money(totals.excluded_income)}) ` : ''}aparece no card e não entra em Entrou, Pro Salão nem Sobra do salão.
+            </div>
+          )}
+
           <div className="grid gap-3 sm:gap-4">
             {professionals.filter((p) => p.id !== '__none__').length === 0 && (
               <div className="text-zinc-300 text-center py-8">Nenhum dado no período selecionado.</div>
             )}
             {professionals.filter((p) => p.id !== '__none__').map((prof) => (
-              <div key={prof.id} className="bg-surface-raised border border-line rounded-lg overflow-hidden">
+              <div key={prof.id} className={`bg-surface-raised border rounded-lg overflow-hidden ${prof.include_in_reports === false ? 'border-amber-700/60' : 'border-line'}`}>
                 <button
                   type="button"
                   onClick={() => setExpandedId((prev) => (prev === prof.id ? null : prof.id))}
@@ -1012,6 +1035,11 @@ const ReportsView: React.FC = () => {
                     <div>
                       <div className="text-base sm:text-lg font-semibold text-white">{prof.name}</div>
                       <div className="text-sm text-zinc-400">{prof.appointments} agendamento(s)</div>
+                      {prof.include_in_reports === false && (
+                        <div className="mt-1 text-xs text-amber-300">
+                          Realizou {money(prof.income)} em serviços. Esse valor não foi somado nos relatórios.
+                        </div>
+                      )}
                       {(prof.goals || []).length > 0 && (
                         <div className="mt-2 space-y-1 max-w-md">
                           {(prof.goals || []).map((g) => (
@@ -1028,7 +1056,11 @@ const ReportsView: React.FC = () => {
                       )}
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
-                      <div><div className="text-zinc-500 text-xs">Entrou</div><div className="font-bold text-emerald-400 break-words">{money(prof.income)}</div></div>
+                      <div>
+                        <div className="text-zinc-500 text-xs">Entrou</div>
+                        <div className={`font-bold break-words ${prof.include_in_reports === false ? 'text-amber-300' : 'text-emerald-400'}`}>{money(prof.income)}</div>
+                        {prof.include_in_reports === false && <div className="text-[10px] text-amber-300/90">não somado</div>}
+                      </div>
                       <div><div className="text-zinc-500 text-xs">Produto</div><div className="font-bold text-orange-400 break-words">{money(prof.products)}</div></div>
                       <div><div className="text-zinc-500 text-xs">Estrutura</div><div className="font-bold text-amber-400 break-words">{money(prof.structure_share)}</div></div>
                       <div><div className="text-zinc-500 text-xs">Pro Salão</div><div className="font-bold text-gold break-words">{money(prof.pro_salao)}</div></div>
@@ -1042,6 +1074,7 @@ const ReportsView: React.FC = () => {
                   <div className="px-3 sm:px-4 pb-4 border-t border-line">
                     <div className="mt-3 text-xs text-zinc-400 mb-2 leading-relaxed">
                       Pro Salão = Entrou − Saídas − Produtos − Cota de estrutura ({money(prof.structure_share)})
+                      {prof.include_in_reports === false && ' O valor de Entrou deste profissional fica de fora das somas do período.'}
                     </div>
                     {prof.expense_items.length === 0 ? (
                       <p className="text-sm text-zinc-400">Nenhum lançamento neste período.</p>

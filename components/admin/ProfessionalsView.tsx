@@ -7,6 +7,7 @@ type Professional = {
   email: string;
   phone: string;
   is_active: boolean;
+  include_in_reports?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -19,12 +20,14 @@ const ProfessionalsView: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [includeInReports, setIncludeInReports] = useState(true);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editActive, setEditActive] = useState<boolean>(true);
+  const [editIncludeInReports, setEditIncludeInReports] = useState(true);
 
   const [footerContact1Name, setFooterContact1Name] = useState('');
   const [footerContact1Phone, setFooterContact1Phone] = useState('');
@@ -103,11 +106,12 @@ const ProfessionalsView: React.FC = () => {
       const res = await fetch('/api/professionals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, is_active: true })
+        body: JSON.stringify({ name, email, phone, is_active: true, include_in_reports: includeInReports })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Erro ao cadastrar profissional');
       setName(''); setEmail(''); setPhone('');
+      setIncludeInReports(true);
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -122,6 +126,7 @@ const ProfessionalsView: React.FC = () => {
     setEditEmail(p.email);
     setEditPhone(p.phone);
     setEditActive(p.is_active);
+    setEditIncludeInReports(p.include_in_reports !== false);
   };
 
   const cancelEdit = () => {
@@ -130,6 +135,7 @@ const ProfessionalsView: React.FC = () => {
     setEditEmail('');
     setEditPhone('');
     setEditActive(true);
+    setEditIncludeInReports(true);
   };
 
   const saveEdit = async () => {
@@ -140,12 +146,46 @@ const ProfessionalsView: React.FC = () => {
       const res = await fetch('/api/professionals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingId, name: editName, email: editEmail, phone: editPhone, is_active: editActive })
+        body: JSON.stringify({
+          id: editingId,
+          name: editName,
+          email: editEmail,
+          phone: editPhone,
+          is_active: editActive,
+          include_in_reports: editIncludeInReports,
+        })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || 'Erro ao atualizar profissional');
       await load();
       cancelEdit();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleIncludeInReports = async (p: Professional, include: boolean) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/professionals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: p.id,
+          name: p.name,
+          email: p.email,
+          phone: p.phone,
+          is_active: p.is_active,
+          include_in_reports: include,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erro ao atualizar profissional');
+      if (editingId === p.id) setEditIncludeInReports(include);
+      await load();
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -193,10 +233,22 @@ const ProfessionalsView: React.FC = () => {
           placeholder="Telefone"
           className="bg-surface-overlay text-white rounded px-3 py-2 outline-none border border-line focus:border-gold"
         />
+        <label className="md:col-span-4 flex items-start gap-2 text-sm text-zinc-200">
+          <input
+            type="checkbox"
+            checked={includeInReports}
+            onChange={(e) => setIncludeInReports(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Incluir valores nos relatórios
+            <span className="block text-xs text-zinc-400">Desmarcado, os serviços feitos por esta pessoa aparecem no relatório, mas não entram na soma.</span>
+          </span>
+        </label>
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center justify-center gap-2 bg-gold hover:bg-gold text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-70"
+          className="flex items-center justify-center gap-2 bg-gold hover:bg-gold text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-70 md:col-span-4 md:justify-self-start"
         >
           <PlusCircleIcon className="w-5 h-5" />
           Adicionar
@@ -294,6 +346,10 @@ const ProfessionalsView: React.FC = () => {
                   <>
                     <td className="p-3 w-[28%]">
                       <input value={editName} onChange={e => setEditName(e.target.value)} className="bg-surface-overlay text-white rounded px-2 py-1 border border-line w-full" />
+                      <label className="mt-2 flex items-start gap-2 text-xs text-zinc-200">
+                        <input type="checkbox" checked={editIncludeInReports} onChange={e => setEditIncludeInReports(e.target.checked)} className="mt-0.5" />
+                        Incluir valores nos relatórios
+                      </label>
                     </td>
                     <td className="p-3 w-[36%]">
                       <input value={editEmail} onChange={e => setEditEmail(e.target.value)} className="bg-surface-overlay text-white rounded px-2 py-1 border border-line w-full" />
@@ -318,6 +374,18 @@ const ProfessionalsView: React.FC = () => {
                   <>
                     <td className="p-3 w-[28%] text-white">
                       <div className="min-w-0 truncate">{p.name}</div>
+                      <label className="mt-1 flex items-start gap-2 text-xs text-zinc-300 font-normal">
+                        <input
+                          type="checkbox"
+                          checked={p.include_in_reports !== false}
+                          disabled={loading}
+                          onChange={(e) => toggleIncludeInReports(p, e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span className={p.include_in_reports === false ? 'text-amber-300' : ''}>
+                          {p.include_in_reports === false ? 'Não incluir valores' : 'Incluir valores nos relatórios'}
+                        </span>
+                      </label>
                     </td>
                     <td className="p-3 w-[36%] text-zinc-200">
                       <div className="min-w-0 max-w-[220px] truncate">{p.email}</div>
@@ -367,6 +435,10 @@ const ProfessionalsView: React.FC = () => {
                   <input type="checkbox" checked={editActive} onChange={e => setEditActive(e.target.checked)} />
                   Ativo
                 </label>
+                <label className="inline-flex items-start gap-2 text-zinc-200">
+                  <input type="checkbox" checked={editIncludeInReports} onChange={e => setEditIncludeInReports(e.target.checked)} className="mt-0.5" />
+                  Incluir valores nos relatórios
+                </label>
                 <div className="flex justify-end gap-2">
                   <button onClick={saveEdit} className="bg-emerald-500 hover:bg-emerald-400 text-white font-semibold px-4 py-2 rounded">Salvar</button>
                   <button onClick={cancelEdit} className="bg-zinc-700 hover:bg-surface-overlay0 text-white font-semibold px-4 py-2 rounded">Cancelar</button>
@@ -385,10 +457,22 @@ const ProfessionalsView: React.FC = () => {
                     <button onClick={() => deleteProfessional(p.id)} className="text-zinc-200 hover:text-red-400"><TrashIcon className="w-5 h-5" /></button>
                   </div>
                 </div>
-                <div className="text-sm">
+                <div className="text-sm flex flex-col gap-2">
                   <span className={p.is_active ? 'text-emerald-400' : 'text-zinc-300'}>
                     {p.is_active ? 'Ativo' : 'Inativo'}
                   </span>
+                  <label className="inline-flex items-start gap-2 text-zinc-200">
+                    <input
+                      type="checkbox"
+                      checked={p.include_in_reports !== false}
+                      disabled={loading}
+                      onChange={(e) => toggleIncludeInReports(p, e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span className={p.include_in_reports === false ? 'text-amber-300' : ''}>
+                      {p.include_in_reports === false ? 'Não incluir valores' : 'Incluir valores nos relatórios'}
+                    </span>
+                  </label>
                 </div>
               </div>
             )}
